@@ -3,8 +3,6 @@ import { getDb } from '../../lib/db';
 import { getRaceById, updateRace, createRegistrationCode, getCodesByRace, getParticipantsByRace, deleteRace, createRace, getRaceStats } from '../../lib/db/actions';
 import { randomUUID } from 'crypto';
 
-export const prerender = false;
-
 export const GET: APIRoute = async ({ request, env }) => {
   const db = getDb(env);
   const url = new URL(request.url);
