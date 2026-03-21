@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+:root {
+  --accent: #FF6B00;
+  --accent-dark: #FF8C33;
+}
+
+.bg-accent {
+  background-color: var(--accent);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.border-accent {
+  border-color: var(--accent);
+}
+
+.hover\:bg-accent:hover {
+  background-color: var(--accent);
+}
+
+.hover\:text-accent:hover {
+  color: var(--accent);
+}
+
+button, .btn {
+  transition: all 0.2s ease;
+}
+
+html {
+  scroll-behavior: smooth;
+}

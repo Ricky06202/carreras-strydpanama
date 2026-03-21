@@ -1,11 +1,95 @@
 ---
-import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
+import { getDb } from '../lib/db';
+import { getRaces } from '../lib/db/actions';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const { env } = Astro;
+const db = getDb(env);
+const races = await getRaces(db);
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('es-PA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function getStatusBadge(status: string) {
+  const styles = {
+    upcoming: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    completed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+  };
+  const labels = { upcoming: 'Próxima', active: 'En Vivo', completed: 'Finalizada' };
+  return { style: styles[status as keyof typeof styles] || styles.upcoming, label: labels[status as keyof typeof labels] || status };
+}
 ---
 
-<Layout>
-	<Welcome />
+<Layout title="Stryd Panama - Carreras">
+  <div class="max-w-7xl mx-auto px-4 py-12">
+    <div class="text-center mb-12">
+      <h1 class="text-4xl md:text-5xl font-bold mb-4">
+        <span class="text-accent">Próximas</span> Carreras
+      </h1>
+      <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+        Únete a las mejores carreras en Panama. Participa, desafía tus límites y conecta con la comunidad runner.
+      </p>
+    </div>
+
+    {races.length === 0 ? (
+      <div class="text-center py-12">
+        <p class="text-gray-500 dark:text-gray-400 text-lg">No hay carreras programadas aún.</p>
+        <a href="/admin" class="inline-block mt-4 px-6 py-3 bg-accent text-white rounded-lg hover:bg-orange-600 transition-colors">
+          Crear Primera Carrera
+        </a>
+      </div>
+    ) : (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {races.map((race) => {
+          const badge = getStatusBadge(race.status);
+          return (
+            <a href={`/race/${race.id}`} class="block group">
+              <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
+                <div class="h-32 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center">
+                  <svg class="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div class="p-6">
+                  <div class="flex items-center justify-between mb-3">
+                    <span class={`px-3 py-1 rounded-full text-sm font-medium ${badge.style}`}>
+                      {badge.label}
+                    </span>
+                    {race.status === 'active' && (
+                      <span class="flex items-center gap-1 text-green-600 text-sm font-medium">
+                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                        EN VIVO
+                      </span>
+                    )}
+                  </div>
+                  <h3 class="text-xl font-bold mb-2 group-hover:text-accent transition-colors">{race.name}</h3>
+                  <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{race.description}</p>
+                  <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
+                    <span class="flex items-center gap-1">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      {formatDate(race.date)}
+                    </span>
+                    {race.location && (
+                      <span class="flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {race.location}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </a>
+          );
+        })}
+      </div>
+    )}
+  </div>
 </Layout>
