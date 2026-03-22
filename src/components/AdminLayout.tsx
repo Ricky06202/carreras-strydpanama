@@ -15,9 +15,11 @@ const ACCENT = '#FF6B00';
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
-    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return 'dark'; // Por defecto oscuro
   }
-  return 'light';
+  return 'dark';
 }
 
 interface Race {

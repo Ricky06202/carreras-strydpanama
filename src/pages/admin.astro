@@ -15,7 +15,7 @@ import AdminDashboard from '../components/AdminDashboard';
       (function() {
         var theme = localStorage.getItem('theme');
         if (!theme) {
-          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          theme = 'dark'; // Por defecto oscuro
         }
         document.documentElement.classList.add(theme);
         document.documentElement.style.colorScheme = theme;
