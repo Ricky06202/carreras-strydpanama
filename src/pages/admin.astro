@@ -1,8 +1,28 @@
 ---
-import AdminLayout from '../components/AdminLayout';
+import '../styles/global.css';
 import AdminDashboard from '../components/AdminDashboard';
 ---
 
-<AdminLayout client:only="react">
-  <AdminDashboard client:only="react" />
-</AdminLayout>
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="generator" content={Astro.generator} />
+    <title>Admin - Stryd Panama</title>
+    <script is:inline>
+      (function() {
+        var theme = localStorage.getItem('theme');
+        if (!theme) {
+          theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.classList.add(theme);
+        document.documentElement.style.colorScheme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <AdminDashboard client:only="react" />
+  </body>
+</html>
