@@ -5,6 +5,6 @@ import RegistrationForm from '../components/RegistrationForm';
 const raceId = Astro.url.searchParams.get('race') || '';
 ---
 
-<Layout client:only="react">
+<Layout client:only="react" maxWidth="sm">
   <RegistrationForm client:only="react" raceId={raceId} />
 </Layout>

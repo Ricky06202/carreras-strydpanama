@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, AppBar, Toolbar, Typography, Button, IconButton, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton, ThemeProvider, createTheme, CssBaseline, Container } from '@mui/material';
 import { Link } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
@@ -18,9 +18,10 @@ function getInitialTheme(): 'light' | 'dark' {
 
 interface LayoutProps {
   children: React.ReactNode;
+  maxWidth?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | false;
 }
 
-export default function Layout({ children }: LayoutProps) {
+export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
   const [mode, setMode] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -82,9 +83,9 @@ export default function Layout({ children }: LayoutProps) {
             </Box>
           </Toolbar>
         </AppBar>
-        <Box sx={{ flex: 1 }}>
+        <Container maxWidth={maxWidth} sx={{ flex: 1, py: 4 }}>
           {children}
-        </Box>
+        </Container>
         <Box component="footer" sx={{ bgcolor: mode === 'dark' ? '#0F172A' : '#1F2937', color: 'white', py: 4, textAlign: 'center' }}>
           <Typography variant="body2" sx={{ color: 'grey.400' }}>
             © 2026 Stryd Panama. Todos los derechos reservados.
