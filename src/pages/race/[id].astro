@@ -5,8 +5,7 @@ import { getRaceById, getParticipantsByRace } from '../../lib/db/actions';
 import RaceTimer from '../../components/RaceTimer.svelte';
 import RaceMap from '../../components/RaceMap.svelte';
 
-const { env } = Astro;
-const db = getDb(env);
+const db = getDb(Astro.locals.runtime?.env?.DB);
 
 const raceId = Astro.params.id;
 const race = raceId ? await getRaceById(db, raceId) : null;

@@ -4,13 +4,11 @@ import * as schema from './schema';
 
 export type Database = DrizzleD1Database<typeof schema>;
 
-let db: Database | null = null;
-
 export function getDb(env: unknown): Database {
-  if (!db && env) {
-    db = drizzle(env as any, { schema });
+  if (!env) {
+    throw new Error('Environment not available');
   }
-  return db!;
+  return drizzle(env as any, { schema });
 }
 
 export { schema };

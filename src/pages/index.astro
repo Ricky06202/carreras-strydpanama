@@ -3,8 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
 import { getRaces } from '../lib/db/actions';
 
-const { env } = Astro;
-const db = getDb(env);
+const db = getDb(Astro.locals.runtime?.env?.DB);
 const races = await getRaces(db);
 
 function formatDate(dateStr: string) {
