@@ -1,7 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { SaveAlt, Add, PlayArrow, Delete, Edit } from '@mui/icons-material';
+import {
+  AppBar, Toolbar, Typography, Box, Drawer, List, ListItem, 
+  ListItemButton, ListItemText, Button, TextField, Dialog, 
+  DialogTitle, DialogContent, DialogActions, Table, TableBody, 
+  TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab,
+  IconButton, Snackbar, Alert
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import DownloadIcon from '@mui/icons-material/Download';
 
 function getThemeMode(): 'light' | 'dark' {
   if (typeof window !== 'undefined') {
@@ -40,7 +51,7 @@ interface RegistrationCode {
 }
 
 export default function AdminDashboard() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [mode, setMode] = useState<'light' | 'dark'>('light');
   const [races, setRaces] = useState<Race[]>([]);
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -53,32 +64,31 @@ export default function AdminDashboard() {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
 
-  const toggleTheme = () => {
-    const newTheme = theme === 'light' ? 'dark' : 'light';
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-    document.documentElement.classList.toggle('dark', newTheme === 'dark');
-  };
-
   useEffect(() => {
-    const t = getThemeMode();
-    setTheme(t);
-    document.documentElement.classList.toggle('dark', t === 'dark');
-  }, []);
-
-  useEffect(() => {
+    const theme = getThemeMode();
+    setMode(theme);
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (selectedRace) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => {
-        setSelectedRace(d.race);
-        setParticipants(d.participants || []);
-        setCodes(d.codes || []);
-      }).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`)
+        .then(r => r.json())
+        .then(d => {
+          setSelectedRace(d.race);
+          setParticipants(d.participants || []);
+          setCodes(d.codes || []);
+        })
+        .catch(() => {});
     }
   }, [selectedRace?.id]);
+
+  const toggleTheme = () => {
+    const newMode = mode === 'light' ? 'dark' : 'light';
+    setMode(newMode);
+    localStorage.setItem('theme', newMode);
+    window.location.reload();
+  };
 
   const handleSaveRace = async () => {
     const method = editRace ? 'PUT' : 'POST';
@@ -108,9 +118,7 @@ export default function AdminDashboard() {
     const data = await res.json();
     if (res.ok) {
       setSnackbar({ open: true, message: '¡Carrera iniciada!', severity: 'success' });
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => {
-        setSelectedRace(d.race);
-      }).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setSelectedRace(d.race)).catch(() => {});
     } else {
       setSnackbar({ open: true, message: data.message, severity: 'error' });
     }
@@ -168,204 +176,280 @@ export default function AdminDashboard() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('es-PA');
 
-  const bgMain = theme === 'dark' ? 'bg-gray-900' : 'bg-gray-50';
-  const bgCard = theme === 'dark' ? 'bg-gray-800' : 'bg-white';
-  const textMain = theme === 'dark' ? 'text-white' : 'text-gray-900';
-  const textSec = theme === 'dark' ? 'text-gray-300' : 'text-gray-600';
-
   return (
-    <div className={`min-h-screen ${bgMain} ${textMain}`}>
-      <header className={`fixed top-0 left-0 right-0 z-50 ${bgCard} shadow-md`}>
-        <div className="flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
-            <a href="/" className="text-xl font-bold text-accent hover:text-orange-600">← Volver</a>
-            <h1 className="text-xl font-bold text-accent">Stryd Panama Admin</h1>
-          </div>
-          <button onClick={toggleTheme} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
-            {theme === 'dark' ? (
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-              </svg>
-            )}
-          </button>
-        </div>
-      </header>
-
-      <div className="flex pt-16">
-        <aside className={`w-64 fixed left-0 top-16 bottom-0 ${bgCard} border-r dark:border-gray-700 overflow-y-auto`}>
-          <div className="p-4">
-            <button onClick={() => openEdit()} className={`w-full px-4 py-2 bg-accent text-white rounded-lg flex items-center justify-center gap-2 hover:bg-orange-600 transition-colors`}>
-              <Add className="w-5 h-5" /> Nueva Carrera
-            </button>
-          </div>
-          <nav>
-            {races.map(race => (
-              <button
-                key={race.id}
+    <Box sx={{ display: 'flex' }}>
+      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
+        <Toolbar>
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
+            <a href="/" style={{ color: 'white', textDecoration: 'none' }}>← Volver</a>
+          </Typography>
+          <Typography variant="h6" noWrap sx={{ flexGrow: 1, color: '#FF6B00', fontWeight: 'bold' }}>
+            Stryd Panama Admin
+          </Typography>
+          <Button color="inherit" onClick={toggleTheme}>
+            {mode === 'dark' ? '☀️' : '🌙'}
+          </Button>
+        </Toolbar>
+      </AppBar>
+      
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: 280,
+          flexShrink: 0,
+          '& .MuiDrawer-paper': { width: 280, boxSizing: 'border-box' },
+        }}
+      >
+        <Toolbar />
+        <Box sx={{ p: 2 }}>
+          <Button 
+            variant="contained" 
+            fullWidth 
+            startIcon={<AddIcon />} 
+            onClick={() => openEdit()}
+          >
+            Nueva Carrera
+          </Button>
+        </Box>
+        <List>
+          {races.map((race) => (
+            <ListItem key={race.id} disablePadding>
+              <ListItemButton 
+                selected={selectedRace?.id === race.id}
                 onClick={() => setSelectedRace(race)}
-                className={`w-full text-left px-4 py-3 flex items-center justify-between border-b dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${selectedRace?.id === race.id ? 'bg-gray-100 dark:bg-gray-700' : ''}`}
               >
-                <div>
-                  <div className="font-medium">{race.name}</div>
-                  <div className="text-sm text-gray-500">{formatDate(race.date)}</div>
-                </div>
-                <span className={`px-2 py-1 rounded text-xs ${race.status === 'active' ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'}`}>
-                  {race.status === 'active' ? 'Activa' : race.status}
-                </span>
-              </button>
-            ))}
-          </nav>
-        </aside>
+                <ListItemText 
+                  primary={race.name} 
+                  secondary={formatDate(race.date)} 
+                />
+                <Chip 
+                  label={race.status === 'active' ? 'Activa' : race.status} 
+                  size="small" 
+                  color={race.status === 'active' ? 'success' : 'default'}
+                />
+              </ListItemButton>
+            </ListItem>
+          ))}
+        </List>
+      </Drawer>
+      
+      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
+        <Toolbar />
+        {!selectedRace ? (
+          <Typography color="text.secondary">Selecciona una carrera para gestionar</Typography>
+        ) : (
+          <>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h5">{selectedRace.name}</Typography>
+              <Box>
+                {selectedRace.status === 'upcoming' && (
+                  <Button 
+                    variant="contained" 
+                    color="success" 
+                    startIcon={<PlayArrowIcon />} 
+                    onClick={handleStartRace}
+                    sx={{ mr: 1 }}
+                  >
+                    Iniciar Carrera
+                  </Button>
+                )}
+                <Button 
+                  variant="outlined" 
+                  startIcon={<EditIcon />} 
+                  onClick={() => openEdit(selectedRace)}
+                  sx={{ mr: 1 }}
+                >
+                  Editar
+                </Button>
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  startIcon={<DeleteIcon />} 
+                  onClick={() => handleDeleteRace(selectedRace.id)}
+                >
+                  Eliminar
+                </Button>
+              </Box>
+            </Box>
+            
+            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
+              <Tab label="Participantes" />
+              <Tab label="Códigos" />
+            </Tabs>
+            
+            {tab === 0 && (
+              <>
+                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                  <Button startIcon={<DownloadIcon />} onClick={exportCSV}>
+                    Exportar CSV
+                  </Button>
+                </Box>
+                <TableContainer component={Box}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Nombre</TableCell>
+                        <TableCell>Email</TableCell>
+                        <TableCell>Teléfono</TableCell>
+                        <TableCell>Talla</TableCell>
+                        <TableCell>Estado</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {participants.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell>{p.firstName} {p.lastName}</TableCell>
+                          <TableCell>{p.email}</TableCell>
+                          <TableCell>{p.phone || '-'}</TableCell>
+                          <TableCell>{p.size || '-'}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'} 
+                              color={p.paymentStatus === 'paid' ? 'success' : 'warning'} 
+                              size="small" 
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {participants.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center">Sin participantes</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </>
+            )}
+            
+            {tab === 1 && (
+              <Box>
+                <Button 
+                  variant="contained" 
+                  startIcon={<AddIcon />} 
+                  onClick={() => setOpenCodesDialog(true)}
+                  sx={{ mb: 2 }}
+                >
+                  Generar Códigos
+                </Button>
+                <TableContainer component={Box}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell>Código</TableCell>
+                        <TableCell>Usado</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {codes.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell sx={{ fontFamily: 'monospace' }}>{c.code}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={c.used ? 'Usado' : 'Disponible'} 
+                              color={c.used ? 'default' : 'success'} 
+                              size="small" 
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {codes.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={2} align="center">Sin códigos</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              </Box>
+            )}
+          </>
+        )}
+      </Box>
 
-        <main className="flex-1 ml-64 p-8">
-          {!selectedRace ? (
-            <p className="text-gray-500">Selecciona una carrera para gestionar</p>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold">{selectedRace.name}</h2>
-                <div className="flex gap-2">
-                  {selectedRace.status === 'upcoming' && (
-                    <button onClick={handleStartRace} className="px-4 py-2 bg-green-500 text-white rounded-lg flex items-center gap-1 hover:bg-green-600">
-                      <PlayArrow className="w-5 h-5" /> Iniciar Carrera
-                    </button>
-                  )}
-                  <button onClick={() => openEdit(selectedRace)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg flex items-center gap-1 hover:bg-gray-100 dark:hover:bg-gray-700">
-                    <Edit className="w-5 h-5" /> Editar
-                  </button>
-                  <button onClick={() => handleDeleteRace(selectedRace.id)} className="px-4 py-2 border border-red-500 text-red-500 rounded-lg flex items-center gap-1 hover:bg-red-50 dark:hover:bg-red-900/20">
-                    <Delete className="w-5 h-5" /> Eliminar
-                  </button>
-                </div>
-              </div>
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Nombre"
+            value={formData.name}
+            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            margin="normal"
+          />
+          <TextField
+            fullWidth
+            label="Descripción"
+            value={formData.description}
+            onChange={(e) => setFormData({...formData, description: e.target.value})}
+            margin="normal"
+            multiline
+            rows={2}
+          />
+          <TextField
+            fullWidth
+            label="Fecha"
+            type="date"
+            value={formData.date}
+            onChange={(e) => setFormData({...formData, date: e.target.value})}
+            margin="normal"
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            fullWidth
+            label="Ubicación"
+            value={formData.location}
+            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            margin="normal"
+          />
+          <TextField
+            fullWidth
+            label="Precio ($)"
+            type="number"
+            value={formData.price}
+            onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
+            margin="normal"
+          />
+          <TextField
+            fullWidth
+            label="Cupo Máximo"
+            type="number"
+            value={formData.maxParticipants}
+            onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})}
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveRace}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
 
-              <div className="flex gap-4 mb-6">
-                <button onClick={() => setTab(0)} className={`px-4 py-2 rounded-lg ${tab === 0 ? 'bg-accent text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>Participantes</button>
-                <button onClick={() => setTab(1)} className={`px-4 py-2 rounded-lg ${tab === 1 ? 'bg-accent text-white' : 'bg-gray-200 dark:bg-gray-700'}`}>Códigos</button>
-              </div>
+      <Dialog open={openCodesDialog} onClose={() => setOpenCodesDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>Generar Códigos</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="Cantidad"
+            type="number"
+            value={codesCount}
+            onChange={(e) => setCodesCount(parseInt(e.target.value) || 10)}
+            margin="normal"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCodesDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleGenerateCodes}>Generar</Button>
+        </DialogActions>
+      </Dialog>
 
-              {tab === 0 && (
-                <>
-                  <div className="flex justify-end mb-4">
-                    <button onClick={exportCSV} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center gap-2 hover:bg-gray-300 dark:hover:bg-gray-600">
-                      <SaveAlt className="w-5 h-5" /> Exportar CSV
-                    </button>
-                  </div>
-                  <div className={`${bgCard} rounded-lg shadow overflow-hidden`}>
-                    <table className="w-full">
-                      <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                          <th className="px-4 py-3 text-left">Nombre</th>
-                          <th className="px-4 py-3 text-left">Email</th>
-                          <th className="px-4 py-3 text-left">Teléfono</th>
-                          <th className="px-4 py-3 text-left">Talla</th>
-                          <th className="px-4 py-3 text-left">Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {participants.map(p => (
-                          <tr key={p.id} className="border-t dark:border-gray-700">
-                            <td className="px-4 py-3">{p.firstName} {p.lastName}</td>
-                            <td className="px-4 py-3">{p.email}</td>
-                            <td className="px-4 py-3">{p.phone || '-'}</td>
-                            <td className="px-4 py-3">{p.size || '-'}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded text-sm ${p.paymentStatus === 'paid' ? 'bg-green-500 text-white' : 'bg-yellow-500 text-white'}`}>
-                                {p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {participants.length === 0 && (
-                          <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-500">Sin participantes</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-
-              {tab === 1 && (
-                <div>
-                  <button onClick={() => setOpenCodesDialog(true)} className="mb-4 px-4 py-2 bg-accent text-white rounded-lg flex items-center gap-2 hover:bg-orange-600">
-                    <Add className="w-5 h-5" /> Generar Códigos
-                  </button>
-                  <div className={`${bgCard} rounded-lg shadow overflow-hidden`}>
-                    <table className="w-full">
-                      <thead className="bg-gray-100 dark:bg-gray-700">
-                        <tr>
-                          <th className="px-4 py-3 text-left">Código</th>
-                          <th className="px-4 py-3 text-left">Usado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {codes.map(c => (
-                          <tr key={c.id} className="border-t dark:border-gray-700">
-                            <td className="px-4 py-3 font-mono">{c.code}</td>
-                            <td className="px-4 py-3">
-                              <span className={`px-2 py-1 rounded text-sm ${c.used ? 'bg-gray-500 text-white' : 'bg-green-500 text-white'}`}>
-                                {c.used ? 'Usado' : 'Disponible'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                        {codes.length === 0 && (
-                          <tr><td colSpan={2} className="px-4 py-8 text-center text-gray-500">Sin códigos</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </main>
-      </div>
-
-      {openDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className={`${bgCard} rounded-xl p-6 w-full max-w-md`}>
-            <h3 className="text-xl font-bold mb-4">{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</h3>
-            <div className="space-y-4">
-              <input type="text" placeholder="Nombre" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
-              <textarea placeholder="Descripción" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" rows={2} />
-              <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
-              <input type="text" placeholder="Ubicación" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
-              <input type="number" placeholder="Precio ($)" value={formData.price} onChange={e => setFormData({...formData, price: parseInt(e.target.value) || 0})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
-              <input type="number" placeholder="Cupo Máximo" value={formData.maxParticipants} onChange={e => setFormData({...formData, maxParticipants: e.target.value})} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" />
-            </div>
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setOpenDialog(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancelar</button>
-              <button onClick={handleSaveRace} className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-orange-600">Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {openCodesDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className={`${bgCard} rounded-xl p-6 w-full max-w-sm`}>
-            <h3 className="text-xl font-bold mb-4">Generar Códigos</h3>
-            <input type="number" value={codesCount} onChange={e => setCodesCount(parseInt(e.target.value) || 10)} className="w-full px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" placeholder="Cantidad" />
-            <div className="flex justify-end gap-2 mt-6">
-              <button onClick={() => setOpenCodesDialog(false)} className="px-4 py-2 border rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancelar</button>
-              <button onClick={handleGenerateCodes} className="px-4 py-2 bg-accent text-white rounded-lg hover:bg-orange-600">Generar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {snackbar.open && (
-        <div className="fixed bottom-4 right-4 px-4 py-2 rounded-lg shadow-lg">
-          <div className={`px-4 py-2 rounded-lg ${snackbar.severity === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>
-            {snackbar.message}
-          </div>
-        </div>
-      )}
-    </div>
+      <Snackbar 
+        open={snackbar.open} 
+        autoHideDuration={4000} 
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+      </Snackbar>
+    </Box>
   );
 }
