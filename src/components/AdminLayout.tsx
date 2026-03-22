@@ -2,9 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Box, Typography, Button, AppBar, Toolbar, IconButton
+  Box, Typography, AppBar, Toolbar, IconButton
 } from '@mui/material';
 import { Link } from '@mui/material';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 const ACCENT = '#FF6B00';
 
@@ -40,15 +44,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
       <AppBar position="sticky" sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
         <Toolbar>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
-            <Link href="/" underline="none" sx={{ color: ACCENT, fontWeight: 'bold', fontSize: '1.25rem' }}>
-              ← Volver
+            <Link href="/" underline="none" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: ACCENT, fontWeight: 'bold' }}>
+              <ArrowBackIcon />
+              Volver
             </Link>
             <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-              Stryd Panama Admin
+              <AdminPanelSettingsIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+              Admin
             </Typography>
           </Box>
           <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
           </IconButton>
         </Toolbar>
       </AppBar>

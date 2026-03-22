@@ -6,6 +6,12 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Paper, Box, Typography, Chip, Tabs, Tab, Snackbar, Alert
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
 
 const ACCENT = '#FF6B00';
 
@@ -173,9 +179,9 @@ export default function AdminDashboard() {
             variant="contained" 
             onClick={() => openEdit()}
             sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
-          >
-            + Nueva Carrera
-          </Button>
+            >
+              <AddIcon sx={{ mr: 1 }} /> Nueva Carrera
+            </Button>
         </Box>
         <Box>
           {races.map(race => (
@@ -217,12 +223,12 @@ export default function AdminDashboard() {
                     variant="contained" 
                     onClick={handleStartRace}
                     sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
-                  >
-                    ▶ Iniciar
-                  </Button>
+                    >
+                      <PlayArrowIcon sx={{ mr: 0.5 }} /> Iniciar
+                    </Button>
                 )}
-                <Button variant="outlined" onClick={() => openEdit(selectedRace)}>✏️ Editar</Button>
-                <Button variant="outlined" color="error" onClick={() => handleDeleteRace(selectedRace.id)}>🗑️</Button>
+                <Button variant="outlined" onClick={() => openEdit(selectedRace)} startIcon={<EditIcon />}>Editar</Button>
+                <Button variant="outlined" color="error" onClick={() => handleDeleteRace(selectedRace.id)} startIcon={<DeleteIcon />}></Button>
               </Box>
             </Box>
 
@@ -234,7 +240,7 @@ export default function AdminDashboard() {
             {tab === 0 && (
               <>
                 <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <Button variant="outlined" onClick={exportCSV} startIcon="↓">
+                  <Button variant="outlined" onClick={exportCSV} startIcon={<DownloadIcon />}>
                     Exportar CSV
                   </Button>
                 </Box>
@@ -283,7 +289,7 @@ export default function AdminDashboard() {
                   onClick={() => setOpenCodesDialog(true)}
                   sx={{ mb: 2, bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
                 >
-                  + Generar Códigos
+                  <VpnKeyIcon sx={{ mr: 1 }} /> Generar Códigos
                 </Button>
                 <TableContainer component={Paper} elevation={2}>
                   <Table>

@@ -3,6 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, Button, Card, CardContent, Grid, Container, Chip } from '@mui/material';
 import Layout from './Layout';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SpeedIcon from '@mui/icons-material/Speed';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import GroupIcon from '@mui/icons-material/Group';
+import InfoIcon from '@mui/icons-material/Info';
+import DescriptionIcon from '@mui/icons-material/Description';
+import PhoneIcon from '@mui/icons-material/Phone';
+import EmailIcon from '@mui/icons-material/Email';
+import PlaceIcon from '@mui/icons-material/Place';
 
 const ACCENT = '#FF6B00';
 
@@ -126,7 +138,7 @@ export default function HomePage() {
                       justifyContent: 'center',
                       position: 'relative'
                     }}>
-                      <Typography sx={{ fontSize: 80, opacity: 0.2, color: 'white' }}>⚡</Typography>
+                      <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />
                       {race.status === 'active' && (
                         <Chip 
                           label="EN VIVO" 
@@ -142,18 +154,22 @@ export default function HomePage() {
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">
-                          📅 FECHA: {formatDateLong(race.date)}
+                          <CalendarTodayIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                          FECHA: {formatDateLong(race.date)}
                         </Typography>
                         {race.location && (
-                          <Typography variant="body2" color="text.secondary">
-                            📍 LUGAR: {race.location}
-                          </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          <LocationOnIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                          LUGAR: {race.location}
+                        </Typography>
                         )}
                         <Typography variant="body2" color="text.secondary">
-                          ⏰ HORA: 6:30 AM
+                          <AccessTimeIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                          HORA: 6:30 AM
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          📊 DISTANCIAS: 10K - 5K - 1K
+                          <SpeedIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                          DISTANCIAS: 10K - 5K - 1K
                         </Typography>
                       </Box>
                       <Button 
@@ -255,19 +271,19 @@ export default function HomePage() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>ENLACES</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}>Calendario</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}>Resultados</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}>¿Quiénes somos?</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}>Términos y condiciones</Typography>
+                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><CalendarTodayIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Calendario</Typography>
+                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
+                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
+                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
               </Box>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>CONTÁCTENOS</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ color: 'grey.300' }}>Ciudad de Panamá</Typography>
-                <Typography sx={{ color: 'grey.300' }}>Teléfono: (507) 260-1918</Typography>
-                <Typography sx={{ color: 'grey.300' }}>WhatsApp: (507) 6803-7211</Typography>
-                <Typography sx={{ color: 'grey.300' }}>Email: info@strydpanama.com</Typography>
+                <Typography sx={{ color: 'grey.300' }}><PlaceIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Ciudad de Panamá</Typography>
+                <Typography sx={{ color: 'grey.300' }}><PhoneIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Teléfono: (507) 260-1918</Typography>
+                <Typography sx={{ color: 'grey.300' }}><PhoneIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />WhatsApp: (507) 6803-7211</Typography>
+                <Typography sx={{ color: 'grey.300' }}><EmailIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Email: info@strydpanama.com</Typography>
               </Box>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>

@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Box, Container, AppBar, Toolbar, Typography, Button, IconButton, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { Box, AppBar, Toolbar, Typography, Button, IconButton, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { Link } from '@mui/material';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 
 const ACCENT = '#FF6B00';
 
@@ -66,7 +69,7 @@ export default function Layout({ children }: LayoutProps) {
           <Toolbar>
             <Link href="/" underline="none" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
               <Box sx={{ width: 40, height: 40, bgcolor: ACCENT, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Typography sx={{ color: 'white', fontWeight: 'bold' }}>⚡</Typography>
+                <DirectionsRunIcon sx={{ color: 'white' }} />
               </Box>
               <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Stryd Panama</Typography>
             </Link>
@@ -74,7 +77,7 @@ export default function Layout({ children }: LayoutProps) {
               <Button component={Link} href="/" sx={{ color: 'text.primary' }}>Carreras</Button>
               <Button component={Link} href="/register" sx={{ color: 'text.primary' }}>Inscribirse</Button>
               <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
-                {mode === 'dark' ? '☀️' : '🌙'}
+                {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
               </IconButton>
             </Box>
           </Toolbar>

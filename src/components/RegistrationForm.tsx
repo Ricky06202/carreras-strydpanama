@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
-  Box, Typography, Stepper, Step, StepLabel, Alert, Paper,
-  IconButton, InputAdornment
+  Box, Typography, Stepper, Step, StepLabel, Alert, Paper
 } from '@mui/material';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const ACCENT = '#FF6B00';
 
@@ -134,6 +136,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               variant="contained"
               onClick={() => setStep(1)}
               disabled={!selectedRace}
+              endIcon={<NavigateNextIcon />}
               sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
             >
               Continuar
@@ -204,7 +207,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           </FormControl>
 
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button variant="outlined" onClick={() => setStep(0)}>
+            <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>
               Atrás
             </Button>
             <Button
@@ -221,6 +224,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
       {step === 2 && (
         <Box sx={{ textAlign: 'center', py: 4 }}>
+          <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
           <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>
             ¡Inscripción Exitosa!
           </Typography>
