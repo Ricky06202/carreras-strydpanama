@@ -10,6 +10,13 @@ import {
 
 const ACCENT = '#FF6B00';
 
+function getTheme(): 'light' | 'dark' {
+  if (typeof document !== 'undefined') {
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  }
+  return 'light';
+}
+
 interface Race {
   id: string;
   name: string;
@@ -38,6 +45,7 @@ interface RegistrationCode {
 }
 
 export default function AdminDashboard() {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [races, setRaces] = useState<Race[]>([]);
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -51,8 +59,18 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
 
   useEffect(() => {
+    setTheme(getTheme());
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
   }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(newTheme);
+    localStorage.setItem('theme', newTheme);
+    window.dispatchEvent(new CustomEvent('themechange', { detail: { mode: newTheme } }));
+  };
 
   useEffect(() => {
     if (selectedRace) {
@@ -164,6 +182,9 @@ export default function AdminDashboard() {
             <a href="/" style={{ color: ACCENT, textDecoration: 'none', fontSize: '1.25rem', fontWeight: 'bold' }}>← Volver</a>
             <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Stryd Panama Admin</Typography>
           </Box>
+          <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </IconButton>
         </Box>
       </Box>
 
