@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
-  Box, Typography, Stepper, Step, StepLabel, Alert, Paper
+  Box, Typography, Stepper, Step, StepLabel, Alert, Paper, Snackbar
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -27,13 +27,12 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
     birthDate: '', gender: '', size: ''
   });
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
@@ -61,7 +60,6 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    setError('');
     try {
       const res = await fetch('/api/register', {
         method: 'POST',
@@ -70,10 +68,10 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al registrar');
-      setSuccess(data.paymentUrl || 'Registro exitoso');
+      setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(2);
     } catch (e: any) {
-      setError(e.message);
+      setNotification({ message: e.message, type: 'error' });
     }
     setLoading(false);
   };
@@ -87,9 +85,6 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           </Step>
         ))}
       </Stepper>
-
-      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
       {step === 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -233,6 +228,14 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           </Typography>
         </Box>
       )}
+
+      <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        {notification && (
+          <Alert severity={notification.type} sx={{ width: '100%' }}>
+            {notification.message}
+          </Alert>
+        )}
+      </Snackbar>
     </Paper>
   );
 }

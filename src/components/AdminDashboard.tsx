@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Typography } from '@mui/material';
 import AdminLayout from './AdminLayout';
 import AdminContent from './AdminContent';
 
@@ -42,6 +42,8 @@ export default function AdminDashboard() {
   const [openDialog, setOpenDialog] = useState(false);
   const [editRace, setEditRace] = useState<Race | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
@@ -97,12 +99,20 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteRace = async (id: string) => {
-    if (!confirm('¿Eliminar esta carrera?')) return;
-    const res = await fetch(`/api/admin/race/${id}`, { method: 'DELETE' });
+    setDeleteConfirm({ open: true, raceId: id });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.raceId) return;
+    const res = await fetch(`/api/admin/race/${deleteConfirm.raceId}`, { method: 'DELETE' });
     if (res.ok) {
-      if (selectedRace?.id === id) setSelectedRace(null);
+      setNotification({ message: 'Carrera eliminada', type: 'success' });
+      if (selectedRace?.id === deleteConfirm.raceId) setSelectedRace(null);
       fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+    } else {
+      setNotification({ message: 'Error al eliminar carrera', type: 'error' });
     }
+    setDeleteConfirm({ open: false, raceId: null });
   };
 
   const exportCSV = () => {
@@ -167,6 +177,25 @@ export default function AdminDashboard() {
           <Button variant="contained" onClick={handleSaveRace} sx={{ bgcolor: ACCENT }}>Guardar</Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, raceId: null })}>
+        <DialogTitle>Confirmar Eliminación</DialogTitle>
+        <DialogContent>
+          <Typography>¿Estás seguro de que deseas eliminar esta carrera? Esta acción no se puede deshacer.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteConfirm({ open: false, raceId: null })}>Cancelar</Button>
+          <Button variant="contained" color="error" onClick={confirmDelete}>Eliminar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        {notification && (
+          <Alert severity={notification.type} sx={{ width: '100%' }}>
+            {notification.message}
+          </Alert>
+        )}
+      </Snackbar>
     </>
   );
 }
