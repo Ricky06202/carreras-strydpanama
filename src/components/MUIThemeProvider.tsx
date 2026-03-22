@@ -3,10 +3,9 @@
 import { createTheme, ThemeProvider, CssBaseline } from '@mui/material';
 import { useState, useEffect } from 'react';
 
-function getThemeMode(): 'light' | 'dark' {
-  if (typeof window !== 'undefined') {
-    return (localStorage.getItem('theme') as 'light' | 'dark') || 
-           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof document !== 'undefined') {
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
   }
   return 'light';
 }
@@ -16,9 +15,16 @@ export default function MUIThemeProvider({ children }: { children: React.ReactNo
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const theme = getThemeMode();
+    const theme = getInitialTheme();
     setMode(theme);
     setMounted(true);
+
+    const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
+      setMode(e.detail.mode);
+    };
+
+    window.addEventListener('themechange', handleThemeChange as EventListener);
+    return () => window.removeEventListener('themechange', handleThemeChange as EventListener);
   }, []);
 
   const theme = createTheme({

@@ -80,6 +80,7 @@ const { title = 'Carreras Panama' } = Astro.props;
       toggle?.addEventListener('click', () => {
         const html = document.documentElement;
         const isDark = html.classList.contains('dark');
+        const newMode = isDark ? 'light' : 'dark';
         
         if (isDark) {
           html.classList.remove('dark');
@@ -90,6 +91,9 @@ const { title = 'Carreras Panama' } = Astro.props;
           html.classList.add('dark');
           localStorage.setItem('theme', 'dark');
         }
+        
+        // Dispatch custom event for MUI components
+        window.dispatchEvent(new CustomEvent('themechange', { detail: { mode: newMode } }));
         
         updateIcons();
       });
