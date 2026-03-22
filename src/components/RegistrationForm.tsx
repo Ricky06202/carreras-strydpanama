@@ -5,10 +5,18 @@ import { TextField, Button, Box, Typography, Alert, Paper, Stepper, Step, StepLa
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 
+const getThemeMode = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  return 'light';
+};
+
 const theme = createTheme({
   palette: {
     primary: { main: '#FF6B00' },
     secondary: { main: '#FF8C33' },
+    mode: getThemeMode(),
   },
   typography: { fontFamily: 'system-ui, sans-serif' },
 });

@@ -4,11 +4,27 @@ import { useState, useEffect } from 'react';
 import { ThemeProvider, createTheme, CssBaseline, Box, AppBar, Toolbar, Typography, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Container, Grid, Paper, Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, IconButton, Alert, Snackbar, Tab, Tabs } from '@mui/material';
 import { SaveAlt, Add, PlayArrow, Delete, Edit } from '@mui/icons-material';
 
+const getThemeMode = () => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  }
+  return 'light';
+};
+
 const theme = createTheme({
   palette: {
     primary: { main: '#FF6B00' },
     secondary: { main: '#FF8C33' },
-    mode: 'light',
+    mode: getThemeMode(),
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: (themeParam) => ({
+        body: {
+          backgroundColor: themeParam.palette.mode === 'dark' ? '#1a1a1a' : '#f9fafb',
+        },
+      }),
+    },
   },
 });
 
@@ -183,8 +199,7 @@ export default function AdminDashboard() {
             ))}
           </List>
         </Drawer>
-        <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-          <Toolbar />
+        <Box component="main" sx={{ flexGrow: 1, p: 3, pt: 10 }}>
           {!selectedRace ? (
             <Typography color="text.secondary">Selecciona una carrera para gestionar</Typography>
           ) : (
