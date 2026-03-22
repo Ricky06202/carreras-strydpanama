@@ -6,5 +6,5 @@ const raceId = Astro.url.searchParams.get('race') || '';
 ---
 
 <Layout client:only="react">
-  <RegistrationForm client:load raceId={raceId} />
+  <RegistrationForm client:only="react" raceId={raceId} />
 </Layout>
