@@ -216,6 +216,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
                 value={formData.birthDate}
                 onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
                 InputLabelProps={{ shrink: true }}
+                InputProps={{ sx: { '& input[type=date]::-webkit-calendar-picker-indicator': { filter: mode === 'dark' ? 'invert(1)' : 'none' } } }}
               />
               <FormControl>
                 <InputLabel>Género</InputLabel>
