@@ -4,8 +4,9 @@ import { getDb } from '../../lib/db';
 import { getRaceById, getParticipantsByRace } from '../../lib/db/actions';
 import RaceTimer from '../../components/RaceTimer.svelte';
 import RaceMap from '../../components/RaceMap.svelte';
+import { env } from 'cloudflare:workers';
 
-const db = getDb(Astro.locals.runtime?.env?.DB);
+const db = getDb(env.DB as any);
 
 const raceId = Astro.params.id;
 const race = raceId ? await getRaceById(db, raceId) : null;

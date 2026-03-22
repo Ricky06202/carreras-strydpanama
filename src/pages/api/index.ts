@@ -2,9 +2,10 @@ import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
 import { getRaces, getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction, getParticipantById, updateParticipant } from '../../lib/db/actions';
 import { randomUUID } from 'crypto';
+import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async ({ request, env }) => {
-  const db = getDb(env);
+export const GET: APIRoute = async ({ request }) => {
+  const db = getDb(env.DB as any);
   const url = new URL(request.url);
   
   if (url.pathname === '/api/races') {
@@ -23,8 +24,8 @@ export const GET: APIRoute = async ({ request, env }) => {
   return new Response(JSON.stringify({ error: 'Not found' }), { status: 404 });
 };
 
-export const POST: APIRoute = async ({ request, env }) => {
-  const db = getDb(env);
+export const POST: APIRoute = async ({ request }) => {
+  const db = getDb(env.DB as any);
   const url = new URL(request.url);
   
   if (url.pathname === '/api/validate-code') {

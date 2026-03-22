@@ -2,8 +2,9 @@
 import Layout from '../layouts/Layout.astro';
 import { getDb } from '../lib/db';
 import { getRaces } from '../lib/db/actions';
+import { env } from 'cloudflare:workers';
 
-const db = getDb(Astro.locals.runtime?.env?.DB);
+const db = getDb(env.DB as any);
 const races = await getRaces(db);
 
 function formatDate(dateStr: string) {
