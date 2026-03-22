@@ -1,20 +1,10 @@
 ---
-import Layout from '../layouts/Layout.astro';
 import MUIThemeProvider from '../components/MUIThemeProvider';
 import RegistrationForm from '../components/RegistrationForm';
 
 const raceId = Astro.url.searchParams.get('race') || '';
 ---
 
-<Layout title="Inscripción - Stryd Panama">
-  <MUIThemeProvider client:only="react">
-    <div class="max-w-2xl mx-auto px-4 py-12">
-      <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold mb-2 dark:text-white">Inscripción</h1>
-        <p class="text-gray-600 dark:text-gray-400">Complete sus datos para registrarse en la carrera</p>
-      </div>
-      
-      <RegistrationForm client:load raceId={raceId} />
-    </div>
-  </MUIThemeProvider>
-</Layout>
+<MUIThemeProvider client:only="react">
+  <RegistrationForm client:load raceId={raceId} />
+</MUIThemeProvider>
