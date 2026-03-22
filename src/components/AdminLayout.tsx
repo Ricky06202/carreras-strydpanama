@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import {
-  Box, Typography, AppBar, Toolbar, IconButton, Button, ThemeProvider, createTheme, CssBaseline, Chip
+  Box, Typography, AppBar, Toolbar, IconButton, Button, ThemeProvider, createTheme, CssBaseline, Chip, Container
 } from '@mui/material';
 import { Link } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
@@ -86,21 +86,23 @@ export default function AdminLayout({ children, races, selectedRaceId, onSelectR
       <CssBaseline />
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <AppBar position="sticky" sx={{ bgcolor: sidebarBg, boxShadow: 1 }}>
-          <Toolbar>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
-              <Link href="/" underline="none" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: ACCENT, fontWeight: 'bold' }}>
-                <ArrowBackIcon />
-                Volver
-              </Link>
-              <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-                <AdminPanelSettingsIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
-                Admin
-              </Typography>
-            </Box>
-            <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
-              {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-            </IconButton>
-          </Toolbar>
+          <Container maxWidth="xl" disableGutters>
+            <Toolbar>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexGrow: 1 }}>
+                <Link href="/" underline="none" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: ACCENT, fontWeight: 'bold' }}>
+                  <ArrowBackIcon />
+                  Volver
+                </Link>
+                <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>
+                  <AdminPanelSettingsIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+                  Admin
+                </Typography>
+              </Box>
+              <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
+                {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+              </IconButton>
+            </Toolbar>
+          </Container>
         </AppBar>
 
         <Box sx={{ display: 'flex' }}>
