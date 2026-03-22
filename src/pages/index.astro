@@ -5,88 +5,196 @@ import { getRaces } from '../lib/db/actions';
 import { env } from 'cloudflare:workers';
 
 const db = getDb(env.DB as any);
-const races = await getRaces(db);
+const allRaces = await getRaces(db);
+
+const upcomingRaces = allRaces.filter(r => r.status === 'upcoming');
+const completedRaces = allRaces.filter(r => r.status === 'completed');
+
+const sponsors = [
+  'Gatorade', 'Aloe King', 'Agua Cristalina', 'Zepol', 'Red Bull',
+  'Detergente 10', 'El Molino Criollo', 'Pasta Dorado', 'Te Hindu',
+  'Guandy', 'Xtreme', 'Borden', 'Berard', 'Sushi Express', 'More',
+  'Juan Valdez', 'Nutrigel', 'Prestigio', 'Destiny Sport', 'Bacterion'
+];
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('es-PA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  return date.toLocaleDateString('es-PA', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-function getStatusBadge(status: string) {
-  const styles = {
-    upcoming: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    active: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    completed: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-  };
-  const labels = { upcoming: 'Próxima', active: 'En Vivo', completed: 'Finalizada' };
-  return { style: styles[status as keyof typeof styles] || styles.upcoming, label: labels[status as keyof typeof labels] || status };
+function formatDateLong(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 ---
 
 <Layout title="Stryd Panama - Carreras">
-  <div class="max-w-7xl mx-auto px-4 py-12">
-    <div class="text-center mb-12">
-      <h1 class="text-4xl md:text-5xl font-bold mb-4">
-        <span class="text-accent">Próximas</span> Carreras
-      </h1>
-      <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-        Únete a las mejores carreras en Panama. Participa, desafía tus límites y conecta con la comunidad runner.
-      </p>
-    </div>
-
-    {races.length === 0 ? (
-      <div class="text-center py-12">
-        <p class="text-gray-500 dark:text-gray-400 text-lg">No hay carreras programadas aún.</p>
+  <!-- Hero Section -->
+  <section class="relative h-[500px] bg-gradient-to-r from-accent to-orange-500 overflow-hidden">
+    <div class="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1552674605-db6ffd4facb5?w=1600')] bg-cover bg-center opacity-20"></div>
+    <div class="relative max-w-7xl mx-auto px-4 h-full flex items-center">
+      <div class="text-white">
+        <h1 class="text-5xl md:text-7xl font-bold mb-4">BIENVENIDO A<br/><span class="text-orange-200">STRYD PANAMA</span></h1>
+        <p class="text-xl md:text-2xl mb-8 max-w-2xl">Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá</p>
+        <a href="#proximos-eventos" class="inline-block px-8 py-4 bg-white text-accent font-bold rounded-lg hover:bg-gray-100 transition-colors">
+          VER CALENDARIO DE EVENTOS
+        </a>
       </div>
-    ) : (
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {races.map((race) => {
-          const badge = getStatusBadge(race.status);
-          return (
+    </div>
+  </section>
+
+  <!-- Próximos Eventos -->
+  <section id="proximos-eventos" class="py-16 bg-gray-50 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">PRÓXIMOS <span class="text-accent">EVENTOS</span></h2>
+        <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">A continuación un listado de los próximos eventos que estaremos realizando, estás invitado a participar</p>
+      </div>
+
+      {upcomingRaces.length === 0 ? (
+        <div class="text-center py-12">
+          <p class="text-gray-500 dark:text-gray-400 text-lg">No hay carreras programadas aún.</p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {upcomingRaces.map((race) => (
             <a href={`/race/${race.id}`} class="block group">
               <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-1">
-                <div class="h-32 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center">
-                  <svg class="w-16 h-16 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="h-40 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center relative">
+                  <svg class="w-20 h-20 text-white opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
                   </svg>
+                  {race.status === 'active' && (
+                    <span class="absolute top-3 right-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-bold animate-pulse">
+                      EN VIVO
+                    </span>
+                  )}
                 </div>
                 <div class="p-6">
-                  <div class="flex items-center justify-between mb-3">
-                    <span class={`px-3 py-1 rounded-full text-sm font-medium ${badge.style}`}>
-                      {badge.label}
-                    </span>
-                    {race.status === 'active' && (
-                      <span class="flex items-center gap-1 text-green-600 text-sm font-medium">
-                        <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        EN VIVO
-                      </span>
-                    )}
-                  </div>
                   <h3 class="text-xl font-bold mb-2 group-hover:text-accent transition-colors">{race.name}</h3>
-                  <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 line-clamp-2">{race.description}</p>
-                  <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-                    <span class="flex items-center gap-1">
+                  <div class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                    <p class="flex items-center gap-2">
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                       </svg>
-                      {formatDate(race.date)}
-                    </span>
+                      FECHA: {formatDateLong(race.date)}
+                    </p>
                     {race.location && (
-                      <span class="flex items-center gap-1">
+                      <p class="flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        {race.location}
-                      </span>
+                        LUGAR: {race.location}
+                      </p>
                     )}
+                    <p class="flex items-center gap-2">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      HORA: 6:30 AM
+                    </p>
+                    <p class="flex items-center gap-2">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                      DISTANCIAS: 10K - 5K - 1K
+                    </p>
+                  </div>
+                  <div class="mt-4 text-center">
+                    <span class="inline-block px-4 py-2 bg-accent text-white rounded-lg font-medium hover:bg-orange-600 transition-colors">
+                      VER MÁS
+                    </span>
                   </div>
                 </div>
               </div>
             </a>
-          );
-        })}
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- Últimos Resultados -->
+  <section class="py-16 bg-white dark:bg-gray-800">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-12">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">ÚLTIMOS <span class="text-accent">RESULTADOS</span></h2>
+        <p class="text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">Si has participado en algunos de nuestros eventos puedes ver los resultados a continuación</p>
       </div>
-    )}
-  </div>
+
+      {completedRaces.length === 0 ? (
+        <div class="text-center py-12">
+          <p class="text-gray-500 dark:text-gray-400 text-lg">No hay resultados disponibles aún.</p>
+        </div>
+      ) : (
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {completedRaces.slice(0, 6).map((race) => (
+            <a href={`/race/${race.id}`} class="block p-6 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="text-lg font-bold mb-1">{race.name}</h3>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">Publicado: {formatDate(race.date)}</p>
+                </div>
+                <span class="text-accent font-medium">Ver resultados →</span>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {completedRaces.length > 6 && (
+        <div class="text-center mt-8">
+          <a href="/results" class="inline-block px-6 py-3 border-2 border-accent text-accent rounded-lg font-medium hover:bg-accent hover:text-white transition-colors">
+            VER MÁS RESULTADOS
+          </a>
+        </div>
+      )}
+    </div>
+  </section>
+
+  <!-- Sponsors -->
+  <section class="py-12 bg-gray-100 dark:bg-gray-900">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-8">
+        <h2 class="text-2xl md:text-3xl font-bold">NUESTROS <span class="text-accent">SPONSORS</span></h2>
+      </div>
+      <div class="flex flex-wrap justify-center items-center gap-8">
+        {sponsors.map((sponsor) => (
+          <div class="w-32 h-16 bg-white dark:bg-gray-800 rounded-lg flex items-center justify-center p-4 shadow">
+            <span class="text-gray-400 font-medium text-sm text-center">{sponsor}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- Info Section -->
+  <section class="py-16 bg-gray-800 dark:bg-gray-950 text-white">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div>
+          <h3 class="text-xl font-bold mb-4 text-accent">ENLACES</h3>
+          <ul class="space-y-2">
+            <li><a href="/" class="hover:text-accent transition-colors">Calendario</a></li>
+            <li><a href="/results" class="hover:text-accent transition-colors">Resultados</a></li>
+            <li><a href="/about" class="hover:text-accent transition-colors">¿Quiénes somos?</a></li>
+            <li><a href="/terms" class="hover:text-accent transition-colors">Términos y condiciones</a></li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold mb-4 text-accent">CONTÁCTENOS</h3>
+          <ul class="space-y-2 text-gray-300">
+            <li>Ciudad de Panamá</li>
+            <li>Teléfono: (507) 260-1918</li>
+            <li>WhatsApp: (507) 6803-7211</li>
+            <li>Email: info@strydpanama.com</li>
+          </ul>
+        </div>
+        <div>
+          <h3 class="text-xl font-bold mb-4 text-accent">STRYD PANAMA</h3>
+          <p class="text-gray-300">Una organización deportiva cuya visión es organizar actividades de correr y caminar dentro de una estructura comunitaria que involucre todos los estratos sociales.</p>
+        </div>
+      </div>
+    </div>
+  </section>
 </Layout>
