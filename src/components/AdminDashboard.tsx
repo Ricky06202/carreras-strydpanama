@@ -1,11 +1,42 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Typography } from '@mui/material';
+import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Typography, ThemeProvider, createTheme, CssBaseline, Box } from '@mui/material';
 import AdminLayout from './AdminLayout';
 import AdminContent from './AdminContent';
 
 const ACCENT = '#FF6B00';
+
+function getInitialTheme(): 'light' | 'dark' {
+  if (typeof document !== 'undefined') {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return 'dark';
+  }
+  return 'dark';
+}
+
+const darkTheme = createTheme({
+  palette: {
+    mode: 'dark',
+    primary: { main: ACCENT },
+    background: {
+      default: '#111827',
+      paper: '#1F2937',
+    },
+  },
+});
+
+const lightTheme = createTheme({
+  palette: {
+    mode: 'light',
+    primary: { main: ACCENT },
+    background: {
+      default: '#F9FAFB',
+      paper: '#FFFFFF',
+    },
+  },
+});
 
 interface Race {
   id: string;
@@ -44,6 +75,15 @@ export default function AdminDashboard() {
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
+
+  useEffect(() => {
+    const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
+      setMode(e.detail.mode);
+    };
+    window.addEventListener('themechange', handleThemeChange as EventListener);
+    return () => window.removeEventListener('themechange', handleThemeChange as EventListener);
+  }, []);
 
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
@@ -143,59 +183,64 @@ export default function AdminDashboard() {
   };
 
   return (
-    <>
-      <AdminLayout
-        races={races}
-        selectedRaceId={selectedRace?.id || null}
-        onSelectRace={handleSelectRace}
-        onNewRace={() => openEdit()}
-      >
-        <AdminContent
-          selectedRace={selectedRace}
-          participants={participants}
-          codes={codes}
-          onStartRace={handleStartRace}
-          onEditRace={openEdit}
-          onDeleteRace={handleDeleteRace}
-          onExportCSV={exportCSV}
-          onGenerateCodes={handleGenerateCodes}
-        />
-      </AdminLayout>
+    <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
+      <CssBaseline />
+      <>
+        <AdminLayout
+          races={races}
+          selectedRaceId={selectedRace?.id || null}
+          onSelectRace={handleSelectRace}
+          onNewRace={() => openEdit()}
+        >
+          <AdminContent
+            selectedRace={selectedRace}
+            participants={participants}
+            codes={codes}
+            onStartRace={handleStartRace}
+            onEditRace={openEdit}
+            onDeleteRace={handleDeleteRace}
+            onExportCSV={exportCSV}
+            onGenerateCodes={handleGenerateCodes}
+          />
+        </AdminLayout>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
-          <TextField label="Nombre" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} fullWidth />
-          <TextField label="Descripción" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} multiline rows={2} fullWidth />
-          <TextField label="Fecha" type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} InputLabelProps={{ shrink: true }} fullWidth />
-          <TextField label="Ubicación" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} fullWidth />
-          <TextField label="Precio ($)" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})} fullWidth />
-          <TextField label="Cupo Máximo" type="number" value={formData.maxParticipants} onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})} fullWidth />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSaveRace} sx={{ bgcolor: ACCENT }}>Guardar</Button>
-        </DialogActions>
-      </Dialog>
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+            <TextField label="Nombre" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} fullWidth />
+            <TextField label="Descripción" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} multiline rows={2} fullWidth />
+            <TextField label="Fecha" type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} InputLabelProps={{ shrink: true }} fullWidth />
+            <TextField label="Ubicación" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} fullWidth />
+            <TextField label="Precio ($)" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})} fullWidth />
+            <TextField label="Cupo Máximo" type="number" value={formData.maxParticipants} onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})} fullWidth />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
+            <Button variant="contained" onClick={handleSaveRace} sx={{ bgcolor: ACCENT }}>Guardar</Button>
+          </DialogActions>
+        </Dialog>
 
-      <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, raceId: null })}>
-        <DialogTitle>Confirmar Eliminación</DialogTitle>
-        <DialogContent>
-          <Typography>¿Estás seguro de que deseas eliminar esta carrera? Esta acción no se puede deshacer.</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDeleteConfirm({ open: false, raceId: null })}>Cancelar</Button>
-          <Button variant="contained" color="error" onClick={confirmDelete}>Eliminar</Button>
-        </DialogActions>
-      </Dialog>
+        <Dialog open={deleteConfirm.open} onClose={() => setDeleteConfirm({ open: false, raceId: null })}>
+          <DialogTitle>Confirmar Eliminación</DialogTitle>
+          <DialogContent>
+            <Typography>¿Estás seguro de que deseas eliminar esta carrera? Esta acción no se puede deshacer.</Typography>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setDeleteConfirm({ open: false, raceId: null })}>Cancelar</Button>
+            <Button variant="contained" color="error" onClick={confirmDelete}>Eliminar</Button>
+          </DialogActions>
+        </Dialog>
 
-      <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        {notification && (
-          <Alert severity={notification.type} sx={{ width: '100%' }}>
-            {notification.message}
-          </Alert>
-        )}
-      </Snackbar>
-    </>
+        <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+          <Box>
+            {notification && (
+              <Alert severity={notification.type} sx={{ width: '100%' }}>
+                {notification.message}
+              </Alert>
+            )}
+          </Box>
+        </Snackbar>
+      </>
+    </ThemeProvider>
   );
 }
