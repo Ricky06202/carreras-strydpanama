@@ -4,7 +4,7 @@ import { useState } from 'react';
 import {
   Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Box, Typography, Chip, Tabs, Tab, Snackbar, Alert
+  Paper, Box, Typography, Chip, Tabs, Tab, Snackbar, Alert, Container
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
@@ -79,7 +79,7 @@ export default function AdminContent({
   };
 
   return (
-    <Box sx={{ p: 4 }}>
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       {!selectedRace ? (
         <Typography color="text.secondary" variant="h5">Selecciona una carrera para gestionar</Typography>
       ) : (
@@ -219,7 +219,7 @@ export default function AdminContent({
             {notification.message}
           </Alert>
         )}
-      </Snackbar>
-    </Box>
+        </Snackbar>
+    </Container>
   );
 }
