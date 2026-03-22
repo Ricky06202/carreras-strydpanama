@@ -1,8 +1,5 @@
 ---
-import MUIThemeProvider from '../components/MUIThemeProvider';
 import AdminDashboard from '../components/AdminDashboard';
 ---
 
-<MUIThemeProvider client:only="react">
-  <AdminDashboard client:load />
-</MUIThemeProvider>
+<AdminDashboard client:only="react" />
