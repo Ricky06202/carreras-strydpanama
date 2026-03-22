@@ -1,6 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { 
+  TextField, Button, Select, MenuItem, FormControl, InputLabel, 
+  Box, Typography, Stepper, Step, StepLabel, Alert, Paper,
+  IconButton, InputAdornment
+} from '@mui/material';
 
 const ACCENT = '#FF6B00';
 
@@ -9,6 +14,9 @@ interface Race {
   name: string;
   price: number;
 }
+
+const steps = ['Carrera', 'Datos', 'Confirmación'];
+const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [step, setStep] = useState(0);
@@ -68,193 +76,159 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
     setLoading(false);
   };
 
-  const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-
   return (
-    <div style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRadius: '12px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-      {/* Stepper */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        {['Carrera', 'Datos', 'Confirmación'].map((label, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
-            <div style={{ 
-              width: '32px', 
-              height: '32px', 
-              borderRadius: '50%', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              backgroundColor: step >= i ? ACCENT : 'var(--mui-palette-text-secondary)',
-              color: step >= i ? 'white' : 'var(--mui-palette-text-secondary)',
-              fontWeight: 'bold'
-            }}>
-              {i + 1}
-            </div>
-            <span style={{ marginLeft: '8px', color: 'var(--mui-palette-text-primary)' }}>{label}</span>
-            {i < 2 && <div style={{ width: '48px', height: '2px', margin: '0 8px', backgroundColor: step > i ? ACCENT : 'var(--mui-palette-text-secondary)' }} />}
-          </div>
+    <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+      <Stepper activeStep={step} sx={{ mb: 4 }}>
+        {steps.map((label) => (
+          <Step key={label}>
+            <StepLabel>{label}</StepLabel>
+          </Step>
         ))}
-      </div>
+      </Stepper>
 
-      {error && (
-        <div style={{ padding: '12px', backgroundColor: '#FEE2E2', color: '#DC2626', borderRadius: '8px', marginBottom: '16px' }}>
-          ⚠️ {error}
-        </div>
-      )}
-      {success && (
-        <div style={{ padding: '12px', backgroundColor: '#D1FAE5', color: '#059669', borderRadius: '8px', marginBottom: '16px' }}>
-          ✅ {success}
-        </div>
-      )}
+      {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+      {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
 
       {step === 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Carrera *</label>
-            <select 
-              value={selectedRace} 
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <FormControl fullWidth>
+            <InputLabel>Carrera *</InputLabel>
+            <Select
+              value={selectedRace}
+              label="Carrera *"
               onChange={(e) => setSelectedRace(e.target.value)}
-              style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
             >
-              <option value="">Seleccionar...</option>
-              {races.map(r => (
-                <option key={r.id} value={r.id}>{r.name} - ${r.price}</option>
+              {races.map((r) => (
+                <MenuItem key={r.id} value={r.id}>
+                  {r.name} - ${r.price}
+                </MenuItem>
               ))}
-            </select>
-          </div>
+            </Select>
+          </FormControl>
 
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input 
-              type="text" 
-              value={code} 
+          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <TextField
+              fullWidth
+              label="Código de descuento (opcional)"
+              value={code}
               onChange={(e) => setCode(e.target.value)}
-              placeholder="Código de descuento (opcional)"
-              style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
             />
-            <button 
+            <Button 
+              variant="outlined" 
               onClick={validateCode} 
               disabled={loading}
-              style={{ padding: '8px 16px', border: `1px solid ${ACCENT}`, color: ACCENT, backgroundColor: 'transparent', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer' }}
+              sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { borderColor: ACCENT, backgroundColor: 'rgba(255,107,0,0.08)' } }}
             >
               Validar
-            </button>
-          </div>
+            </Button>
+          </Box>
           
           {codeValid && (
-            <p style={{ fontSize: '0.875rem', color: codeValid.valid ? '#059669' : '#DC2626' }}>
+            <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">
               {codeValid.message}
-            </p>
+            </Typography>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-            <button 
-              onClick={() => setStep(1)} 
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+            <Button
+              variant="contained"
+              onClick={() => setStep(1)}
               disabled={!selectedRace}
-              style={{ padding: '12px 24px', backgroundColor: !selectedRace ? '#9CA3AF' : ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: !selectedRace ? 'not-allowed' : 'pointer' }}
+              sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
             >
               Continuar
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Box>
       )}
 
       {step === 1 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Nombre *</label>
-              <input 
-                type="text" 
-                value={formData.firstName} 
-                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Apellido *</label>
-              <input 
-                type="text" 
-                value={formData.lastName} 
-                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Email *</label>
-              <input 
-                type="email" 
-                value={formData.email} 
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Teléfono</label>
-              <input 
-                type="tel" 
-                value={formData.phone} 
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Fecha de Nacimiento</label>
-              <input 
-                type="date" 
-                value={formData.birthDate} 
-                onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Género</label>
-              <select 
-                value={formData.gender} 
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <TextField
+              label="Nombre *"
+              value={formData.firstName}
+              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+              required
+            />
+            <TextField
+              label="Apellido *"
+              value={formData.lastName}
+              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+              required
+            />
+            <TextField
+              label="Email *"
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              required
+            />
+            <TextField
+              label="Teléfono"
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+            />
+            <TextField
+              label="Fecha de Nacimiento"
+              type="date"
+              value={formData.birthDate}
+              onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+              InputLabelProps={{ shrink: true }}
+            />
+            <FormControl>
+              <InputLabel>Género</InputLabel>
+              <Select
+                value={formData.gender}
+                label="Género"
                 onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
               >
-                <option value="">Seleccionar...</option>
-                <option value="M">Masculino</option>
-                <option value="F">Femenino</option>
-                <option value="O">Otro</option>
-              </select>
-            </div>
-            <div style={{ gridColumn: '1 / -1' }}>
-              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: 'var(--mui-palette-text-secondary)' }}>Talla de Camiseta</label>
-              <select 
-                value={formData.size} 
-                onChange={(e) => setFormData({...formData, size: e.target.value})}
-                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }}
-              >
-                <option value="">Seleccionar...</option>
-                {sizes.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+                <MenuItem value="M">Masculino</MenuItem>
+                <MenuItem value="F">Femenino</MenuItem>
+                <MenuItem value="O">Otro</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
-            <button onClick={() => setStep(0)} style={{ padding: '12px 24px', border: '1px solid var(--mui-palette-divider)', borderRadius: '8px', backgroundColor: 'transparent', color: 'var(--mui-palette-text-primary)', cursor: 'pointer' }}>
+          <FormControl fullWidth>
+            <InputLabel>Talla de Camiseta</InputLabel>
+            <Select
+              value={formData.size}
+              label="Talla de Camiseta"
+              onChange={(e) => setFormData({...formData, size: e.target.value})}
+            >
+              {sizes.map((s) => (
+                <MenuItem key={s} value={s}>{s}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+            <Button variant="outlined" onClick={() => setStep(0)}>
               Atrás
-            </button>
-            <button 
+            </Button>
+            <Button
+              variant="contained"
               onClick={handleSubmit}
               disabled={loading || !formData.firstName || !formData.lastName || !formData.email}
-              style={{ padding: '12px 24px', backgroundColor: (!formData.firstName || !formData.lastName || !formData.email) ? '#9CA3AF' : ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: (!formData.firstName || !formData.lastName || !formData.email) ? 'not-allowed' : 'pointer' }}
+              sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
             >
               {loading ? 'Procesando...' : 'Confirmar Inscripción'}
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Box>
       )}
 
       {step === 2 && (
-        <div style={{ textAlign: 'center', padding: '32px 0' }}>
-          <div style={{ fontSize: '4rem', marginBottom: '16px' }}>✅</div>
-          <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '8px', color: 'var(--mui-palette-text-primary)' }}>¡Inscripción Exitosa!</h3>
-          <p style={{ color: 'var(--mui-palette-text-secondary)' }}>Te hemos enviado un correo de confirmación.</p>
-        </div>
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>
+            ¡Inscripción Exitosa!
+          </Typography>
+          <Typography color="text.secondary">
+            Te hemos enviado un correo de confirmación.
+          </Typography>
+        </Box>
       )}
-    </div>
+    </Paper>
   );
 }

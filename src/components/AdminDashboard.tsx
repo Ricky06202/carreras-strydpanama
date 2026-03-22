@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import {
+  Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Paper, Box, Typography, Chip, Tabs, Tab, IconButton, Snackbar, Alert,
+  FormControl, InputLabel, Select, MenuItem
+} from '@mui/material';
 
 const ACCENT = '#FF6B00';
 
@@ -13,7 +19,6 @@ interface Race {
   location: string;
   price: number;
   maxParticipants: number;
-  startTimestamp: number;
 }
 
 interface Participant {
@@ -151,227 +156,283 @@ export default function AdminDashboard() {
   const formatDate = (d: string) => new Date(d).toLocaleDateString('es-PA');
 
   return (
-    <div style={{ backgroundColor: 'var(--mui-palette-background-default)', minHeight: '100vh', color: 'var(--mui-palette-text-primary)' }}>
+    <Box sx={{ minHeight: '100vh' }}>
       {/* Header */}
-      <header style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderBottom: '1px solid var(--mui-palette-divider)' }} className="fixed top-0 left-0 right-0 z-50 shadow-md">
-        <div className="flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-4">
+      <Box sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }} className="fixed top-0 left-0 right-0 z-50 shadow-md">
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 3, py: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
             <a href="/" style={{ color: ACCENT, textDecoration: 'none', fontSize: '1.25rem', fontWeight: 'bold' }}>← Volver</a>
-            <h1 style={{ color: ACCENT, fontSize: '1.25rem', fontWeight: 'bold' }}>Stryd Panama Admin</h1>
-          </div>
-        </div>
-      </header>
+            <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Stryd Panama Admin</Typography>
+          </Box>
+        </Box>
+      </Box>
 
-      <div className="flex pt-16">
+      <Box sx={{ display: 'flex', pt: 8 }}>
         {/* Sidebar */}
-        <aside style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRight: '1px solid var(--mui-palette-divider)' }} className="w-64 fixed left-0 top-16 bottom-0 overflow-y-auto">
-          <div className="p-4">
-            <button onClick={() => openEdit()} style={{ width: '100%', padding: '8px 16px', backgroundColor: ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        <Box sx={{ width: 256, bgcolor: 'background.paper', borderRight: 1, borderColor: 'divider' }} className="fixed left-0 top-16 bottom-0 overflow-y-auto">
+          <Box sx={{ p: 2 }}>
+            <Button 
+              fullWidth 
+              variant="contained" 
+              onClick={() => openEdit()}
+              sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+            >
               + Nueva Carrera
-            </button>
-          </div>
-          <nav>
+            </Button>
+          </Box>
+          <Box>
             {races.map(race => (
-              <button
+              <Box
                 key={race.id}
                 onClick={() => setSelectedRace(race)}
-                style={{ 
-                  width: '100%', 
-                  textAlign: 'left', 
-                  padding: '12px 16px', 
-                  backgroundColor: selectedRace?.id === race.id ? 'var(--mui-palette-action-hover)' : 'transparent',
-                  border: 'none',
-                  borderBottom: '1px solid var(--mui-palette-divider)',
+                sx={{ 
+                  p: 2, 
                   cursor: 'pointer',
-                  color: 'var(--mui-palette-text-primary)'
+                  bgcolor: selectedRace?.id === race.id ? 'action.hover' : 'transparent',
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                  '&:hover': { bgcolor: 'action.hover' }
                 }}
               >
-                <div style={{ fontWeight: 500 }}>{race.name}</div>
-                <div style={{ fontSize: '0.875rem', color: 'var(--mui-palette-text-secondary)' }}>{formatDate(race.date)}</div>
-                <span style={{ 
-                  padding: '2px 8px', 
-                  borderRadius: '4px', 
-                  fontSize: '0.75rem',
-                  backgroundColor: race.status === 'active' ? '#10B981' : '#6B7280',
-                  color: 'white'
-                }}>
-                  {race.status === 'active' ? 'Activa' : race.status}
-                </span>
-              </button>
+                <Typography fontWeight={500}>{race.name}</Typography>
+                <Typography variant="body2" color="text.secondary">{formatDate(race.date)}</Typography>
+                <Chip 
+                  size="small" 
+                  label={race.status === 'active' ? 'Activa' : race.status} 
+                  sx={{ mt: 1, bgcolor: race.status === 'active' ? 'success.main' : 'grey.500' }}
+                />
+              </Box>
             ))}
-          </nav>
-        </aside>
+          </Box>
+        </Box>
 
         {/* Main Content */}
-        <main className="flex-1 ml-64 p-8">
+        <Box sx={{ flex: 1, ml: 32, p: 4 }}>
           {!selectedRace ? (
-            <p style={{ color: 'var(--mui-palette-text-secondary)' }}>Selecciona una carrera para gestionar</p>
+            <Typography color="text.secondary">Selecciona una carrera para gestionar</Typography>
           ) : (
             <>
-              <div className="flex items-center justify-between mb-6">
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{selectedRace.name}</h2>
-                <div className="flex gap-2">
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+                <Typography variant="h5" fontWeight="bold">{selectedRace.name}</Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
                   {selectedRace.status === 'upcoming' && (
-                    <button onClick={handleStartRace} style={{ padding: '8px 16px', backgroundColor: '#10B981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      ▶ Iniciar
-                    </button>
+                    <Button 
+                      variant="contained" 
+                      onClick={handleStartRace}
+                      startIcon="▶"
+                      sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
+                    >
+                      Iniciar
+                    </Button>
                   )}
-                  <button onClick={() => openEdit(selectedRace)} style={{ padding: '8px 16px', backgroundColor: 'transparent', color: 'var(--mui-palette-text-primary)', border: '1px solid var(--mui-palette-divider)', borderRadius: '8px', cursor: 'pointer' }}>
-                    ✏️ Editar
-                  </button>
-                  <button onClick={() => handleDeleteRace(selectedRace.id)} style={{ padding: '8px 16px', backgroundColor: 'transparent', color: '#EF4444', border: '1px solid #EF4444', borderRadius: '8px', cursor: 'pointer' }}>
-                    🗑️ Eliminar
-                  </button>
-                </div>
-              </div>
+                  <Button 
+                    variant="outlined" 
+                    onClick={() => openEdit(selectedRace)}
+                    startIcon="✏️"
+                  >
+                    Editar
+                  </Button>
+                  <Button 
+                    variant="outlined" 
+                    color="error"
+                    onClick={() => handleDeleteRace(selectedRace.id)}
+                    startIcon="🗑️"
+                  >
+                    Eliminar
+                  </Button>
+                </Box>
+              </Box>
 
-              {/* Tabs */}
-              <div className="flex gap-4 mb-6">
-                <button onClick={() => setTab(0)} style={{ 
-                  padding: '8px 16px', 
-                  borderRadius: '8px', 
-                  backgroundColor: tab === 0 ? ACCENT : 'var(--mui-palette-background-paper)',
-                  color: tab === 0 ? 'white' : 'var(--mui-palette-text-primary)',
-                  border: '1px solid var(--mui-palette-divider)',
-                  cursor: 'pointer'
-                }}>Participantes</button>
-                <button onClick={() => setTab(1)} style={{ 
-                  padding: '8px 16px', 
-                  borderRadius: '8px', 
-                  backgroundColor: tab === 1 ? ACCENT : 'var(--mui-palette-background-paper)',
-                  color: tab === 1 ? 'white' : 'var(--mui-palette-text-primary)',
-                  border: '1px solid var(--mui-palette-divider)',
-                  cursor: 'pointer'
-                }}>Códigos</button>
-              </div>
+              <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
+                <Tab label="Participantes" />
+                <Tab label="Códigos" />
+              </Tabs>
 
               {tab === 0 && (
                 <>
-                  <div className="flex justify-end mb-4">
-                    <button onClick={exportCSV} style={{ padding: '8px 16px', backgroundColor: 'var(--mui-palette-action-hover)', color: 'var(--mui-palette-text-primary)', border: '1px solid var(--mui-palette-divider)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      ↓ Exportar CSV
-                    </button>
-                  </div>
-                  <div style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                    <table style={{ width: '100%' }}>
-                      <thead style={{ backgroundColor: 'var(--mui-palette-action-hover)' }}>
-                        <tr>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Nombre</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Email</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Teléfono</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Talla</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Estado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                    <Button 
+                      variant="outlined" 
+                      onClick={exportCSV}
+                      startIcon="↓"
+                    >
+                      Exportar CSV
+                    </Button>
+                  </Box>
+                  <TableContainer component={Paper} elevation={2}>
+                    <Table>
+                      <TableHead sx={{ bgcolor: 'action.hover' }}>
+                        <TableRow>
+                          <TableCell>Nombre</TableCell>
+                          <TableCell>Email</TableCell>
+                          <TableCell>Teléfono</TableCell>
+                          <TableCell>Talla</TableCell>
+                          <TableCell>Estado</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
                         {participants.map(p => (
-                          <tr key={p.id} style={{ borderTop: '1px solid var(--mui-palette-divider)' }}>
-                            <td style={{ padding: '12px 16px' }}>{p.firstName} {p.lastName}</td>
-                            <td style={{ padding: '12px 16px' }}>{p.email}</td>
-                            <td style={{ padding: '12px 16px' }}>{p.phone || '-'}</td>
-                            <td style={{ padding: '12px 16px' }}>{p.size || '-'}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.875rem', backgroundColor: p.paymentStatus === 'paid' ? '#10B981' : '#F59E0B', color: 'white' }}>
-                                {p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
-                              </span>
-                            </td>
-                          </tr>
+                          <TableRow key={p.id} sx={{ '&:last-child td': { border: 0 } }}>
+                            <TableCell>{p.firstName} {p.lastName}</TableCell>
+                            <TableCell>{p.email}</TableCell>
+                            <TableCell>{p.phone || '-'}</TableCell>
+                            <TableCell>{p.size || '-'}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                size="small" 
+                                label={p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                                sx={{ bgcolor: p.paymentStatus === 'paid' ? 'success.main' : 'warning.main' }}
+                              />
+                            </TableCell>
+                          </TableRow>
                         ))}
                         {participants.length === 0 && (
-                          <tr><td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--mui-palette-text-secondary)' }}>Sin participantes</td></tr>
+                          <TableRow>
+                            <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
+                          </TableRow>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
                 </>
               )}
 
               {tab === 1 && (
-                <div>
-                  <button onClick={() => setOpenCodesDialog(true)} style={{ marginBottom: '16px', padding: '8px 16px', backgroundColor: ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Box>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => setOpenCodesDialog(true)}
+                    sx={{ mb: 2, bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                  >
                     + Generar Códigos
-                  </button>
-                  <div style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
-                    <table style={{ width: '100%' }}>
-                      <thead style={{ backgroundColor: 'var(--mui-palette-action-hover)' }}>
-                        <tr>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Código</th>
-                          <th style={{ padding: '12px 16px', textAlign: 'left', color: 'var(--mui-palette-text-secondary)' }}>Usado</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                  </Button>
+                  <TableContainer component={Paper} elevation={2}>
+                    <Table>
+                      <TableHead sx={{ bgcolor: 'action.hover' }}>
+                        <TableRow>
+                          <TableCell>Código</TableCell>
+                          <TableCell>Usado</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
                         {codes.map(c => (
-                          <tr key={c.id} style={{ borderTop: '1px solid var(--mui-palette-divider)' }}>
-                            <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{c.code}</td>
-                            <td style={{ padding: '12px 16px' }}>
-                              <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.875rem', backgroundColor: c.used ? '#6B7280' : '#10B981', color: 'white' }}>
-                                {c.used ? 'Usado' : 'Disponible'}
-                              </span>
-                            </td>
-                          </tr>
+                          <TableRow key={c.id} sx={{ '&:last-child td': { border: 0 } }}>
+                            <TableCell sx={{ fontFamily: 'monospace' }}>{c.code}</TableCell>
+                            <TableCell>
+                              <Chip 
+                                size="small" 
+                                label={c.used ? 'Usado' : 'Disponible'}
+                                sx={{ bgcolor: c.used ? 'grey.500' : 'success.main' }}
+                              />
+                            </TableCell>
+                          </TableRow>
                         ))}
                         {codes.length === 0 && (
-                          <tr><td colSpan={2} style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--mui-palette-text-secondary)' }}>Sin códigos</td></tr>
+                          <TableRow>
+                            <TableCell colSpan={2} sx={{ textAlign: 'center', py: 4 }}>Sin códigos</TableCell>
+                          </TableRow>
                         )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Box>
               )}
             </>
           )}
-        </main>
-      </div>
+        </Box>
+      </Box>
 
       {/* Race Dialog */}
-      {openDialog && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '28rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</h3>
-              <button onClick={() => setOpenDialog(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--mui-palette-text-secondary)' }}>✕</button>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <input type="text" placeholder="Nombre" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} />
-              <textarea placeholder="Descripción" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)', minHeight: '60px' }} />
-              <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} />
-              <input type="text" placeholder="Ubicación" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} />
-              <input type="number" placeholder="Precio ($)" value={formData.price} onChange={e => setFormData({...formData, price: parseInt(e.target.value) || 0})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} />
-              <input type="number" placeholder="Cupo Máximo" value={formData.maxParticipants} onChange={e => setFormData({...formData, maxParticipants: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
-              <button onClick={() => setOpenDialog(false)} style={{ padding: '8px 16px', border: '1px solid var(--mui-palette-divider)', borderRadius: '8px', backgroundColor: 'transparent', color: 'var(--mui-palette-text-primary)', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleSaveRace} style={{ padding: '8px 16px', backgroundColor: ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            label="Nombre"
+            value={formData.name}
+            onChange={(e) => setFormData({...formData, name: e.target.value})}
+            fullWidth
+          />
+          <TextField
+            label="Descripción"
+            value={formData.description}
+            onChange={(e) => setFormData({...formData, description: e.target.value})}
+            multiline
+            rows={2}
+            fullWidth
+          />
+          <TextField
+            label="Fecha"
+            type="date"
+            value={formData.date}
+            onChange={(e) => setFormData({...formData, date: e.target.value})}
+            InputLabelProps={{ shrink: true }}
+            fullWidth
+          />
+          <TextField
+            label="Ubicación"
+            value={formData.location}
+            onChange={(e) => setFormData({...formData, location: e.target.value})}
+            fullWidth
+          />
+          <TextField
+            label="Precio ($)"
+            type="number"
+            value={formData.price}
+            onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
+            fullWidth
+          />
+          <TextField
+            label="Cupo Máximo"
+            type="number"
+            value={formData.maxParticipants}
+            onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveRace}
+            sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+          >
+            Guardar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Codes Dialog */}
-      {openCodesDialog && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-          <div style={{ backgroundColor: 'var(--mui-palette-background-paper)', borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '20rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Generar Códigos</h3>
-              <button onClick={() => setOpenCodesDialog(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: 'var(--mui-palette-text-secondary)' }}>✕</button>
-            </div>
-            <input type="number" value={codesCount} onChange={e => setCodesCount(parseInt(e.target.value) || 10)} style={{ width: '100%', padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--mui-palette-divider)', backgroundColor: 'var(--mui-palette-background-default)', color: 'var(--mui-palette-text-primary)' }} placeholder="Cantidad" />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
-              <button onClick={() => setOpenCodesDialog(false)} style={{ padding: '8px 16px', border: '1px solid var(--mui-palette-divider)', borderRadius: '8px', backgroundColor: 'transparent', color: 'var(--mui-palette-text-primary)', cursor: 'pointer' }}>Cancelar</button>
-              <button onClick={handleGenerateCodes} style={{ padding: '8px 16px', backgroundColor: ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Generar</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog open={openCodesDialog} onClose={() => setOpenCodesDialog(false)}>
+        <DialogTitle>Generar Códigos</DialogTitle>
+        <DialogContent sx={{ pt: 2 }}>
+          <TextField
+            label="Cantidad"
+            type="number"
+            value={codesCount}
+            onChange={(e) => setCodesCount(parseInt(e.target.value) || 10)}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCodesDialog(false)}>Cancelar</Button>
+          <Button 
+            variant="contained" 
+            onClick={handleGenerateCodes}
+            sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+          >
+            Generar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Notification */}
-      {notification && (
-        <div style={{ position: 'fixed', bottom: '16px', right: '16px', padding: '8px 16px', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-          <div style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: notification.type === 'success' ? '#10B981' : '#EF4444', color: 'white' }}>
+      <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)}>
+        {notification && (
+          <Alert severity={notification.type} sx={{ width: '100%' }}>
             {notification.message}
-          </div>
-        </div>
-      )}
-    </div>
+          </Alert>
+        )}
+      </Snackbar>
+    </Box>
   );
 }
