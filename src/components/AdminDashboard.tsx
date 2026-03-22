@@ -1,18 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import {
-  AppBar, Toolbar, Typography, Box, Drawer, List, ListItem, 
-  ListItemButton, ListItemText, Button, TextField, Dialog, 
-  DialogTitle, DialogContent, DialogActions, Table, TableBody, 
-  TableCell, TableContainer, TableHead, TableRow, Chip, Tabs, Tab,
-  IconButton, Snackbar, Alert
-} from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import DownloadIcon from '@mui/icons-material/Download';
 
 function getThemeMode(): 'light' | 'dark' {
   if (typeof window !== 'undefined') {
@@ -21,6 +9,9 @@ function getThemeMode(): 'light' | 'dark' {
   }
   return 'light';
 }
+
+const ACCENT = '#FF6B00';
+const ACCENT_DARK = '#FF8C33';
 
 interface Race {
   id: string;
@@ -51,7 +42,7 @@ interface RegistrationCode {
 }
 
 export default function AdminDashboard() {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [races, setRaces] = useState<Race[]>([]);
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -61,33 +52,36 @@ export default function AdminDashboard() {
   const [editRace, setEditRace] = useState<Race | null>(null);
   const [openCodesDialog, setOpenCodesDialog] = useState(false);
   const [codesCount, setCodesCount] = useState(10);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
 
   useEffect(() => {
-    const theme = getThemeMode();
-    setMode(theme);
+    const t = getThemeMode();
+    setTheme(t);
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (selectedRace) {
-      fetch(`/api/admin/race/${selectedRace.id}`)
-        .then(r => r.json())
-        .then(d => {
-          setSelectedRace(d.race);
-          setParticipants(d.participants || []);
-          setCodes(d.codes || []);
-        })
-        .catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => {
+        setSelectedRace(d.race);
+        setParticipants(d.participants || []);
+        setCodes(d.codes || []);
+      }).catch(() => {});
     }
   }, [selectedRace?.id]);
 
   const toggleTheme = () => {
-    const newMode = mode === 'light' ? 'dark' : 'light';
-    setMode(newMode);
-    localStorage.setItem('theme', newMode);
-    window.location.reload();
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.remove('light', 'dark');
+    document.documentElement.classList.add(newTheme);
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
   };
 
   const handleSaveRace = async () => {
@@ -100,11 +94,11 @@ export default function AdminDashboard() {
     });
     const data = await res.json();
     if (res.ok) {
-      setSnackbar({ open: true, message: editRace ? 'Carrera actualizada' : 'Carrera creada', severity: 'success' });
+      showNotification(editRace ? 'Carrera actualizada' : 'Carrera creada', 'success');
       setOpenDialog(false);
       fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
     } else {
-      setSnackbar({ open: true, message: data.message, severity: 'error' });
+      showNotification(data.message, 'error');
     }
   };
 
@@ -117,10 +111,10 @@ export default function AdminDashboard() {
     });
     const data = await res.json();
     if (res.ok) {
-      setSnackbar({ open: true, message: '¡Carrera iniciada!', severity: 'success' });
+      showNotification('¡Carrera iniciada!', 'success');
       fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setSelectedRace(d.race)).catch(() => {});
     } else {
-      setSnackbar({ open: true, message: data.message, severity: 'error' });
+      showNotification(data.message, 'error');
     }
   };
 
@@ -133,11 +127,11 @@ export default function AdminDashboard() {
     });
     const data = await res.json();
     if (res.ok) {
-      setSnackbar({ open: true, message: `${data.codes.length} códigos generados`, severity: 'success' });
+      showNotification(`${data.codes.length} códigos generados`, 'success');
       setOpenCodesDialog(false);
       fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setCodes(d.codes || [])).catch(() => {});
     } else {
-      setSnackbar({ open: true, message: data.message, severity: 'error' });
+      showNotification(data.message, 'error');
     }
   };
 
@@ -145,7 +139,7 @@ export default function AdminDashboard() {
     if (!confirm('¿Eliminar esta carrera?')) return;
     const res = await fetch(`/api/admin/race/${id}`, { method: 'DELETE' });
     if (res.ok) {
-      setSnackbar({ open: true, message: 'Carrera eliminada', severity: 'success' });
+      showNotification('Carrera eliminada', 'success');
       if (selectedRace?.id === id) setSelectedRace(null);
       fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
     }
@@ -176,280 +170,241 @@ export default function AdminDashboard() {
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString('es-PA');
 
+  // Colores del tema
+  const bgMain = theme === 'dark' ? '#111827' : '#F9FAFB';
+  const bgCard = theme === 'dark' ? '#1F2937' : '#FFFFFF';
+  const bgHeader = theme === 'dark' ? '#1F2937' : '#FFFFFF';
+  const textMain = theme === 'dark' ? '#FFFFFF' : '#111827';
+  const textSec = theme === 'dark' ? '#9CA3AF' : '#6B7280';
+  const borderColor = theme === 'dark' ? '#374151' : '#E5E7EB';
+  const hoverBg = theme === 'dark' ? '#374151' : '#F3F4F6';
+  const accent = ACCENT;
+
   return (
-    <Box sx={{ display: 'flex' }}>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Toolbar>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1 }}>
-            <a href="/" style={{ color: 'white', textDecoration: 'none' }}>← Volver</a>
-          </Typography>
-          <Typography variant="h6" noWrap sx={{ flexGrow: 1, color: '#FF6B00', fontWeight: 'bold' }}>
-            Stryd Panama Admin
-          </Typography>
-          <Button color="inherit" onClick={toggleTheme}>
-            {mode === 'dark' ? '☀️' : '🌙'}
-          </Button>
-        </Toolbar>
-      </AppBar>
-      
-      <Drawer
-        variant="permanent"
-        sx={{
-          width: 280,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': { width: 280, boxSizing: 'border-box' },
-        }}
-      >
-        <Toolbar />
-        <Box sx={{ p: 2 }}>
-          <Button 
-            variant="contained" 
-            fullWidth 
-            startIcon={<AddIcon />} 
-            onClick={() => openEdit()}
-          >
-            Nueva Carrera
-          </Button>
-        </Box>
-        <List>
-          {races.map((race) => (
-            <ListItem key={race.id} disablePadding>
-              <ListItemButton 
-                selected={selectedRace?.id === race.id}
+    <div style={{ backgroundColor: bgMain, minHeight: '100vh', color: textMain }}>
+      {/* Header */}
+      <header style={{ backgroundColor: bgHeader, borderBottom: `1px solid ${borderColor}` }} className="fixed top-0 left-0 right-0 z-50 shadow-md">
+        <div className="flex items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-4">
+            <a href="/" style={{ color: accent, textDecoration: 'none', fontSize: '1.25rem', fontWeight: 'bold' }}>← Volver</a>
+            <h1 style={{ color: accent, fontSize: '1.25rem', fontWeight: 'bold' }}>Stryd Panama Admin</h1>
+          </div>
+          <button onClick={toggleTheme} style={{ padding: '8px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer', backgroundColor: hoverBg }}>
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+        </div>
+      </header>
+
+      <div className="flex pt-16">
+        {/* Sidebar */}
+        <aside style={{ backgroundColor: bgCard, borderRight: `1px solid ${borderColor}` }} className="w-64 fixed left-0 top-16 bottom-0 overflow-y-auto">
+          <div className="p-4">
+            <button onClick={() => openEdit()} style={{ width: '100%', padding: '8px 16px', backgroundColor: accent, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              + Nueva Carrera
+            </button>
+          </div>
+          <nav>
+            {races.map(race => (
+              <button
+                key={race.id}
                 onClick={() => setSelectedRace(race)}
+                style={{ 
+                  width: '100%', 
+                  textAlign: 'left', 
+                  padding: '12px 16px', 
+                  backgroundColor: selectedRace?.id === race.id ? hoverBg : 'transparent',
+                  border: 'none',
+                  borderBottom: `1px solid ${borderColor}`,
+                  cursor: 'pointer',
+                  color: textMain
+                }}
               >
-                <ListItemText 
-                  primary={race.name} 
-                  secondary={formatDate(race.date)} 
-                />
-                <Chip 
-                  label={race.status === 'active' ? 'Activa' : race.status} 
-                  size="small" 
-                  color={race.status === 'active' ? 'success' : 'default'}
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-      </Drawer>
-      
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <Toolbar />
-        {!selectedRace ? (
-          <Typography color="text.secondary">Selecciona una carrera para gestionar</Typography>
-        ) : (
-          <>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
-              <Typography variant="h5">{selectedRace.name}</Typography>
-              <Box>
-                {selectedRace.status === 'upcoming' && (
-                  <Button 
-                    variant="contained" 
-                    color="success" 
-                    startIcon={<PlayArrowIcon />} 
-                    onClick={handleStartRace}
-                    sx={{ mr: 1 }}
-                  >
-                    Iniciar Carrera
-                  </Button>
-                )}
-                <Button 
-                  variant="outlined" 
-                  startIcon={<EditIcon />} 
-                  onClick={() => openEdit(selectedRace)}
-                  sx={{ mr: 1 }}
-                >
-                  Editar
-                </Button>
-                <Button 
-                  variant="outlined" 
-                  color="error" 
-                  startIcon={<DeleteIcon />} 
-                  onClick={() => handleDeleteRace(selectedRace.id)}
-                >
-                  Eliminar
-                </Button>
-              </Box>
-            </Box>
-            
-            <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 2 }}>
-              <Tab label="Participantes" />
-              <Tab label="Códigos" />
-            </Tabs>
-            
-            {tab === 0 && (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                  <Button startIcon={<DownloadIcon />} onClick={exportCSV}>
-                    Exportar CSV
-                  </Button>
-                </Box>
-                <TableContainer component={Box}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Nombre</TableCell>
-                        <TableCell>Email</TableCell>
-                        <TableCell>Teléfono</TableCell>
-                        <TableCell>Talla</TableCell>
-                        <TableCell>Estado</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {participants.map((p) => (
-                        <TableRow key={p.id}>
-                          <TableCell>{p.firstName} {p.lastName}</TableCell>
-                          <TableCell>{p.email}</TableCell>
-                          <TableCell>{p.phone || '-'}</TableCell>
-                          <TableCell>{p.size || '-'}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'} 
-                              color={p.paymentStatus === 'paid' ? 'success' : 'warning'} 
-                              size="small" 
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {participants.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={5} align="center">Sin participantes</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </>
-            )}
-            
-            {tab === 1 && (
-              <Box>
-                <Button 
-                  variant="contained" 
-                  startIcon={<AddIcon />} 
-                  onClick={() => setOpenCodesDialog(true)}
-                  sx={{ mb: 2 }}
-                >
-                  Generar Códigos
-                </Button>
-                <TableContainer component={Box}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Código</TableCell>
-                        <TableCell>Usado</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {codes.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell sx={{ fontFamily: 'monospace' }}>{c.code}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={c.used ? 'Usado' : 'Disponible'} 
-                              color={c.used ? 'default' : 'success'} 
-                              size="small" 
-                            />
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {codes.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={2} align="center">Sin códigos</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </Box>
-            )}
-          </>
-        )}
-      </Box>
+                <div style={{ fontWeight: 500 }}>{race.name}</div>
+                <div style={{ fontSize: '0.875rem', color: textSec }}>{formatDate(race.date)}</div>
+                <span style={{ 
+                  padding: '2px 8px', 
+                  borderRadius: '4px', 
+                  fontSize: '0.75rem',
+                  backgroundColor: race.status === 'active' ? '#10B981' : '#6B7280',
+                  color: 'white'
+                }}>
+                  {race.status === 'active' ? 'Activa' : race.status}
+                </span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-      <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Nombre"
-            value={formData.name}
-            onChange={(e) => setFormData({...formData, name: e.target.value})}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Descripción"
-            value={formData.description}
-            onChange={(e) => setFormData({...formData, description: e.target.value})}
-            margin="normal"
-            multiline
-            rows={2}
-          />
-          <TextField
-            fullWidth
-            label="Fecha"
-            type="date"
-            value={formData.date}
-            onChange={(e) => setFormData({...formData, date: e.target.value})}
-            margin="normal"
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            fullWidth
-            label="Ubicación"
-            value={formData.location}
-            onChange={(e) => setFormData({...formData, location: e.target.value})}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Precio ($)"
-            type="number"
-            value={formData.price}
-            onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})}
-            margin="normal"
-          />
-          <TextField
-            fullWidth
-            label="Cupo Máximo"
-            type="number"
-            value={formData.maxParticipants}
-            onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})}
-            margin="normal"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleSaveRace}>Guardar</Button>
-        </DialogActions>
-      </Dialog>
+        {/* Main Content */}
+        <main className="flex-1 ml-64 p-8">
+          {!selectedRace ? (
+            <p style={{ color: textSec }}>Selecciona una carrera para gestionar</p>
+          ) : (
+            <>
+              <div className="flex items-center justify-between mb-6">
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{selectedRace.name}</h2>
+                <div className="flex gap-2">
+                  {selectedRace.status === 'upcoming' && (
+                    <button onClick={handleStartRace} style={{ padding: '8px 16px', backgroundColor: '#10B981', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      ▶ Iniciar
+                    </button>
+                  )}
+                  <button onClick={() => openEdit(selectedRace)} style={{ padding: '8px 16px', backgroundColor: 'transparent', color: textMain, border: `1px solid ${borderColor}`, borderRadius: '8px', cursor: 'pointer' }}>
+                    ✏️ Editar
+                  </button>
+                  <button onClick={() => handleDeleteRace(selectedRace.id)} style={{ padding: '8px 16px', backgroundColor: 'transparent', color: '#EF4444', border: '1px solid #EF4444', borderRadius: '8px', cursor: 'pointer' }}>
+                    🗑️ Eliminar
+                  </button>
+                </div>
+              </div>
 
-      <Dialog open={openCodesDialog} onClose={() => setOpenCodesDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>Generar Códigos</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Cantidad"
-            type="number"
-            value={codesCount}
-            onChange={(e) => setCodesCount(parseInt(e.target.value) || 10)}
-            margin="normal"
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenCodesDialog(false)}>Cancelar</Button>
-          <Button variant="contained" onClick={handleGenerateCodes}>Generar</Button>
-        </DialogActions>
-      </Dialog>
+              {/* Tabs */}
+              <div className="flex gap-4 mb-6">
+                <button onClick={() => setTab(0)} style={{ 
+                  padding: '8px 16px', 
+                  borderRadius: '8px', 
+                  backgroundColor: tab === 0 ? accent : bgCard,
+                  color: tab === 0 ? 'white' : textMain,
+                  border: `1px solid ${borderColor}`,
+                  cursor: 'pointer'
+                }}>Participantes</button>
+                <button onClick={() => setTab(1)} style={{ 
+                  padding: '8px 16px', 
+                  borderRadius: '8px', 
+                  backgroundColor: tab === 1 ? accent : bgCard,
+                  color: tab === 1 ? 'white' : textMain,
+                  border: `1px solid ${borderColor}`,
+                  cursor: 'pointer'
+                }}>Códigos</button>
+              </div>
 
-      <Snackbar 
-        open={snackbar.open} 
-        autoHideDuration={4000} 
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
-      </Snackbar>
-    </Box>
+              {tab === 0 && (
+                <>
+                  <div className="flex justify-end mb-4">
+                    <button onClick={exportCSV} style={{ padding: '8px 16px', backgroundColor: hoverBg, color: textMain, border: `1px solid ${borderColor}`, borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      ↓ Exportar CSV
+                    </button>
+                  </div>
+                  <div style={{ backgroundColor: bgCard, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    <table style={{ width: '100%' }}>
+                      <thead style={{ backgroundColor: hoverBg }}>
+                        <tr>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Nombre</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Email</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Teléfono</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Talla</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {participants.map(p => (
+                          <tr key={p.id} style={{ borderTop: `1px solid ${borderColor}` }}>
+                            <td style={{ padding: '12px 16px' }}>{p.firstName} {p.lastName}</td>
+                            <td style={{ padding: '12px 16px' }}>{p.email}</td>
+                            <td style={{ padding: '12px 16px' }}>{p.phone || '-'}</td>
+                            <td style={{ padding: '12px 16px' }}>{p.size || '-'}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.875rem', backgroundColor: p.paymentStatus === 'paid' ? '#10B981' : '#F59E0B', color: 'white' }}>
+                                {p.paymentStatus === 'paid' ? 'Pagado' : 'Pendiente'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {participants.length === 0 && (
+                          <tr><td colSpan={5} style={{ padding: '32px 16px', textAlign: 'center', color: textSec }}>Sin participantes</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
+
+              {tab === 1 && (
+                <div>
+                  <button onClick={() => setOpenCodesDialog(true)} style={{ marginBottom: '16px', padding: '8px 16px', backgroundColor: accent, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    + Generar Códigos
+                  </button>
+                  <div style={{ backgroundColor: bgCard, borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' }}>
+                    <table style={{ width: '100%' }}>
+                      <thead style={{ backgroundColor: hoverBg }}>
+                        <tr>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Código</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', color: textSec }}>Usado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {codes.map(c => (
+                          <tr key={c.id} style={{ borderTop: `1px solid ${borderColor}` }}>
+                            <td style={{ padding: '12px 16px', fontFamily: 'monospace' }}>{c.code}</td>
+                            <td style={{ padding: '12px 16px' }}>
+                              <span style={{ padding: '4px 8px', borderRadius: '4px', fontSize: '0.875rem', backgroundColor: c.used ? '#6B7280' : '#10B981', color: 'white' }}>
+                                {c.used ? 'Usado' : 'Disponible'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {codes.length === 0 && (
+                          <tr><td colSpan={2} style={{ padding: '32px 16px', textAlign: 'center', color: textSec }}>Sin códigos</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      {/* Race Dialog */}
+      {openDialog && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ backgroundColor: bgCard, borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '28rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</h3>
+              <button onClick={() => setOpenDialog(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: textSec }}>✕</button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <input type="text" placeholder="Nombre" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} />
+              <textarea placeholder="Descripción" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain, minHeight: '60px' }} />
+              <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} />
+              <input type="text" placeholder="Ubicación" value={formData.location} onChange={e => setFormData({...formData, location: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} />
+              <input type="number" placeholder="Precio ($)" value={formData.price} onChange={e => setFormData({...formData, price: parseInt(e.target.value) || 0})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} />
+              <input type="number" placeholder="Cupo Máximo" value={formData.maxParticipants} onChange={e => setFormData({...formData, maxParticipants: e.target.value})} style={{ padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
+              <button onClick={() => setOpenDialog(false)} style={{ padding: '8px 16px', border: `1px solid ${borderColor}`, borderRadius: '8px', backgroundColor: 'transparent', color: textMain, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleSaveRace} style={{ padding: '8px 16px', backgroundColor: accent, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Codes Dialog */}
+      {openCodesDialog && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+          <div style={{ backgroundColor: bgCard, borderRadius: '12px', padding: '24px', width: '100%', maxWidth: '20rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Generar Códigos</h3>
+              <button onClick={() => setOpenCodesDialog(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.5rem', color: textSec }}>✕</button>
+            </div>
+            <input type="number" value={codesCount} onChange={e => setCodesCount(parseInt(e.target.value) || 10)} style={{ width: '100%', padding: '8px 16px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: bgMain, color: textMain }} placeholder="Cantidad" />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '24px' }}>
+              <button onClick={() => setOpenCodesDialog(false)} style={{ padding: '8px 16px', border: `1px solid ${borderColor}`, borderRadius: '8px', backgroundColor: 'transparent', color: textMain, cursor: 'pointer' }}>Cancelar</button>
+              <button onClick={handleGenerateCodes} style={{ padding: '8px 16px', backgroundColor: accent, color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>Generar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notification */}
+      {notification && (
+        <div style={{ position: 'fixed', bottom: '16px', right: '16px', padding: '8px 16px', borderRadius: '8px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+          <div style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: notification.type === 'success' ? '#10B981' : '#EF4444', color: 'white' }}>
+            {notification.message}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

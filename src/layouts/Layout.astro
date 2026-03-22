@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import { ThemeWrapper } from '../components/ThemeContext';
 
 interface Props {
   title?: string;
@@ -17,18 +16,14 @@ const { title = 'Carreras Panama' } = Astro.props;
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
-    <link rel="preconnect" href="https://unpkg.com" />
+    <link rel="preconnect" href="https://unpkg.com />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
     <script is:inline>
-      (function() {
-        const saved = localStorage.getItem('theme');
-        const prefers = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        const theme = saved || prefers;
-        if (theme === 'dark') {
-          document.documentElement.classList.add('dark');
-        }
-        localStorage.setItem('theme', theme);
-      })();
+      // Ejecutar inmediatamente antes de renderizar nada
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+      document.documentElement.classList.add(theme);
     </script>
   </head>
   <body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors min-h-screen flex flex-col">
@@ -49,12 +44,8 @@ const { title = 'Carreras Panama' } = Astro.props;
         </nav>
 
         <button id="theme-toggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Toggle theme">
-          <svg class="w-5 h-5 moon-icon text-gray-700 dark:text-white" style="display: none;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-          </svg>
-          <svg class="w-5 h-5 sun-icon text-gray-700 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
+          <span class="sun-icon">🌙</span>
+          <span class="moon-icon" style="display:none">☀️</span>
         </button>
       </div>
     </header>
@@ -73,28 +64,45 @@ const { title = 'Carreras Panama' } = Astro.props;
       const toggle = document.getElementById('theme-toggle');
       const sunIcon = toggle?.querySelector('.sun-icon');
       const moonIcon = toggle?.querySelector('.moon-icon');
-      
+
       function updateIcons() {
         const isDark = document.documentElement.classList.contains('dark');
         if (sunIcon && moonIcon) {
-          sunIcon.style.display = isDark ? 'block' : 'none';
-          moonIcon.style.display = isDark ? 'none' : 'block';
+          sunIcon.style.display = isDark ? 'inline' : 'none';
+          moonIcon.style.display = isDark ? 'none' : 'inline';
         }
       }
-      
+
+      // Inicializar iconos al cargar
       updateIcons();
-      
-      toggle?.addEventListener('click', function() {
+
+      // Toggle click
+      toggle?.addEventListener('click', () => {
         const html = document.documentElement;
         const isDark = html.classList.contains('dark');
+        
         if (isDark) {
           html.classList.remove('dark');
+          html.classList.add('light');
           localStorage.setItem('theme', 'light');
         } else {
+          html.classList.remove('light');
           html.classList.add('dark');
           localStorage.setItem('theme', 'dark');
         }
+        
         updateIcons();
+      });
+
+      // Escuchar cambios de tema desde otros componentes
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'theme') {
+          const theme = e.newValue;
+          const html = document.documentElement;
+          html.classList.remove('dark', 'light');
+          html.classList.add(theme);
+          updateIcons();
+        }
       });
     </script>
   </body>

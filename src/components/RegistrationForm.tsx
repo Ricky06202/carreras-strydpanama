@@ -1,13 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { 
-  TextField, Button, Box, Typography, Alert, Paper, 
-  Stepper, Step, StepLabel, MenuItem, Select, FormControl, 
-  InputLabel, CircularProgress 
-} from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import ErrorIcon from '@mui/icons-material/Error';
 
 function getThemeMode(): 'light' | 'dark' {
   if (typeof window !== 'undefined') {
@@ -17,6 +10,8 @@ function getThemeMode(): 'light' | 'dark' {
   return 'light';
 }
 
+const ACCENT = '#FF6B00';
+
 interface Race {
   id: string;
   name: string;
@@ -24,7 +19,7 @@ interface Race {
 }
 
 export default function RegistrationForm({ raceId }: { raceId: string }) {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
   const [selectedRace, setSelectedRace] = useState(raceId);
@@ -40,8 +35,8 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   });
 
   useEffect(() => {
-    const theme = getThemeMode();
-    setMode(theme);
+    const t = getThemeMode();
+    setTheme(t);
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
   }, []);
 
@@ -86,166 +81,202 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
+  const bgCard = theme === 'dark' ? '#1F2937' : '#FFFFFF';
+  const textMain = theme === 'dark' ? '#FFFFFF' : '#111827';
+  const textSec = theme === 'dark' ? '#9CA3AF' : '#6B7280';
+  const borderColor = theme === 'dark' ? '#374151' : '#E5E7EB';
+  const inputBg = theme === 'dark' ? '#374151' : '#FFFFFF';
+
   return (
-    <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-      <Stepper activeStep={step} sx={{ mb: 4 }}>
-        <Step><StepLabel>Carrera</StepLabel></Step>
-        <Step><StepLabel>Datos</StepLabel></Step>
-        <Step><StepLabel>Confirmación</StepLabel></Step>
-      </Stepper>
+    <div style={{ maxWidth: '48rem', margin: '0 auto', padding: '2rem' }}>
+      <div style={{ backgroundColor: bgCard, borderRadius: '12px', padding: '24px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+        {/* Stepper */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+          {['Carrera', 'Datos', 'Confirmación'].map((label, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center' }}>
+              <div style={{ 
+                width: '32px', 
+                height: '32px', 
+                borderRadius: '50%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                backgroundColor: step >= i ? ACCENT : '#9CA3AF',
+                color: step >= i ? 'white' : '#6B7280',
+                fontWeight: 'bold'
+              }}>
+                {i + 1}
+              </div>
+              <span style={{ marginLeft: '8px', color: step >= i ? textMain : textSec }}>{label}</span>
+              {i < 2 && <div style={{ width: '48px', height: '2px', margin: '0 8px', backgroundColor: step > i ? ACCENT : '#9CA3AF' }} />}
+            </div>
+          ))}
+        </div>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} icon={<ErrorIcon />}>
-          {error}
-        </Alert>
-      )}
-      {success && (
-        <Alert severity="success" sx={{ mb: 2 }} icon={<CheckCircleIcon />}>
-          {success}
-        </Alert>
-      )}
+        {error && (
+          <div style={{ padding: '12px', backgroundColor: '#FEE2E2', color: '#DC2626', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ⚠️ {error}
+          </div>
+        )}
+        {success && (
+          <div style={{ padding: '12px', backgroundColor: '#D1FAE5', color: '#059669', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ✅ {success}
+          </div>
+        )}
 
-      {step === 0 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <FormControl fullWidth>
-            <InputLabel>Seleccionar Carrera</InputLabel>
-            <Select
-              value={selectedRace}
-              label="Seleccionar Carrera"
-              onChange={(e) => setSelectedRace(e.target.value)}
-            >
-              {races.map((r) => (
-                <MenuItem key={r.id} value={r.id}>
-                  {r.name} - ${r.price}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-            <TextField
-              fullWidth
-              label="Código de Descuento (opcional)"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-            />
-            <Button 
-              variant="outlined" 
-              onClick={validateCode}
-              disabled={loading}
-              sx={{ whiteSpace: 'nowrap' }}
-            >
-              Validar
-            </Button>
-          </Box>
-          
-          {codeValid && (
-            <Alert severity={codeValid.valid ? 'success' : 'error'}>
-              {codeValid.message}
-            </Alert>
-          )}
-
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-            <Button 
-              variant="contained" 
-              onClick={() => setStep(1)}
-              disabled={!selectedRace}
-            >
-              Continuar
-            </Button>
-          </Box>
-        </Box>
-      )}
-
-      {step === 1 && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-          <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2.5 }}>
-            <TextField
-              fullWidth
-              label="Nombre"
-              value={formData.firstName}
-              onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Apellido"
-              value={formData.lastName}
-              onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData({...formData, email: e.target.value})}
-              required
-            />
-            <TextField
-              fullWidth
-              label="Teléfono"
-              value={formData.phone}
-              onChange={(e) => setFormData({...formData, phone: e.target.value})}
-            />
-            <TextField
-              fullWidth
-              label="Fecha de Nacimiento"
-              type="date"
-              value={formData.birthDate}
-              onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-              InputLabelProps={{ shrink: true }}
-            />
-            <FormControl fullWidth>
-              <InputLabel>Género</InputLabel>
-              <Select
-                value={formData.gender}
-                label="Género"
-                onChange={(e) => setFormData({...formData, gender: e.target.value})}
+        {step === 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Carrera *</label>
+              <select 
+                value={selectedRace} 
+                onChange={(e) => setSelectedRace(e.target.value)}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
               >
-                <MenuItem value="M">Masculino</MenuItem>
-                <MenuItem value="F">Femenino</MenuItem>
-                <MenuItem value="O">Otro</MenuItem>
-              </Select>
-            </FormControl>
-            <FormControl fullWidth sx={{ gridColumn: '1 / -1' }}>
-              <InputLabel>Talla de Camiseta</InputLabel>
-              <Select
-                value={formData.size}
-                label="Talla de Camiseta"
-                onChange={(e) => setFormData({...formData, size: e.target.value})}
-              >
-                {sizes.map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
+                <option value="">Seleccionar...</option>
+                {races.map(r => (
+                  <option key={r.id} value={r.id}>{r.name} - ${r.price}</option>
                 ))}
-              </Select>
-            </FormControl>
-          </Box>
+              </select>
+            </div>
 
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Button onClick={() => setStep(0)}>Atrás</Button>
-            <Button 
-              variant="contained" 
-              onClick={handleSubmit}
-              disabled={loading || !formData.firstName || !formData.lastName || !formData.email}
-            >
-              {loading ? <CircularProgress size={24} /> : 'Confirmar Inscripción'}
-            </Button>
-          </Box>
-        </Box>
-      )}
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input 
+                type="text" 
+                value={code} 
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Código de descuento (opcional)"
+                style={{ flex: 1, padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+              />
+              <button 
+                onClick={validateCode} 
+                disabled={loading}
+                style={{ padding: '8px 16px', border: `1px solid ${ACCENT}`, color: ACCENT, backgroundColor: 'transparent', borderRadius: '8px', cursor: loading ? 'not-allowed' : 'pointer' }}
+              >
+                Validar
+              </button>
+            </div>
+            
+            {codeValid && (
+              <p style={{ fontSize: '0.875rem', color: codeValid.valid ? '#059669' : '#DC2626' }}>
+                {codeValid.message}
+              </p>
+            )}
 
-      {step === 2 && (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-          <Typography variant="h5" gutterBottom>
-            ¡Inscripción Exitosa!
-          </Typography>
-          <Typography color="text.secondary">
-            Te hemos enviado un correo de confirmación.
-          </Typography>
-        </Box>
-      )}
-    </Paper>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+              <button 
+                onClick={() => setStep(1)} 
+                disabled={!selectedRace}
+                style={{ padding: '12px 24px', backgroundColor: !selectedRace ? '#9CA3AF' : ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: !selectedRace ? 'not-allowed' : 'pointer' }}
+              >
+                Continuar
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 1 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Nombre *</label>
+                <input 
+                  type="text" 
+                  value={formData.firstName} 
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                  required 
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Apellido *</label>
+                <input 
+                  type="text" 
+                  value={formData.lastName} 
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                  required 
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Email *</label>
+                <input 
+                  type="email" 
+                  value={formData.email} 
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                  required 
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Teléfono</label>
+                <input 
+                  type="tel" 
+                  value={formData.phone} 
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Fecha de Nacimiento</label>
+                <input 
+                  type="date" 
+                  value={formData.birthDate} 
+                  onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Género</label>
+                <select 
+                  value={formData.gender} 
+                  onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                >
+                  <option value="">Seleccionar...</option>
+                  <option value="M">Masculino</option>
+                  <option value="F">Femenino</option>
+                  <option value="O">Otro</option>
+                </select>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '500', marginBottom: '4px', color: textSec }}>Talla de Camiseta</label>
+                <select 
+                  value={formData.size} 
+                  onChange={(e) => setFormData({...formData, size: e.target.value})}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: inputBg, color: textMain }}
+                >
+                  <option value="">Seleccionar...</option>
+                  {sizes.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+              <button onClick={() => setStep(0)} style={{ padding: '12px 24px', border: `1px solid ${borderColor}`, borderRadius: '8px', backgroundColor: 'transparent', color: textMain, cursor: 'pointer' }}>
+                Atrás
+              </button>
+              <button 
+                onClick={handleSubmit}
+                disabled={loading || !formData.firstName || !formData.lastName || !formData.email}
+                style={{ padding: '12px 24px', backgroundColor: (!formData.firstName || !formData.lastName || !formData.email) ? '#9CA3AF' : ACCENT, color: 'white', border: 'none', borderRadius: '8px', cursor: (!formData.firstName || !formData.lastName || !formData.email) ? 'not-allowed' : 'pointer' }}
+              >
+                {loading ? 'Procesando...' : 'Confirmar Inscripción'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div style={{ textAlign: 'center', padding: '32px 0' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '16px' }}>✅</div>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '8px', color: textMain }}>¡Inscripción Exitosa!</h3>
+            <p style={{ color: textSec }}>Te hemos enviado un correo de confirmación.</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
