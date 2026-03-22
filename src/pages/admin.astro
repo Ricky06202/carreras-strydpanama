@@ -1,5 +1,8 @@
 ---
+import AdminLayout from '../components/AdminLayout';
 import AdminDashboard from '../components/AdminDashboard';
 ---
 
-<AdminDashboard client:only="react" />
+<AdminLayout client:only="react">
+  <AdminDashboard client:load />
+</AdminLayout>
