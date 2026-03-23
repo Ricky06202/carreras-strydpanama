@@ -14,6 +14,18 @@ CREATE TABLE IF NOT EXISTS races (
   updated_at INTEGER DEFAULT (unixepoch())
 );
 
+-- Tabla de Categorías por Carrera
+CREATE TABLE IF NOT EXISTS categories (
+  id TEXT PRIMARY KEY,
+  race_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  description TEXT,
+  price_adjustment INTEGER DEFAULT 0,
+  max_participants INTEGER,
+  created_at INTEGER DEFAULT (unixepoch()),
+  FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE
+);
+
 -- Tabla de Participantes
 CREATE TABLE IF NOT EXISTS participants (
   id TEXT PRIMARY KEY,
@@ -24,11 +36,14 @@ CREATE TABLE IF NOT EXISTS participants (
   phone TEXT,
   birth_date TEXT,
   gender TEXT,
+  category_id TEXT,
   size TEXT,
   code_id TEXT,
+  payment_method TEXT,
   payment_status TEXT DEFAULT 'pending' CHECK(payment_status IN ('pending', 'paid', 'refunded')),
   registered_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id),
   FOREIGN KEY (code_id) REFERENCES registration_codes(id)
 );
 
@@ -57,5 +72,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_participants_race ON participants(race_id);
+CREATE INDEX IF NOT EXISTS idx_participants_category ON participants(category_id);
+CREATE INDEX IF NOT EXISTS idx_categories_race ON categories(race_id);
 CREATE INDEX IF NOT EXISTS idx_codes_code ON registration_codes(code);
 CREATE INDEX IF NOT EXISTS idx_transactions_participant ON transactions(participant_id);

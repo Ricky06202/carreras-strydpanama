@@ -57,6 +57,15 @@ interface Participant {
   phone: string;
   paymentStatus: string;
   size: string;
+  categoryId: string | null;
+}
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  priceAdjustment: number;
+  maxParticipants: number | null;
 }
 
 interface RegistrationCode {
@@ -70,12 +79,17 @@ export default function AdminDashboard() {
   const [selectedRace, setSelectedRace] = useState<Race | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [codes, setCodes] = useState<RegistrationCode[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editRace, setEditRace] = useState<Race | null>(null);
   const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
+
+  const loadCategories = (raceId: string) => {
+    fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
+  };
 
   useEffect(() => {
     const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
@@ -96,6 +110,7 @@ export default function AdminDashboard() {
         setParticipants(d.participants || []);
         setCodes(d.codes || []);
       }).catch(() => {});
+      loadCategories(selectedRace.id);
     }
   }, [selectedRace?.id]);
 
@@ -180,6 +195,31 @@ export default function AdminDashboard() {
 
   const handleSelectRace = (race: Race | null) => {
     setSelectedRace(race);
+    if (!race) setCategories([]);
+  };
+
+  const handleCreateCategory = async (data: Partial<Category>) => {
+    if (!selectedRace) return;
+    const res = await fetch('/api/admin/categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, raceId: selectedRace.id })
+    });
+    if (res.ok) loadCategories(selectedRace.id);
+  };
+
+  const handleUpdateCategory = async (id: string, data: Partial<Category>) => {
+    const res = await fetch(`/api/admin/categories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok && selectedRace) loadCategories(selectedRace.id);
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
+    if (res.ok && selectedRace) loadCategories(selectedRace.id);
   };
 
   return (
@@ -196,11 +236,15 @@ export default function AdminDashboard() {
             selectedRace={selectedRace}
             participants={participants}
             codes={codes}
+            categories={categories}
             onStartRace={handleStartRace}
             onEditRace={openEdit}
             onDeleteRace={handleDeleteRace}
             onExportCSV={exportCSV}
             onGenerateCodes={handleGenerateCodes}
+            onCreateCategory={handleCreateCategory}
+            onUpdateCategory={handleUpdateCategory}
+            onDeleteCategory={handleDeleteCategory}
           />
         </AdminLayout>
 

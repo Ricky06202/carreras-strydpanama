@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
-import { getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction } from '../../lib/db/actions';
+import { getRaceById, getRegistrationCode, getCategoryById, createParticipant, useRegistrationCode, createTransaction } from '../../lib/db/actions';
 import { randomUUID } from 'crypto';
 import { env } from 'cloudflare:workers';
 
@@ -8,9 +8,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
     const body = await request.json();
-    const { firstName, lastName, email, phone, birthDate, gender, size, code, raceId } = body;
+    const { firstName, lastName, email, phone, birthDate, gender, categoryId, size, paymentMethod, code, raceId } = body;
     
-    if (!firstName || !lastName || !email || !raceId) {
+    if (!firstName || !lastName || !email || !raceId || !categoryId) {
       return new Response(JSON.stringify({ message: 'Faltan datos requeridos' }), { status: 400 });
     }
     
@@ -18,9 +18,14 @@ export const POST: APIRoute = async ({ request }) => {
     if (!race) {
       return new Response(JSON.stringify({ message: 'Carrera no encontrada' }), { status: 404 });
     }
+
+    const category = await getCategoryById(db, categoryId);
+    if (!category) {
+      return new Response(JSON.stringify({ message: 'Categoría no encontrada' }), { status: 404 });
+    }
     
     let codeId: string | undefined;
-    let finalPrice = race.price;
+    let finalPrice = race.price + (category.priceAdjustment || 0);
     
     if (code) {
       const registrationCode = await getRegistrationCode(db, code);
@@ -41,8 +46,10 @@ export const POST: APIRoute = async ({ request }) => {
       phone: phone || null,
       birthDate: birthDate || null,
       gender: gender || null,
+      categoryId,
       size: size || null,
       codeId: codeId || null,
+      paymentMethod: paymentMethod || null,
       paymentStatus: finalPrice === 0 ? 'paid' : 'pending',
       registeredAt: Math.floor(Date.now() / 1000)
     });

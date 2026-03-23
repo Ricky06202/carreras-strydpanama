@@ -60,7 +60,7 @@ export async function createRegistrationCode(db: Database, code: schema.NewRegis
 }
 
 export async function useRegistrationCode(db: Database, codeId: string, participantId: string) {
-  return await db.update(schema.registrationCodes).set({ used: 1, usedByParticipantId: participantId }).where(eq(schema.registrationCodes.id, codeId)).returning();
+  return await db.update(schema.registrationCodes).set({ used: true, usedByParticipantId: participantId }).where(eq(schema.registrationCodes.id, codeId)).returning();
 }
 
 export async function createTransaction(db: Database, transaction: schema.NewTransaction) {
@@ -80,4 +80,26 @@ export async function getRaceStats(db: Database, raceId: string) {
   const total = await db.select({ count: sql<number>`count(*)` }).from(schema.participants).where(eq(schema.participants.raceId, raceId));
   const paid = await db.select({ count: sql<number>`count(*)` }).from(schema.participants).where(and(eq(schema.participants.raceId, raceId), eq(schema.participants.paymentStatus, 'paid')));
   return { total: total[0]?.count || 0, paid: paid[0]?.count || 0 };
+}
+
+// Categorías
+export async function getCategoriesByRace(db: Database, raceId: string) {
+  return await db.select().from(schema.categories).where(eq(schema.categories.raceId, raceId)).orderBy(schema.categories.name);
+}
+
+export async function getCategoryById(db: Database, id: string) {
+  const result = await db.select().from(schema.categories).where(eq(schema.categories.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function createCategory(db: Database, category: schema.NewCategory) {
+  return await db.insert(schema.categories).values(category).returning();
+}
+
+export async function updateCategory(db: Database, id: string, data: Partial<schema.Category>) {
+  return await db.update(schema.categories).set(data).where(eq(schema.categories.id, id)).returning();
+}
+
+export async function deleteCategory(db: Database, id: string) {
+  return await db.delete(schema.categories).where(eq(schema.categories.id, id));
 }

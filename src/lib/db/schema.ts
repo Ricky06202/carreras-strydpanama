@@ -15,6 +15,16 @@ export const races = sqliteTable('races', {
   updatedAt: integer('updated_at').default(Math.floor(Date.now() / 1000)),
 });
 
+export const categories = sqliteTable('categories', {
+  id: text('id').primaryKey(),
+  raceId: text('race_id').notNull(),
+  name: text('name').notNull(),
+  description: text('description'),
+  priceAdjustment: integer('price_adjustment').default(0),
+  maxParticipants: integer('max_participants'),
+  createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
+});
+
 export const participants = sqliteTable('participants', {
   id: text('id').primaryKey(),
   raceId: text('race_id').notNull(),
@@ -24,8 +34,10 @@ export const participants = sqliteTable('participants', {
   phone: text('phone'),
   birthDate: text('birth_date'),
   gender: text('gender'),
+  categoryId: text('category_id'),
   size: text('size'),
   codeId: text('code_id'),
+  paymentMethod: text('payment_method'),
   paymentStatus: text('payment_status').default('pending'),
   registeredAt: integer('registered_at').default(Math.floor(Date.now() / 1000)),
 });
@@ -51,6 +63,8 @@ export const transactions = sqliteTable('transactions', {
 
 export type Race = typeof races.$inferSelect;
 export type NewRace = typeof races.$inferInsert;
+export type Category = typeof categories.$inferSelect;
+export type NewCategory = typeof categories.$inferInsert;
 export type Participant = typeof participants.$inferSelect;
 export type NewParticipant = typeof participants.$inferInsert;
 export type RegistrationCode = typeof registrationCodes.$inferSelect;

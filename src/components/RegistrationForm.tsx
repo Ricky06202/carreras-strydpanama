@@ -49,12 +49,27 @@ interface Race {
   price: number;
 }
 
-const steps = ['Carrera', 'Datos', 'Confirmación'];
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+  priceAdjustment: number;
+  maxParticipants: number | null;
+}
+
+const steps = ['Carrera', 'Datos', 'Método de Pago', 'Confirmación'];
 const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+const paymentMethods = [
+  { value: 'yappy', label: 'Yappy' },
+  { value: 'transfer', label: 'Transferencia Bancaria' },
+  { value: 'card', label: 'Tarjeta de Crédito/Débito' },
+  { value: 'cash', label: 'Efectivo en persona' },
+];
 
 export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [selectedRace, setSelectedRace] = useState(raceId);
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
@@ -63,9 +78,15 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    birthDate: '', gender: '', size: ''
+    birthDate: '', gender: '', category: '', size: '', paymentMethod: ''
   });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const loadCategories = (raceId: string) => {
+    if (raceId) {
+      fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
+    }
+  };
 
   useEffect(() => {
     const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
@@ -78,6 +99,13 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (selectedRace) {
+      loadCategories(selectedRace);
+      setFormData(prev => ({ ...prev, category: '' }));
+    }
+  }, [selectedRace]);
 
   const validateCode = async () => {
     if (!code.trim()) {
@@ -105,12 +133,24 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formData, code, raceId: selectedRace })
+        body: JSON.stringify({ 
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          birthDate: formData.birthDate,
+          gender: formData.gender,
+          categoryId: formData.category,
+          size: formData.size,
+          paymentMethod: formData.paymentMethod,
+          code, 
+          raceId: selectedRace 
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al registrar');
       setNotification({ message: 'Registro exitoso', type: 'success' });
-      setStep(2);
+      setStep(3);
     } catch (e: any) {
       setNotification({ message: e.message, type: 'error' });
     }
@@ -227,23 +267,41 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
                 >
                   <MenuItem value="M">Masculino</MenuItem>
                   <MenuItem value="F">Femenino</MenuItem>
-                  <MenuItem value="O">Otro</MenuItem>
                 </Select>
               </FormControl>
             </Box>
 
-            <FormControl fullWidth>
-              <InputLabel>Talla de Camiseta</InputLabel>
-              <Select
-                value={formData.size}
-                label="Talla de Camiseta"
-                onChange={(e) => setFormData({...formData, size: e.target.value})}
-              >
-                {sizes.map((s) => (
-                  <MenuItem key={s} value={s}>{s}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <FormControl fullWidth>
+                <InputLabel>Categoría *</InputLabel>
+                <Select
+                  value={formData.category}
+                  label="Categoría *"
+                  onChange={(e) => setFormData({...formData, category: e.target.value})}
+                >
+                  {categories.map((c) => (
+                    <MenuItem key={c.id} value={c.id}>
+                      {c.name} {c.priceAdjustment !== 0 && `(${c.priceAdjustment > 0 ? '+' : ''}$${c.priceAdjustment})`}
+                    </MenuItem>
+                  ))}
+                  {categories.length === 0 && (
+                    <MenuItem disabled value="">Sin categorías disponibles</MenuItem>
+                  )}
+                </Select>
+              </FormControl>
+              <FormControl fullWidth>
+                <InputLabel>Talla de Camiseta</InputLabel>
+                <Select
+                  value={formData.size}
+                  label="Talla de Camiseta"
+                  onChange={(e) => setFormData({...formData, size: e.target.value})}
+                >
+                  {sizes.map((s) => (
+                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
               <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>
@@ -251,8 +309,65 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               </Button>
               <Button
                 variant="contained"
+                onClick={() => setStep(2)}
+                disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.category}
+                endIcon={<NavigateNextIcon />}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+              >
+                Continuar
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {step === 2 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>Selecciona tu método de pago</Typography>
+            
+            <FormControl fullWidth>
+              <InputLabel>Método de Pago *</InputLabel>
+              <Select
+                value={formData.paymentMethod}
+                label="Método de Pago *"
+                onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
+              >
+                {paymentMethods.map((pm) => (
+                  <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2, mt: 2 }}>
+              <Typography variant="body2" color="text.secondary">
+                {formData.paymentMethod === 'yappy' && 'Recibirás un enlace de pago por Yappy al confirmar.'}
+                {formData.paymentMethod === 'transfer' && 'Los datos de transferencia se mostrarán al finalizar.'}
+                {formData.paymentMethod === 'card' && 'Serás redirigido a la pasarela de pago segura.'}
+                {formData.paymentMethod === 'cash' && 'Deberás acercar a nuestras oficinas para completar el pago.'}
+                {!formData.paymentMethod && 'Selecciona un método de pago para continuar.'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
+              <Typography variant="body2">
+                Carrera: {races.find(r => r.id === selectedRace)?.name || '-'}
+              </Typography>
+              <Typography variant="body2">
+                Participante: {formData.firstName} {formData.lastName}
+              </Typography>
+              <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
+                Total: ${races.find(r => r.id === selectedRace)?.price || 0}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>
+                Atrás
+              </Button>
+              <Button
+                variant="contained"
                 onClick={handleSubmit}
-                disabled={loading || !formData.firstName || !formData.lastName || !formData.email}
+                disabled={loading || !formData.paymentMethod}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
                 {loading ? 'Procesando...' : 'Confirmar Inscripción'}
