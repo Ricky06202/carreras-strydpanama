@@ -78,7 +78,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    birthDate: '', gender: '', category: '', size: '', paymentMethod: ''
+    birthDate: '', gender: '', category: '', team: '', size: '', paymentMethod: ''
   });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -141,6 +141,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           birthDate: formData.birthDate,
           gender: formData.gender,
           categoryId: formData.category,
+          team: formData.team,
           size: formData.size,
           paymentMethod: formData.paymentMethod,
           code, 
@@ -302,6 +303,14 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
                 </Select>
               </FormControl>
             </Box>
+
+            <TextField
+              label="Equipo (opcional)"
+              value={formData.team}
+              onChange={(e) => setFormData({...formData, team: e.target.value})}
+              placeholder="Ej: Team Stryd, Corredores Panamá, etc."
+              fullWidth
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
               <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>

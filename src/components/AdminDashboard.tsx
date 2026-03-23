@@ -58,6 +58,7 @@ interface Participant {
   paymentStatus: string;
   size: string;
   categoryId: string | null;
+  team: string | null;
 }
 
 interface Category {

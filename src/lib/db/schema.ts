@@ -35,6 +35,7 @@ export const participants = sqliteTable('participants', {
   birthDate: text('birth_date'),
   gender: text('gender'),
   categoryId: text('category_id'),
+  team: text('team'),
   size: text('size'),
   codeId: text('code_id'),
   paymentMethod: text('payment_method'),

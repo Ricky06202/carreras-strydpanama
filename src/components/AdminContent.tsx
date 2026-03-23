@@ -36,6 +36,7 @@ interface Participant {
   paymentStatus: string;
   size: string;
   categoryId: string | null;
+  team: string | null;
 }
 
 interface Category {
@@ -191,6 +192,7 @@ export default function AdminContent({
                       <TableCell>Nombre</TableCell>
                       <TableCell>Email</TableCell>
                       <TableCell>Teléfono</TableCell>
+                      <TableCell>Equipo</TableCell>
                       <TableCell>Categoría</TableCell>
                       <TableCell>Talla</TableCell>
                       <TableCell>Estado</TableCell>
@@ -202,6 +204,7 @@ export default function AdminContent({
                         <TableCell>{p.firstName} {p.lastName}</TableCell>
                         <TableCell>{p.email}</TableCell>
                         <TableCell>{p.phone || '-'}</TableCell>
+                        <TableCell>{p.team || '-'}</TableCell>
                         <TableCell>{getCategoryName(p.categoryId)}</TableCell>
                         <TableCell>{p.size || '-'}</TableCell>
                         <TableCell>
@@ -215,7 +218,7 @@ export default function AdminContent({
                     ))}
                     {participants.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={6} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
+                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

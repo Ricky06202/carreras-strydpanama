@@ -8,7 +8,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
     const body = await request.json();
-    const { firstName, lastName, email, phone, birthDate, gender, categoryId, size, paymentMethod, code, raceId } = body;
+    const { firstName, lastName, email, phone, birthDate, gender, categoryId, team, size, paymentMethod, code, raceId } = body;
     
     if (!firstName || !lastName || !email || !raceId || !categoryId) {
       return new Response(JSON.stringify({ message: 'Faltan datos requeridos' }), { status: 400 });
@@ -47,6 +47,7 @@ export const POST: APIRoute = async ({ request }) => {
       birthDate: birthDate || null,
       gender: gender || null,
       categoryId,
+      team: team || null,
       size: size || null,
       codeId: codeId || null,
       paymentMethod: paymentMethod || null,
