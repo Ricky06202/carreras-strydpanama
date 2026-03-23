@@ -19,9 +19,6 @@ CREATE TABLE IF NOT EXISTS categories (
   id TEXT PRIMARY KEY,
   race_id TEXT NOT NULL,
   name TEXT NOT NULL,
-  description TEXT,
-  price_adjustment INTEGER DEFAULT 0,
-  max_participants INTEGER,
   created_at INTEGER DEFAULT (unixepoch()),
   FOREIGN KEY (race_id) REFERENCES races(id) ON DELETE CASCADE
 );

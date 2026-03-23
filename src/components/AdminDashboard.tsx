@@ -223,6 +223,24 @@ export default function AdminDashboard() {
     if (res.ok && selectedRace) loadCategories(selectedRace.id);
   };
 
+  const handleUpdateParticipant = async (id: string, data: Partial<Participant>) => {
+    const res = await fetch(`/api/admin/participant/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok && selectedRace) {
+      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setParticipants(d.participants || [])).catch(() => {});
+    }
+  };
+
+  const handleDeleteParticipant = async (id: string) => {
+    const res = await fetch(`/api/admin/participant/${id}`, { method: 'DELETE' });
+    if (res.ok && selectedRace) {
+      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setParticipants(d.participants || [])).catch(() => {});
+    }
+  };
+
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
       <CssBaseline />
@@ -246,6 +264,8 @@ export default function AdminDashboard() {
             onCreateCategory={handleCreateCategory}
             onUpdateCategory={handleUpdateCategory}
             onDeleteCategory={handleDeleteCategory}
+            onUpdateParticipant={handleUpdateParticipant}
+            onDeleteParticipant={handleDeleteParticipant}
           />
         </AdminLayout>
 

@@ -92,6 +92,11 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
         </Container>
         <Box component="footer" sx={{ bgcolor: mode === 'dark' ? '#0F172A' : '#1F2937', color: 'white', py: 4 }}>
           <Container maxWidth="lg">
+            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
+              <Link href="https://strydpanama.com" target="_blank" rel="noopener noreferrer" sx={{ color: 'grey.400', '&:hover': { color: ACCENT } }}>
+                Quiénes somos
+              </Link>
+            </Box>
             <Typography variant="body2" sx={{ color: 'grey.400', textAlign: 'center' }}>
               © 2026 Stryd Panama. Todos los derechos reservados.
             </Typography>

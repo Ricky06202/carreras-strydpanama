@@ -46,6 +46,10 @@ export async function updateParticipant(db: Database, id: string, data: Partial<
   return await db.update(schema.participants).set(data).where(eq(schema.participants.id, id)).returning();
 }
 
+export async function deleteParticipant(db: Database, id: string) {
+  return await db.delete(schema.participants).where(eq(schema.participants.id, id));
+}
+
 export async function getRegistrationCode(db: Database, code: string) {
   const result = await db.select().from(schema.registrationCodes).where(eq(schema.registrationCodes.code, code)).limit(1);
   return result[0] || null;

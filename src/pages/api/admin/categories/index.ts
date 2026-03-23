@@ -8,7 +8,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
     const body = await request.json();
-    const { raceId, name, description, priceAdjustment, maxParticipants } = body;
+    const { raceId, name } = body;
     
     if (!raceId || !name) {
       return new Response(JSON.stringify({ message: 'Race ID y nombre son requeridos' }), { status: 400 });
@@ -18,9 +18,6 @@ export const POST: APIRoute = async ({ request }) => {
       id: randomUUID(),
       raceId,
       name,
-      description: description || null,
-      priceAdjustment: priceAdjustment || 0,
-      maxParticipants: maxParticipants || null,
       createdAt: Math.floor(Date.now() / 1000)
     });
     

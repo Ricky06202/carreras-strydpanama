@@ -19,9 +19,6 @@ export const categories = sqliteTable('categories', {
   id: text('id').primaryKey(),
   raceId: text('race_id').notNull(),
   name: text('name').notNull(),
-  description: text('description'),
-  priceAdjustment: integer('price_adjustment').default(0),
-  maxParticipants: integer('max_participants'),
   createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
 });
 

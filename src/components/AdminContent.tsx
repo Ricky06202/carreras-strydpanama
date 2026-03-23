@@ -4,7 +4,8 @@ import { useState } from 'react';
 import {
   Button, TextField, Dialog, DialogTitle, DialogContent, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, Box, Typography, Chip, Tabs, Tab, Snackbar, Alert
+  Paper, Box, Typography, Chip, Tabs, Tab, Snackbar, Alert,
+  FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import EditIcon from '@mui/icons-material/Edit';
@@ -42,9 +43,6 @@ interface Participant {
 interface Category {
   id: string;
   name: string;
-  description: string | null;
-  priceAdjustment: number;
-  maxParticipants: number | null;
 }
 
 interface RegistrationCode {
@@ -66,6 +64,8 @@ interface AdminContentProps {
   onCreateCategory: (data: Partial<Category>) => void;
   onUpdateCategory: (id: string, data: Partial<Category>) => void;
   onDeleteCategory: (id: string) => void;
+  onUpdateParticipant: (id: string, data: Partial<Participant>) => void;
+  onDeleteParticipant: (id: string) => void;
 }
 
 export default function AdminContent({ 
@@ -80,7 +80,9 @@ export default function AdminContent({
   onGenerateCodes,
   onCreateCategory,
   onUpdateCategory,
-  onDeleteCategory
+  onDeleteCategory,
+  onUpdateParticipant,
+  onDeleteParticipant
 }: AdminContentProps) {
   const [tab, setTab] = useState(0);
   const [openCodesDialog, setOpenCodesDialog] = useState(false);
@@ -88,7 +90,10 @@ export default function AdminContent({
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', priceAdjustment: 0, maxParticipants: '' });
+  const [categoryForm, setCategoryForm] = useState({ name: '' });
+  const [openParticipantDialog, setOpenParticipantDialog] = useState(false);
+  const [editParticipant, setEditParticipant] = useState<Participant | null>(null);
+  const [participantForm, setParticipantForm] = useState({ firstName: '', lastName: '', email: '', phone: '', paymentStatus: '', team: '' });
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
@@ -104,26 +109,16 @@ export default function AdminContent({
   const handleOpenCategoryDialog = (category?: Category) => {
     if (category) {
       setEditCategory(category);
-      setCategoryForm({
-        name: category.name,
-        description: category.description || '',
-        priceAdjustment: category.priceAdjustment,
-        maxParticipants: category.maxParticipants?.toString() || ''
-      });
+      setCategoryForm({ name: category.name });
     } else {
       setEditCategory(null);
-      setCategoryForm({ name: '', description: '', priceAdjustment: 0, maxParticipants: '' });
+      setCategoryForm({ name: '' });
     }
     setOpenCategoryDialog(true);
   };
 
   const handleSaveCategory = () => {
-    const data = {
-      name: categoryForm.name,
-      description: categoryForm.description || null,
-      priceAdjustment: categoryForm.priceAdjustment,
-      maxParticipants: categoryForm.maxParticipants ? parseInt(categoryForm.maxParticipants) : null
-    };
+    const data = { name: categoryForm.name };
     
     if (editCategory) {
       onUpdateCategory(editCategory.id, data);
@@ -139,6 +134,34 @@ export default function AdminContent({
     if (confirm('¿Eliminar esta categoría?')) {
       onDeleteCategory(id);
       showNotification('Categoría eliminada', 'success');
+    }
+  };
+
+  const handleOpenParticipantDialog = (participant: Participant) => {
+    setEditParticipant(participant);
+    setParticipantForm({
+      firstName: participant.firstName,
+      lastName: participant.lastName,
+      email: participant.email,
+      phone: participant.phone || '',
+      paymentStatus: participant.paymentStatus,
+      team: participant.team || ''
+    });
+    setOpenParticipantDialog(true);
+  };
+
+  const handleSaveParticipant = () => {
+    if (editParticipant) {
+      onUpdateParticipant(editParticipant.id, participantForm);
+      showNotification('Participante actualizado', 'success');
+    }
+    setOpenParticipantDialog(false);
+  };
+
+  const handleDeleteParticipant = (id: string) => {
+    if (confirm('¿Eliminar este participante?')) {
+      onDeleteParticipant(id);
+      showNotification('Participante eliminado', 'success');
     }
   };
 
@@ -196,6 +219,7 @@ export default function AdminContent({
                       <TableCell>Categoría</TableCell>
                       <TableCell>Talla</TableCell>
                       <TableCell>Estado</TableCell>
+                      <TableCell>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -214,11 +238,17 @@ export default function AdminContent({
                             sx={{ bgcolor: p.paymentStatus === 'paid' ? 'success.main' : 'warning.main', color: 'white' }}
                           />
                         </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button size="small" onClick={() => handleOpenParticipantDialog(p)} startIcon={<EditIcon />}>Editar</Button>
+                            <Button size="small" color="error" onClick={() => handleDeleteParticipant(p.id)} startIcon={<DeleteIcon />}>Borrar</Button>
+                          </Box>
+                        </TableCell>
                       </TableRow>
                     ))}
                     {participants.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
+                        <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -247,9 +277,6 @@ export default function AdminContent({
                   <TableHead sx={{ bgcolor: 'action.hover' }}>
                     <TableRow>
                       <TableCell>Nombre</TableCell>
-                      <TableCell>Descripción</TableCell>
-                      <TableCell>Ajuste de Precio</TableCell>
-                      <TableCell>Cupo</TableCell>
                       <TableCell>Acciones</TableCell>
                     </TableRow>
                   </TableHead>
@@ -262,15 +289,6 @@ export default function AdminContent({
                             {c.name}
                           </Box>
                         </TableCell>
-                        <TableCell>{c.description || '-'}</TableCell>
-                        <TableCell>
-                          <Chip 
-                            size="small" 
-                            label={c.priceAdjustment === 0 ? 'Sin ajuste' : `${c.priceAdjustment > 0 ? '+' : ''}$${c.priceAdjustment}`}
-                            sx={{ bgcolor: c.priceAdjustment < 0 ? 'success.main' : c.priceAdjustment > 0 ? 'warning.main' : 'grey.500', color: 'white' }}
-                          />
-                        </TableCell>
-                        <TableCell>{c.maxParticipants || 'Ilimitado'}</TableCell>
                         <TableCell>
                           <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button size="small" onClick={() => handleOpenCategoryDialog(c)} startIcon={<EditIcon />}>Editar</Button>
@@ -281,7 +299,7 @@ export default function AdminContent({
                     ))}
                     {categories.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={5} sx={{ textAlign: 'center', py: 4 }}>Sin categorías. Agrega categorías para esta carrera.</TableCell>
+                        <TableCell colSpan={2} sx={{ textAlign: 'center', py: 4 }}>Sin categorías. Agrega categorías para esta carrera.</TableCell>
                       </TableRow>
                     )}
                   </TableBody>
@@ -360,33 +378,62 @@ export default function AdminContent({
             onChange={(e) => setCategoryForm({...categoryForm, name: e.target.value})} 
             fullWidth 
           />
-          <TextField 
-            label="Descripción" 
-            value={categoryForm.description} 
-            onChange={(e) => setCategoryForm({...categoryForm, description: e.target.value})} 
-            multiline 
-            rows={2}
-            fullWidth 
-          />
-          <TextField 
-            label="Ajuste de Precio ($)" 
-            type="number"
-            value={categoryForm.priceAdjustment} 
-            onChange={(e) => setCategoryForm({...categoryForm, priceAdjustment: parseInt(e.target.value) || 0})} 
-            fullWidth 
-            helperText="Positivo = recargo, Negativo = descuento"
-          />
-          <TextField 
-            label="Cupo Máximo (opcional)" 
-            type="number"
-            value={categoryForm.maxParticipants} 
-            onChange={(e) => setCategoryForm({...categoryForm, maxParticipants: e.target.value})} 
-            fullWidth 
-          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenCategoryDialog(false)}>Cancelar</Button>
           <Button variant="contained" onClick={handleSaveCategory} disabled={!categoryForm.name} sx={{ bgcolor: ACCENT }}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openParticipantDialog} onClose={() => setOpenParticipantDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar Participante</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField 
+            label="Nombre" 
+            value={participantForm.firstName} 
+            onChange={(e) => setParticipantForm({...participantForm, firstName: e.target.value})} 
+            fullWidth 
+          />
+          <TextField 
+            label="Apellido" 
+            value={participantForm.lastName} 
+            onChange={(e) => setParticipantForm({...participantForm, lastName: e.target.value})} 
+            fullWidth 
+          />
+          <TextField 
+            label="Email" 
+            value={participantForm.email} 
+            onChange={(e) => setParticipantForm({...participantForm, email: e.target.value})} 
+            fullWidth 
+          />
+          <TextField 
+            label="Teléfono" 
+            value={participantForm.phone} 
+            onChange={(e) => setParticipantForm({...participantForm, phone: e.target.value})} 
+            fullWidth 
+          />
+          <TextField 
+            label="Equipo" 
+            value={participantForm.team} 
+            onChange={(e) => setParticipantForm({...participantForm, team: e.target.value})} 
+            fullWidth 
+          />
+          <FormControl fullWidth>
+            <InputLabel>Estado de Pago</InputLabel>
+            <Select
+              value={participantForm.paymentStatus}
+              label="Estado de Pago"
+              onChange={(e) => setParticipantForm({...participantForm, paymentStatus: e.target.value})}
+            >
+              <MenuItem value="pending">Pendiente</MenuItem>
+              <MenuItem value="paid">Pagado</MenuItem>
+              <MenuItem value="refunded">Reembolsado</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenParticipantDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveParticipant} sx={{ bgcolor: ACCENT }}>Guardar</Button>
         </DialogActions>
       </Dialog>
 

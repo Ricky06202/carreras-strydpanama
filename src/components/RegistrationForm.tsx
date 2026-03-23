@@ -52,9 +52,6 @@ interface Race {
 interface Category {
   id: string;
   name: string;
-  description: string | null;
-  priceAdjustment: number;
-  maxParticipants: number | null;
 }
 
 const steps = ['Carrera', 'Datos', 'Método de Pago', 'Confirmación'];
@@ -282,7 +279,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
                 >
                   {categories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
-                      {c.name} {c.priceAdjustment !== 0 && `(${c.priceAdjustment > 0 ? '+' : ''}$${c.priceAdjustment})`}
+                      {c.name}
                     </MenuItem>
                   ))}
                   {categories.length === 0 && (
