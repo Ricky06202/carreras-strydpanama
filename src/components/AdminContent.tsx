@@ -8,12 +8,17 @@ import {
   FormControl, InputLabel, Select, MenuItem
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
+import StopIcon from '@mui/icons-material/Stop';
+import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import AddIcon from '@mui/icons-material/Add';
 import CategoryIcon from '@mui/icons-material/Category';
+import TimerIcon from '@mui/icons-material/Timer';
+import HowToRegIcon from '@mui/icons-material/HowToReg';
 
 const ACCENT = '#FF6B00';
 
@@ -26,6 +31,8 @@ interface Race {
   location: string;
   price: number;
   maxParticipants: number;
+  timerStart: number | null;
+  timerStop: number | null;
 }
 
 interface Participant {
@@ -56,7 +63,11 @@ interface AdminContentProps {
   participants: Participant[];
   codes: RegistrationCode[];
   categories: Category[];
-  onStartRace: () => void;
+  onActivateRace: () => void;
+  onFinishRace: () => void;
+  onCompleteRace: () => void;
+  onStartTimer: () => void;
+  onStopTimer: () => void;
   onEditRace: (race: Race) => void;
   onDeleteRace: (id: string) => void;
   onExportCSV: () => void;
@@ -73,7 +84,11 @@ export default function AdminContent({
   participants, 
   codes,
   categories,
-  onStartRace, 
+  onActivateRace, 
+  onFinishRace, 
+  onCompleteRace, 
+  onStartTimer, 
+  onStopTimer, 
   onEditRace, 
   onDeleteRace, 
   onExportCSV,
@@ -178,20 +193,85 @@ export default function AdminContent({
       ) : (
         <>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-            <Typography variant="h5" fontWeight="bold">{selectedRace.name}</Typography>
-            <Box sx={{ display: 'flex', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography variant="h5" fontWeight="bold">{selectedRace.name}</Typography>
+              <Chip 
+                label={
+                  selectedRace.status === 'upcoming' ? 'Próximamente' :
+                  selectedRace.status === 'accepting' ? 'Inscripciones Abiertas' :
+                  selectedRace.status === 'active' ? 'Carrera en Vivo' :
+                  'Finalizada'
+                }
+                sx={{ 
+                  bgcolor: 
+                    selectedRace.status === 'upcoming' ? 'grey.500' :
+                    selectedRace.status === 'accepting' ? 'success.main' :
+                    selectedRace.status === 'active' ? 'error.main' :
+                    'grey.700',
+                  color: 'white',
+                  fontWeight: 'bold'
+                }}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {/* Botones de estado de carrera */}
               {selectedRace.status === 'upcoming' && (
                 <Button 
                   variant="contained" 
-                  onClick={onStartRace}
+                  onClick={onActivateRace}
                   sx={{ bgcolor: 'success.main', '&:hover': { bgcolor: 'success.dark' } }}
-                  startIcon={<PlayArrowIcon />}
+                  startIcon={<HowToRegIcon />}
                 >
-                  Iniciar
+                  Activar Inscripciones
                 </Button>
               )}
+              {selectedRace.status === 'accepting' && (
+                <Button 
+                  variant="contained" 
+                  onClick={onFinishRace}
+                  sx={{ bgcolor: 'warning.main', '&:hover': { bgcolor: 'warning.dark' } }}
+                  startIcon={<StopIcon />}
+                >
+                  Cerrar Inscripciones
+                </Button>
+              )}
+              
+              {/* Botones de cronómetro */}
+              {(selectedRace.status === 'accepting' || selectedRace.status === 'active') && !selectedRace.timerStart && (
+                <Button 
+                  variant="contained" 
+                  onClick={onStartTimer}
+                  sx={{ bgcolor: 'info.main', '&:hover': { bgcolor: 'info.dark' } }}
+                  startIcon={<TimerIcon />}
+                >
+                  Iniciar Cronómetro
+                </Button>
+              )}
+              {selectedRace.status === 'active' && selectedRace.timerStart && !selectedRace.timerStop && (
+                <Button 
+                  variant="contained" 
+                  onClick={onStopTimer}
+                  sx={{ bgcolor: 'warning.main', '&:hover': { bgcolor: 'warning.dark' } }}
+                  startIcon={<PauseIcon />}
+                >
+                  Detener Cronómetro
+                </Button>
+              )}
+              
+              {/* Marcar como terminada */}
+              {selectedRace.status === 'active' && (
+                <Button 
+                  variant="contained" 
+                  onClick={onCompleteRace}
+                  sx={{ bgcolor: 'grey.700', '&:hover': { bgcolor: 'grey.800' } }}
+                  startIcon={<DoneIcon />}
+                >
+                  Finalizar Carrera
+                </Button>
+              )}
+              
               <Button variant="outlined" onClick={() => onEditRace(selectedRace)} startIcon={<EditIcon />}>Editar</Button>
-              <Button variant="outlined" color="error" onClick={() => onDeleteRace(selectedRace.id)} startIcon={<DeleteIcon />}></Button>
+              <Button variant="outlined" color="error" onClick={() => onDeleteRace(selectedRace.id)} startIcon={<DeleteIcon />}>Eliminar</Button>
             </Box>
           </Box>
 

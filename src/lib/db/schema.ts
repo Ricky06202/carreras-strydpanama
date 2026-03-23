@@ -11,6 +11,8 @@ export const races = sqliteTable('races', {
   price: integer('price').default(0),
   maxParticipants: integer('max_participants'),
   status: text('status').default('upcoming'),
+  timerStart: integer('timer_start'),
+  timerStop: integer('timer_stop'),
   createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
   updatedAt: integer('updated_at').default(Math.floor(Date.now() / 1000)),
 });

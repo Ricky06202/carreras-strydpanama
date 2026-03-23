@@ -8,6 +8,13 @@ export async function getRaces(db: Database) {
   return await db.select().from(schema.races).orderBy(desc(schema.races.date));
 }
 
+export async function getPublicRaces(db: Database) {
+  return await db.select()
+    .from(schema.races)
+    .where(eq(schema.races.status, 'accepting'))
+    .orderBy(desc(schema.races.date));
+}
+
 export async function getRaceById(db: Database, id: string) {
   const result = await db.select().from(schema.races).where(eq(schema.races.id, id)).limit(1);
   return result[0] || null;

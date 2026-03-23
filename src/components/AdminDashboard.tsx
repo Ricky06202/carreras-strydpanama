@@ -47,6 +47,8 @@ interface Race {
   location: string;
   price: number;
   maxParticipants: number;
+  timerStart: number | null;
+  timerStop: number | null;
 }
 
 interface Participant {
@@ -130,16 +132,30 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleStartRace = async () => {
+  const handleUpdateRaceStatus = async (status: string, extraData?: Record<string, any>) => {
     if (!selectedRace) return;
-    const res = await fetch('/api/admin/start-race', {
-      method: 'POST',
+    const res = await fetch(`/api/admin/race/${selectedRace.id}`, {
+      method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ raceId: selectedRace.id })
+      body: JSON.stringify({ status, ...extraData })
     });
     if (res.ok) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setSelectedRace(d.race)).catch(() => {});
+      const data = await res.json();
+      setSelectedRace(data.race);
+      fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
     }
+  };
+
+  const handleActivateRace = () => handleUpdateRaceStatus('accepting');
+  const handleFinishRace = () => handleUpdateRaceStatus('accepting', { timerStart: null, timerStop: null });
+  const handleCompleteRace = () => handleUpdateRaceStatus('finished');
+  
+  const handleStartTimer = () => {
+    handleUpdateRaceStatus(selectedRace?.status || 'active', { timerStart: Math.floor(Date.now() / 1000), timerStop: null });
+  };
+  
+  const handleStopTimer = () => {
+    handleUpdateRaceStatus(selectedRace?.status || 'active', { timerStop: Math.floor(Date.now() / 1000) });
   };
 
   const handleGenerateCodes = async (count: number) => {
@@ -256,7 +272,11 @@ export default function AdminDashboard() {
             participants={participants}
             codes={codes}
             categories={categories}
-            onStartRace={handleStartRace}
+            onActivateRace={handleActivateRace}
+            onFinishRace={handleFinishRace}
+            onCompleteRace={handleCompleteRace}
+            onStartTimer={handleStartTimer}
+            onStopTimer={handleStopTimer}
             onEditRace={openEdit}
             onDeleteRace={handleDeleteRace}
             onExportCSV={exportCSV}

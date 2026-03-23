@@ -31,6 +31,8 @@ interface Race {
   location: string;
   price: number;
   maxParticipants: number;
+  timerStart: number | null;
+  timerStop: number | null;
 }
 
 interface AdminLayoutProps {

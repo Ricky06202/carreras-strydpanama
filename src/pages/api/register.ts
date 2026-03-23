@@ -19,6 +19,10 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ message: 'Carrera no encontrada' }), { status: 404 });
     }
 
+    if (race.status !== 'accepting') {
+      return new Response(JSON.stringify({ message: 'Las inscripciones no están abiertas para esta carrera' }), { status: 400 });
+    }
+
     const category = await getCategoryById(db, categoryId);
     if (!category) {
       return new Response(JSON.stringify({ message: 'Categoría no encontrada' }), { status: 404 });

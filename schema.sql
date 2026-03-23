@@ -9,7 +9,9 @@ CREATE TABLE IF NOT EXISTS races (
   route_gpx_url TEXT,
   price INTEGER DEFAULT 0,
   max_participants INTEGER,
-  status TEXT DEFAULT 'upcoming' CHECK(status IN ('upcoming', 'active', 'completed')),
+  status TEXT DEFAULT 'upcoming' CHECK(status IN ('upcoming', 'accepting', 'active', 'finished')),
+  timer_start INTEGER,
+  timer_stop INTEGER,
   created_at INTEGER DEFAULT (unixepoch()),
   updated_at INTEGER DEFAULT (unixepoch())
 );

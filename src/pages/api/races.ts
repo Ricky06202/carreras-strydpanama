@@ -1,12 +1,12 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
-import { getRaces } from '../../lib/db/actions';
+import { getPublicRaces } from '../../lib/db/actions';
 import { env } from 'cloudflare:workers';
 
 export const GET: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
-    const races = await getRaces(db);
+    const races = await getPublicRaces(db);
     return new Response(JSON.stringify({ races }), { 
       headers: { 'Content-Type': 'application/json' } 
     });
