@@ -113,7 +113,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/races')
+    fetch('/api/admin/races')
       .then(r => {
         if (!r.ok) return r.json().then(e => Promise.reject(e));
         return r.json();
@@ -156,7 +156,7 @@ export default function AdminDashboard() {
     const data = await res.json();
     if (res.ok) {
       setOpenDialog(false);
-      fetch('/api/races')
+      fetch('/api/admin/races')
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
@@ -175,7 +175,7 @@ export default function AdminDashboard() {
     const data = await res.json();
     if (res.ok) {
       if (data.race) setSelectedRace(data.race);
-      fetch('/api/races')
+      fetch('/api/admin/races')
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
     if (res.ok) {
       setNotification({ message: 'Carrera eliminada', type: 'success' });
       if (selectedRace?.id === deleteConfirm.raceId) setSelectedRace(null);
-      fetch('/api/races')
+      fetch('/api/admin/races')
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
