@@ -32,12 +32,15 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
     setMode(theme);
     setMounted(true);
 
-    const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
-      setMode(e.detail.mode);
+    const handleThemeChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.mode) {
+        setMode(detail.mode);
+      }
     };
 
-    window.addEventListener('themechange', handleThemeChange as EventListener);
-    return () => window.removeEventListener('themechange', handleThemeChange as EventListener);
+    window.addEventListener('themechange', handleThemeChange);
+    return () => window.removeEventListener('themechange', handleThemeChange);
   }, []);
 
   const theme = createTheme({

@@ -66,9 +66,6 @@ interface Participant {
 interface Category {
   id: string;
   name: string;
-  description: string | null;
-  priceAdjustment: number;
-  maxParticipants: number | null;
 }
 
 interface RegistrationCode {
@@ -91,28 +88,59 @@ export default function AdminDashboard() {
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
 
   const loadCategories = (raceId: string) => {
-    fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
+    fetch(`/api/categories/${raceId}`)
+      .then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e));
+        return r.json();
+      })
+      .then(d => {
+        if (d.categories) {
+          setCategories(d.categories);
+        }
+      })
+      .catch(() => {});
   };
 
   useEffect(() => {
-    const handleThemeChange = (e: CustomEvent<{ mode: 'light' | 'dark' }>) => {
-      setMode(e.detail.mode);
+    const handleThemeChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail && detail.mode) {
+        setMode(detail.mode);
+      }
     };
-    window.addEventListener('themechange', handleThemeChange as EventListener);
-    return () => window.removeEventListener('themechange', handleThemeChange as EventListener);
+    window.addEventListener('themechange', handleThemeChange);
+    return () => window.removeEventListener('themechange', handleThemeChange);
   }, []);
 
   useEffect(() => {
-    fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+    fetch('/api/races')
+      .then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e));
+        return r.json();
+      })
+      .then(d => {
+        if (d.races) {
+          setRaces(d.races);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     if (selectedRace) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => {
-        setSelectedRace(d.race);
-        setParticipants(d.participants || []);
-        setCodes(d.codes || []);
-      }).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`)
+        .then(r => {
+          if (!r.ok) return r.json().then(e => Promise.reject(e));
+          return r.json();
+        })
+        .then(d => {
+          if (d.race) {
+            setSelectedRace(d.race);
+            setParticipants(d.participants || []);
+            setCodes(d.codes || []);
+          }
+        })
+        .catch(() => {});
       loadCategories(selectedRace.id);
     }
   }, [selectedRace?.id]);
@@ -128,7 +156,10 @@ export default function AdminDashboard() {
     const data = await res.json();
     if (res.ok) {
       setOpenDialog(false);
-      fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+      fetch('/api/races')
+        .then(r => r.json())
+        .then(d => { if (d.races) setRaces(d.races); })
+        .catch(() => {});
     }
   };
 
@@ -141,13 +172,16 @@ export default function AdminDashboard() {
     });
     if (res.ok) {
       const data = await res.json();
-      setSelectedRace(data.race);
-      fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+      if (data.race) setSelectedRace(data.race);
+      fetch('/api/races')
+        .then(r => r.json())
+        .then(d => { if (d.races) setRaces(d.races); })
+        .catch(() => {});
     }
   };
 
   const handleActivateRace = () => handleUpdateRaceStatus('accepting');
-  const handleFinishRace = () => handleUpdateRaceStatus('accepting', { timerStart: null, timerStop: null });
+  const handleFinishRace = () => handleUpdateRaceStatus('active');
   const handleCompleteRace = () => handleUpdateRaceStatus('finished');
   
   const handleStartTimer = () => {
@@ -166,7 +200,10 @@ export default function AdminDashboard() {
       body: JSON.stringify({ raceId: selectedRace.id, count })
     });
     if (res.ok) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setCodes(d.codes || [])).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`)
+        .then(r => r.json())
+        .then(d => { if (d.codes) setCodes(d.codes); })
+        .catch(() => {});
     }
   };
 
@@ -180,7 +217,10 @@ export default function AdminDashboard() {
     if (res.ok) {
       setNotification({ message: 'Carrera eliminada', type: 'success' });
       if (selectedRace?.id === deleteConfirm.raceId) setSelectedRace(null);
-      fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+      fetch('/api/races')
+        .then(r => r.json())
+        .then(d => { if (d.races) setRaces(d.races); })
+        .catch(() => {});
     } else {
       setNotification({ message: 'Error al eliminar carrera', type: 'error' });
     }
@@ -246,14 +286,20 @@ export default function AdminDashboard() {
       body: JSON.stringify(data)
     });
     if (res.ok && selectedRace) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setParticipants(d.participants || [])).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`)
+        .then(r => r.json())
+        .then(d => { if (d.participants) setParticipants(d.participants); })
+        .catch(() => {});
     }
   };
 
   const handleDeleteParticipant = async (id: string) => {
     const res = await fetch(`/api/admin/participant/${id}`, { method: 'DELETE' });
     if (res.ok && selectedRace) {
-      fetch(`/api/admin/race/${selectedRace.id}`).then(r => r.json()).then(d => setParticipants(d.participants || [])).catch(() => {});
+      fetch(`/api/admin/race/${selectedRace.id}`)
+        .then(r => r.json())
+        .then(d => { if (d.participants) setParticipants(d.participants); })
+        .catch(() => {});
     }
   };
 
