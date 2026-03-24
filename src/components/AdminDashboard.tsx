@@ -160,6 +160,8 @@ export default function AdminDashboard() {
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
+    } else {
+      setNotification({ message: data.message || 'Error al guardar carrera', type: 'error' });
     }
   };
 
@@ -170,13 +172,15 @@ export default function AdminDashboard() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, ...extraData })
     });
+    const data = await res.json();
     if (res.ok) {
-      const data = await res.json();
       if (data.race) setSelectedRace(data.race);
       fetch('/api/races')
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
+    } else {
+      setNotification({ message: data.message || 'Error al actualizar carrera', type: 'error' });
     }
   };
 
