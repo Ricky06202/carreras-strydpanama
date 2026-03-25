@@ -4,7 +4,6 @@ import { getDb } from '../../lib/db';
 import { getRaceById, getParticipantsByRace } from '../../lib/db/actions';
 import RaceTimer from '../../components/RaceTimer.svelte';
 import RaceMap from '../../components/RaceMap.svelte';
-import RouteViewer from '../../components/RouteViewer';
 import { env } from 'cloudflare:workers';
 
 const db = getDb(env.DB as any);
