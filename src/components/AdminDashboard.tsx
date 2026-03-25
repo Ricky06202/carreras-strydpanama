@@ -204,10 +204,14 @@ export default function AdminDashboard() {
   const handleSaveRace = async () => {
     const method = editRace ? 'PUT' : 'POST';
     const url = editRace ? `/api/admin/race/${editRace.id}` : '/api/admin/race';
+    const payload = { 
+      ...formData, 
+      maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null 
+    };
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null })
+      body: JSON.stringify(payload)
     });
     const data = await res.json();
     if (res.ok) {
@@ -216,6 +220,7 @@ export default function AdminDashboard() {
         .then(r => r.json())
         .then(d => { if (d.races) setRaces(d.races); })
         .catch(() => {});
+      setNotification({ message: editRace ? 'Carrera actualizada' : 'Carrera creada', type: 'success' });
     } else {
       setNotification({ message: data.message || 'Error al guardar carrera', type: 'error' });
     }
