@@ -8,6 +8,7 @@ export const races = sqliteTable('races', {
   startTimestamp: integer('start_timestamp'),
   location: text('location'),
   routeGpxUrl: text('route_gpx_url'),
+  routeGeoJson: text('route_geojson'),
   imageUrl: text('image_url'),
   technicalInfo: text('technical_info'),
   termsAndConditions: text('terms_and_conditions'),

@@ -14,12 +14,14 @@ import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import FinishLineControl from './FinishLineControl';
+import RouteEditor from './RouteEditor';
 import DownloadIcon from '@mui/icons-material/Download';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import AddIcon from '@mui/icons-material/Add';
 import CategoryIcon from '@mui/icons-material/Category';
 import TimerIcon from '@mui/icons-material/Timer';
 import HowToRegIcon from '@mui/icons-material/HowToReg';
+import MapIcon from '@mui/icons-material/Map';
 
 const ACCENT = '#FF6B00';
 
@@ -39,6 +41,7 @@ interface Race {
   timerStop: number | null;
   showTimer: boolean;
   showShirtSize: boolean;
+  routeGeoJson: string | null;
 }
 
 interface Participant {
@@ -360,6 +363,7 @@ export default function AdminContent({
             <Tab label="Distancias" />
             <Tab label="Códigos" />
             <Tab label="Llegada" icon={<TimerIcon />} iconPosition="end" />
+            <Tab label="Ruta" icon={<MapIcon />} iconPosition="end" />
           </Tabs>
 
           {tab === 0 && (
@@ -583,6 +587,28 @@ export default function AdminContent({
               </Box>
             )
           )}
+
+          {tab === 5 && selectedRace && (
+            <RouteEditor
+              routeGeoJson={selectedRace.routeGeoJson}
+              onSave={async (geoJson) => {
+                try {
+                  const res = await fetch(`/api/admin/race/${selectedRace.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ routeGeoJson: geoJson })
+                  });
+                  if (res.ok) {
+                    showNotification('Ruta guardada correctamente', 'success');
+                  } else {
+                    showNotification('Error al guardar la ruta', 'error');
+                  }
+                } catch {
+                  showNotification('Error al guardar la ruta', 'error');
+                }
+              }}
+            />
+          )}
         </>
       )}
 
@@ -688,11 +714,11 @@ export default function AdminContent({
       </Dialog>
 
       <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)}>
-        {notification && (
+        {notification ? (
           <Alert severity={notification.type} sx={{ width: '100%' }}>
             {notification.message}
           </Alert>
-        )}
+        ) : undefined}
       </Snackbar>
     </Box>
   );

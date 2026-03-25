@@ -54,6 +54,7 @@ interface Race {
   timerStop: number | null;
   showTimer: boolean;
   showShirtSize: boolean;
+  routeGeoJson: string | null;
 }
 
 interface Participant {
