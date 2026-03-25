@@ -36,6 +36,8 @@ interface Race {
   termsAndConditions: string | null;
   timerStart: number | null;
   timerStop: number | null;
+  showTimer: boolean;
+  showShirtSize: boolean;
 }
 
 interface Participant {

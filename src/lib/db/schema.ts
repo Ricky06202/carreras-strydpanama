@@ -16,6 +16,8 @@ export const races = sqliteTable('races', {
   status: text('status').default('upcoming'),
   timerStart: integer('timer_start'),
   timerStop: integer('timer_stop'),
+  showTimer: integer('show_timer', { mode: 'boolean' }).default(false),
+  showShirtSize: integer('show_shirt_size', { mode: 'boolean' }).default(true),
   createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
   updatedAt: integer('updated_at').default(Math.floor(Date.now() / 1000)),
 });

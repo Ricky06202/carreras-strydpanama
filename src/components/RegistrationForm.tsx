@@ -51,6 +51,8 @@ interface Race {
   imageUrl: string | null;
   technicalInfo: string | null;
   termsAndConditions: string | null;
+  showTimer: boolean;
+  showShirtSize: boolean;
 }
 
 interface Category {
@@ -337,18 +339,20 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
                   </Select>
                 </FormControl>
               )}
-              <FormControl fullWidth>
-                <InputLabel>Talla de Camiseta</InputLabel>
-                <Select
-                  value={formData.size}
-                  label="Talla de Camiseta"
-                  onChange={(e) => setFormData({...formData, size: e.target.value})}
-                >
-                  {sizes.map((s) => (
-                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              {raceInfo?.showShirtSize !== false && (
+                <FormControl fullWidth>
+                  <InputLabel>Talla de Camiseta</InputLabel>
+                  <Select
+                    value={formData.size}
+                    label="Talla de Camiseta"
+                    onChange={(e) => setFormData({...formData, size: e.target.value})}
+                  >
+                    {sizes.map((s) => (
+                      <MenuItem key={s} value={s}>{s}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
             </Box>
 
             <TextField

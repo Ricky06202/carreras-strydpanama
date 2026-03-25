@@ -52,6 +52,8 @@ interface Race {
   termsAndConditions: string | null;
   timerStart: number | null;
   timerStop: number | null;
+  showTimer: boolean;
+  showShirtSize: boolean;
 }
 
 interface Participant {
@@ -93,7 +95,7 @@ export default function AdminDashboard() {
   const [distances, setDistances] = useState<Distance[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editRace, setEditRace] = useState<Race | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
@@ -300,10 +302,9 @@ export default function AdminDashboard() {
   const openEdit = (race?: Race) => {
     if (race) {
       setEditRace(race);
-      setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '' });
+      setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '', showTimer: race.showTimer || false, showShirtSize: race.showShirtSize !== false });
     } else {
-      setEditRace(null);
-      setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '' });
+      setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
     }
     setOpenDialog(true);
   };
@@ -479,6 +480,24 @@ export default function AdminDashboard() {
             </Box>
             <TextField label="Información Técnica" value={formData.technicalInfo} onChange={(e) => setFormData({...formData, technicalInfo: e.target.value})} multiline rows={3} fullWidth placeholder="Detalles técnicos de la carrera..." />
             <TextField label="Términos y Condiciones / Disclaimer" value={formData.termsAndConditions} onChange={(e) => setFormData({...formData, termsAndConditions: e.target.value})} multiline rows={4} fullWidth placeholder="Términos y condiciones y descargos de responsabilidad..." />
+            <Box sx={{ display: 'flex', gap: 3, mt: 1 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.showTimer}
+                  onChange={(e) => setFormData({...formData, showTimer: e.target.checked })}
+                />
+                Mostrar cronómetro en evento
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.showShirtSize}
+                  onChange={(e) => setFormData({...formData, showShirtSize: e.target.checked })}
+                />
+                Solicitar talla de camisa
+              </label>
+            </Box>
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>
