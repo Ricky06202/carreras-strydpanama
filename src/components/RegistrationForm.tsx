@@ -466,7 +466,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           </Box>
         )}
 
-        {step === 2 && (
+        {step === 3 && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
             <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>
