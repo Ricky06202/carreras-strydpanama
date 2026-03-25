@@ -87,12 +87,30 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
   const [registrationType, setRegistrationType] = useState<'individual' | 'team'>('individual');
   const [teamName, setTeamName] = useState('');
-  const [teamMembers, setTeamMembers] = useState(1);
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
     birthDate: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: ''
   });
+
+const [teamMembers, setTeamMembers] = useState([
+    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
+    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
+    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
+    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
+  ]);
+
+  const updateTeamMember = (index: number, field: string, value: string) => {
+    setTeamMembers(prev => prev.map((member, i) => 
+      i === index ? { ...member, [field]: value } : member
+    ));
+  };
+
+  const isTeamMembersValid = () => {
+    if (registrationType !== 'team') return true;
+    return teamMembers.every(m => m.firstName && m.lastName && m.email);
+  };
+
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -163,25 +181,32 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const handleSubmit = async () => {
     setLoading(true);
     try {
+      const payload: any = {
+        code,
+        raceId: selectedRace,
+        termsAccepted,
+        categoryId: formData.category || null,
+        distanceId: formData.distance || null,
+        paymentMethod: formData.paymentMethod,
+        teamName: registrationType === 'team' ? teamName : null,
+      };
+
+      if (registrationType === 'team') {
+        payload.teamMembers = teamMembers;
+      } else {
+        payload.firstName = formData.firstName;
+        payload.lastName = formData.lastName;
+        payload.email = formData.email;
+        payload.phone = formData.phone;
+        payload.birthDate = formData.birthDate;
+        payload.gender = formData.gender;
+        payload.size = formData.size;
+      }
+
       const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          firstName: formData.firstName,
-          lastName: formData.lastName,
-          email: formData.email,
-          phone: formData.phone,
-          birthDate: formData.birthDate,
-          gender: formData.gender,
-          categoryId: formData.category || null,
-          distanceId: formData.distance || null,
-          teamName: registrationType === 'team' ? teamName : null,
-          size: formData.size,
-          paymentMethod: formData.paymentMethod,
-          code, 
-          raceId: selectedRace,
-          termsAccepted 
-        })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Error al registrar');
@@ -379,15 +404,89 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
             </Box>
 
             {registrationType === 'team' && (
-              <TextField
-                label="Nombre del Equipo *"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="Ej: Los Rápidos"
-                fullWidth
-                required
-                sx={{ mb: 2 }}
-              />
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  label="Nombre del Equipo *"
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="Ej: Los Rápidos"
+                  fullWidth
+                  required
+                  sx={{ mb: 3 }}
+                />
+                
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                  Datos de los 4 integrantes del equipo:
+                </Typography>
+
+                {teamMembers.map((member, index) => (
+                  <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: 'action.hover' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: ACCENT }}>
+                      Integrante {index + 1} {index === 0 ? '(Capitán)' : ''}
+                    </Typography>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                      <TextField
+                        label={`Nombre *`}
+                        value={member.firstName}
+                        onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label={`Apellido *`}
+                        value={member.lastName}
+                        onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label={`Email *`}
+                        type="email"
+                        value={member.email}
+                        onChange={(e) => updateTeamMember(index, 'email', e.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label={`Teléfono`}
+                        value={member.phone}
+                        onChange={(e) => updateTeamMember(index, 'phone', e.target.value)}
+                        size="small"
+                      />
+                      <TextField
+                        label="Fecha de Nacimiento"
+                        type="date"
+                        value={member.birthDate}
+                        onChange={(e) => updateTeamMember(index, 'birthDate', e.target.value)}
+                        size="small"
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <FormControl size="small">
+                        <InputLabel>Género</InputLabel>
+                        <Select
+                          value={member.gender}
+                          label="Género"
+                          onChange={(e) => updateTeamMember(index, 'gender', e.target.value)}
+                        >
+                          <MenuItem value="M">Masculino</MenuItem>
+                          <MenuItem value="F">Femenino</MenuItem>
+                        </Select>
+                      </FormControl>
+                      {raceInfo?.showShirtSize !== false && (
+                        <FormControl size="small">
+                          <InputLabel>Talla</InputLabel>
+                          <Select
+                            value={member.size}
+                            label="Talla"
+                            onChange={(e) => updateTeamMember(index, 'size', e.target.value)}
+                          >
+                            {sizes.map((s) => (
+                              <MenuItem key={s} value={s}>{s}</MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      )}
+                    </Box>
+                  </Paper>
+                ))}
+              </Box>
             )}
 
             {raceInfo?.technicalInfo && (
@@ -431,7 +530,12 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               <Button
                 variant="contained"
                 onClick={() => setStep(2)}
-                disabled={!formData.firstName || !formData.lastName || !formData.email || (distances.length > 0 && !formData.distance) || (registrationType === 'team' && !teamName) || !!((raceInfo?.termsAndConditions) && !termsAccepted)}
+                disabled={
+                  (registrationType === 'individual' && (!formData.firstName || !formData.lastName || !formData.email)) ||
+                  (registrationType === 'team' && (!teamName || !isTeamMembersValid())) ||
+                  (distances.length > 0 && !formData.distance) ||
+                  !!((raceInfo?.termsAndConditions) && !termsAccepted)
+                }
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
