@@ -27,6 +27,7 @@ interface Race {
   name: string;
   description: string | null;
   date: string;
+  startTime: string | null;
   status: string;
   location: string | null;
   price: number;
@@ -38,6 +39,7 @@ interface Race {
   timerStop: number | null;
   showTimer: boolean;
   showShirtSize: boolean;
+  routeGeoJson: string | null;
 }
 
 interface AdminLayoutProps {

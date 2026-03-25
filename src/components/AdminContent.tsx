@@ -30,6 +30,7 @@ interface Race {
   name: string;
   description: string | null;
   date: string;
+  startTime: string | null;
   status: string;
   location: string | null;
   price: number;

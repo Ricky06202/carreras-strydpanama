@@ -43,6 +43,7 @@ interface Race {
   name: string;
   description: string | null;
   date: string;
+  startTime: string | null;
   status: string;
   location: string | null;
   price: number;
@@ -97,7 +98,7 @@ export default function AdminDashboard() {
   const [distances, setDistances] = useState<Distance[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editRace, setEditRace] = useState<Race | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
+  const [formData, setFormData] = useState({ name: '', description: '', date: '', startTime: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
@@ -217,6 +218,7 @@ export default function AdminDashboard() {
         name: formData.name || editRace.name,
         description: formData.description || editRace.description,
         date: formData.date || editRace.date,
+        startTime: formData.startTime || editRace.startTime,
         location: formData.location || editRace.location,
         price: formData.price,
         maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : editRace.maxParticipants,
@@ -327,10 +329,10 @@ export default function AdminDashboard() {
   const openEdit = (race?: Race) => {
     if (race) {
       setEditRace(race);
-      setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '', showTimer: race.showTimer || false, showShirtSize: race.showShirtSize !== false });
+      setFormData({ name: race.name, description: race.description || '', date: race.date, startTime: race.startTime || '', location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '', showTimer: race.showTimer || false, showShirtSize: race.showShirtSize !== false });
     } else {
       setEditRace(null);
-      setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
+      setFormData({ name: '', description: '', date: '', startTime: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
     }
     setOpenDialog(true);
   };
@@ -457,6 +459,7 @@ export default function AdminDashboard() {
             <TextField label="Nombre" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} fullWidth />
             <TextField label="Descripción" value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} multiline rows={2} fullWidth />
             <TextField label="Fecha" type="date" value={formData.date} onChange={(e) => setFormData({...formData, date: e.target.value})} InputLabelProps={{ shrink: true }} fullWidth InputProps={{ sx: { '& input[type=date]::-webkit-calendar-picker-indicator': { filter: mode === 'dark' ? 'invert(1)' : 'none' } } }} />
+            <TextField label="Hora de Inicio (ej: 6:30 AM)" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} fullWidth placeholder="6:30 AM" />
             <TextField label="Ubicación" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} fullWidth />
             <TextField label="Precio ($)" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})} fullWidth />
             <TextField label="Cupo Máximo" type="number" value={formData.maxParticipants} onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})} fullWidth />

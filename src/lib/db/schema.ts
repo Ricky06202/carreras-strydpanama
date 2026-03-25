@@ -5,6 +5,7 @@ export const races = sqliteTable('races', {
   name: text('name').notNull(),
   description: text('description'),
   date: text('date').notNull(),
+  startTime: text('start_time'),
   startTimestamp: integer('start_timestamp'),
   location: text('location'),
   routeGpxUrl: text('route_gpx_url'),

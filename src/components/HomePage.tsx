@@ -18,15 +18,22 @@ import PlaceIcon from '@mui/icons-material/Place';
 
 const ACCENT = '#FF6B00';
 
+interface Distance {
+  id: string;
+  name: string;
+}
+
 interface Race {
   id: string;
   name: string;
   description: string | null;
   date: string;
+  startTime: string | null;
   status: string;
   location: string | null;
   price: number;
   imageUrl: string | null;
+  distances: Distance[];
 }
 
 function formatDateLong(dateStr: string) {
@@ -166,14 +173,18 @@ export default function HomePage() {
                             LUGAR: {race.location}
                           </Typography>
                         )}
-                        <Typography variant="body2" color="text.secondary">
-                          <AccessTimeIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                          HORA: 6:30 AM
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          <SpeedIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                          DISTANCIAS: 10K - 5K - 1K
-                        </Typography>
+                        {race.startTime && (
+                          <Typography variant="body2" color="text.secondary">
+                            <AccessTimeIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                            HORA: {race.startTime}
+                          </Typography>
+                        )}
+                        {race.distances && race.distances.length > 0 && (
+                          <Typography variant="body2" color="text.secondary">
+                            <SpeedIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
+                            DISTANCIAS: {race.distances.map(d => d.name).join(' - ')}
+                          </Typography>
+                        )}
                       </Box>
                       <Button
                         href={`/race/${race.id}`}
