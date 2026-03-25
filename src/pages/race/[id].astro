@@ -35,16 +35,20 @@ function formatDate(dateStr: string) {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-8">
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
-          <div class="h-48 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center relative">
-            <svg class="w-24 h-24 text-white opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            {race.status === 'active' && (
-              <div class="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold animate-pulse">
-                EN VIVO
-              </div>
-            )}
-          </div>
+          {race.imageUrl ? (
+            <img src={race.imageUrl} alt={race.name} class="w-full h-64 object-cover" />
+          ) : (
+            <div class="h-48 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center relative">
+              <svg class="w-24 h-24 text-white opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+          )}
+          {race.status === 'active' && (
+            <div class="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold animate-pulse">
+              EN VIVO
+            </div>
+          )}
           <div class="p-8">
             <h1 class="text-3xl font-bold mb-4 dark:text-white">{race.name}</h1>
             <p class="text-gray-600 dark:text-gray-400 mb-6">{race.description}</p>
@@ -75,6 +79,20 @@ function formatDate(dateStr: string) {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
                 {race.location}
+              </div>
+            )}
+
+            {race.technicalInfo && (
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-bold mb-3 dark:text-white">Información Técnica</h3>
+                <p class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{race.technicalInfo}</p>
+              </div>
+            )}
+
+            {race.termsAndConditions && (
+              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+                <h3 class="text-lg font-bold mb-3 dark:text-white">Términos y Condiciones</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{race.termsAndConditions}</p>
               </div>
             )}
 

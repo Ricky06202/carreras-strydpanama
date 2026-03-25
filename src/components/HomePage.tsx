@@ -21,11 +21,12 @@ const ACCENT = '#FF6B00';
 interface Race {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   date: string;
   status: string;
-  location: string;
+  location: string | null;
   price: number;
+  imageUrl: string | null;
 }
 
 function formatDateLong(dateStr: string) {
@@ -132,13 +133,15 @@ export default function HomePage() {
                   }}>
                     <Box sx={{
                       height: 160,
-                      background: `linear-gradient(135deg, ${ACCENT} 0%, #FF8C33 100%)`,
+                      background: race.imageUrl 
+                        ? `url(${race.imageUrl}) center/cover no-repeat`
+                        : `linear-gradient(135deg, ${ACCENT} 0%, #FF8C33 100%)`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       position: 'relative'
                     }}>
-                      <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />
+                      {!race.imageUrl && <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />}
                       {race.status === 'active' && (
                         <Chip
                           label="EN VIVO"
