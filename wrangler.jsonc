@@ -8,5 +8,11 @@
       "database_name": "carreras-strydpanama-db",
       "database_id": "199bd2c8-cbf2-42a3-a8c9-caa77e5e8394"
     }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "IMAGES",
+      "bucket_name": "carreras-strydpanama-images"
+    }
   ]
 }
