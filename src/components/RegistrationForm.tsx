@@ -85,10 +85,13 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
+  const [registrationType, setRegistrationType] = useState<'individual' | 'team'>('individual');
+  const [teamName, setTeamName] = useState('');
+  const [teamMembers, setTeamMembers] = useState(1);
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    birthDate: '', gender: '', category: '', distance: '', team: '', size: '', paymentMethod: ''
+    birthDate: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: ''
   });
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -172,7 +175,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           gender: formData.gender,
           categoryId: formData.category || null,
           distanceId: formData.distance || null,
-          team: formData.team,
+          teamName: registrationType === 'team' ? teamName : null,
           size: formData.size,
           paymentMethod: formData.paymentMethod,
           code, 
@@ -355,13 +358,37 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               )}
             </Box>
 
-            <TextField
-              label="Equipo (opcional)"
-              value={formData.team}
-              onChange={(e) => setFormData({...formData, team: e.target.value})}
-              placeholder="Ej: Team Stryd, Corredores Panamá, etc."
-              fullWidth
-            />
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Tipo de Inscripción</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant={registrationType === 'individual' ? 'contained' : 'outlined'}
+                  onClick={() => setRegistrationType('individual')}
+                  sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}
+                >
+                  Individual
+                </Button>
+                <Button
+                  variant={registrationType === 'team' ? 'contained' : 'outlined'}
+                  onClick={() => setRegistrationType('team')}
+                  sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}
+                >
+                  Equipo (4 personas)
+                </Button>
+              </Box>
+            </Box>
+
+            {registrationType === 'team' && (
+              <TextField
+                label="Nombre del Equipo *"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+                placeholder="Ej: Los Rápidos"
+                fullWidth
+                required
+                sx={{ mb: 2 }}
+              />
+            )}
 
             {raceInfo?.technicalInfo && (
               <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
@@ -404,7 +431,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               <Button
                 variant="contained"
                 onClick={() => setStep(2)}
-                disabled={!formData.firstName || !formData.lastName || !formData.email || (distances.length > 0 && !formData.distance) || !!((raceInfo?.termsAndConditions) && !termsAccepted)}
+                disabled={!formData.firstName || !formData.lastName || !formData.email || (distances.length > 0 && !formData.distance) || (registrationType === 'team' && !teamName) || !!((raceInfo?.termsAndConditions) && !termsAccepted)}
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >

@@ -47,12 +47,15 @@ export const participants = sqliteTable('participants', {
   gender: text('gender'),
   categoryId: text('category_id'),
   distanceId: text('distance_id'),
-  team: text('team'),
+  teamName: text('team_name'),
+  teamId: text('team_id'),
+  teamPosition: integer('team_position'),
   size: text('size'),
   codeId: text('code_id'),
   paymentMethod: text('payment_method'),
   paymentStatus: text('payment_status').default('pending'),
   termsAccepted: integer('terms_accepted', { mode: 'boolean' }).default(false),
+  finishTime: integer('finish_time'),
   registeredAt: integer('registered_at').default(Math.floor(Date.now() / 1000)),
 });
 
