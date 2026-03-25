@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -42,32 +42,35 @@ interface RouteViewerProps {
 }
 
 export default function RouteViewer({ routeGeoJson, raceName }: RouteViewerProps) {
-  const coordinates: [number, number][] = [];
+  const [coordinates, setCoordinates] = useState<[number, number][]>([]);
   
   useEffect(() => {
     if (routeGeoJson) {
       try {
         const parsed = JSON.parse(routeGeoJson);
+        const coords: [number, number][] = [];
         if (Array.isArray(parsed)) {
           parsed.forEach((coord: number[]) => {
             if (coord.length >= 2) {
-              coordinates.push([coord[0], coord[1]]);
+              coords.push([coord[0], coord[1]]);
             }
           });
         }
+        setCoordinates(coords);
       } catch {
         console.error('Error parsing routeGeoJson');
+        setCoordinates([]);
       }
+    } else {
+      setCoordinates([]);
     }
   }, [routeGeoJson]);
 
-  if (!routeGeoJson || coordinates.length === 0) {
+  if (coordinates.length === 0) {
     return null;
   }
 
-  const center: [number, number] = coordinates.length > 0 
-    ? coordinates[Math.floor(coordinates.length / 2)]
-    : [9.0, -79.5];
+  const center: [number, number] = coordinates[Math.floor(coordinates.length / 2)];
 
   return (
     <div className="w-full h-96 rounded-lg overflow-hidden">
