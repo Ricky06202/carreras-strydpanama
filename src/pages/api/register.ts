@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
-import { getRaceById, getRegistrationCode, getCategoryById, createParticipant, useRegistrationCode, createTransaction } from '../../lib/db/actions';
+import { getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction } from '../../lib/db/actions';
 import { randomUUID } from 'crypto';
 import { env } from 'cloudflare:workers';
 
@@ -8,10 +8,14 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
     const body = await request.json();
-    const { firstName, lastName, email, phone, birthDate, gender, categoryId, team, size, paymentMethod, code, raceId } = body;
+    const { firstName, lastName, email, phone, birthDate, gender, categoryId, distanceId, team, size, paymentMethod, code, raceId, termsAccepted } = body;
     
-    if (!firstName || !lastName || !email || !raceId || !categoryId) {
+    if (!firstName || !lastName || !email || !raceId) {
       return new Response(JSON.stringify({ message: 'Faltan datos requeridos' }), { status: 400 });
+    }
+    
+    if (!termsAccepted) {
+      return new Response(JSON.stringify({ message: 'Debes aceptar los términos y condiciones' }), { status: 400 });
     }
     
     const race = await getRaceById(db, raceId);
@@ -22,14 +26,9 @@ export const POST: APIRoute = async ({ request }) => {
     if (race.status !== 'accepting') {
       return new Response(JSON.stringify({ message: 'Las inscripciones no están abiertas para esta carrera' }), { status: 400 });
     }
-
-    const category = await getCategoryById(db, categoryId);
-    if (!category) {
-      return new Response(JSON.stringify({ message: 'Categoría no encontrada' }), { status: 404 });
-    }
     
     let codeId: string | undefined;
-    let finalPrice = race.price + (category.priceAdjustment || 0);
+    let finalPrice = race.price;
     
     if (code) {
       const registrationCode = await getRegistrationCode(db, code);
@@ -50,12 +49,14 @@ export const POST: APIRoute = async ({ request }) => {
       phone: phone || null,
       birthDate: birthDate || null,
       gender: gender || null,
-      categoryId,
+      categoryId: categoryId || null,
+      distanceId: distanceId || null,
       team: team || null,
       size: size || null,
       codeId: codeId || null,
       paymentMethod: paymentMethod || null,
       paymentStatus: finalPrice === 0 ? 'paid' : 'pending',
+      termsAccepted: true,
       registeredAt: Math.floor(Date.now() / 1000)
     });
     

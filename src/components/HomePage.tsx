@@ -78,7 +78,7 @@ export default function HomePage() {
           <Box>
             <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
               BIENVENIDO A<br />
-              <Box component="span" sx={{ color: 'orange.200' }}>STRYD PANAMA</Box>
+              <Box component="span" sx={{ color: 'orange.200' }}>CARRERAS BY STRYD PANAMA</Box>
             </Typography>
             <Typography variant="h5" sx={{ color: 'white', mb: 4, maxWidth: 600 }}>
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá

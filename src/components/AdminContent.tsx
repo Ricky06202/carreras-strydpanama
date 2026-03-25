@@ -25,12 +25,15 @@ const ACCENT = '#FF6B00';
 interface Race {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   date: string;
   status: string;
-  location: string;
+  location: string | null;
   price: number;
-  maxParticipants: number;
+  maxParticipants: number | null;
+  imageUrl: string | null;
+  technicalInfo: string | null;
+  termsAndConditions: string | null;
   timerStart: number | null;
   timerStop: number | null;
 }
@@ -44,10 +47,17 @@ interface Participant {
   paymentStatus: string;
   size: string;
   categoryId: string | null;
+  distanceId: string | null;
   team: string | null;
+  termsAccepted: boolean;
 }
 
 interface Category {
+  id: string;
+  name: string;
+}
+
+interface Distance {
   id: string;
   name: string;
 }
@@ -63,6 +73,7 @@ interface AdminContentProps {
   participants: Participant[];
   codes: RegistrationCode[];
   categories: Category[];
+  distances: Distance[];
   onActivateRace: () => void;
   onFinishRace: () => void;
   onCompleteRace: () => void;
@@ -75,6 +86,9 @@ interface AdminContentProps {
   onCreateCategory: (data: Partial<Category>) => void;
   onUpdateCategory: (id: string, data: Partial<Category>) => void;
   onDeleteCategory: (id: string) => void;
+  onCreateDistance: (data: Partial<Distance>) => void;
+  onUpdateDistance: (id: string, data: Partial<Distance>) => void;
+  onDeleteDistance: (id: string) => void;
   onUpdateParticipant: (id: string, data: Partial<Participant>) => void;
   onDeleteParticipant: (id: string) => void;
 }
@@ -84,6 +98,7 @@ export default function AdminContent({
   participants, 
   codes,
   categories,
+  distances,
   onActivateRace, 
   onFinishRace, 
   onCompleteRace, 
@@ -96,6 +111,9 @@ export default function AdminContent({
   onCreateCategory,
   onUpdateCategory,
   onDeleteCategory,
+  onCreateDistance,
+  onUpdateDistance,
+  onDeleteDistance,
   onUpdateParticipant,
   onDeleteParticipant
 }: AdminContentProps) {
@@ -106,6 +124,9 @@ export default function AdminContent({
   const [openCategoryDialog, setOpenCategoryDialog] = useState(false);
   const [editCategory, setEditCategory] = useState<Category | null>(null);
   const [categoryForm, setCategoryForm] = useState({ name: '' });
+  const [openDistanceDialog, setOpenDistanceDialog] = useState(false);
+  const [editDistance, setEditDistance] = useState<Distance | null>(null);
+  const [distanceForm, setDistanceForm] = useState({ name: '' });
   const [openParticipantDialog, setOpenParticipantDialog] = useState(false);
   const [editParticipant, setEditParticipant] = useState<Participant | null>(null);
   const [participantForm, setParticipantForm] = useState({ firstName: '', lastName: '', email: '', phone: '', paymentStatus: '', team: '' });
@@ -149,6 +170,37 @@ export default function AdminContent({
     if (confirm('¿Eliminar esta categoría?')) {
       onDeleteCategory(id);
       showNotification('Categoría eliminada', 'success');
+    }
+  };
+
+  const handleOpenDistanceDialog = (distance?: Distance) => {
+    if (distance) {
+      setEditDistance(distance);
+      setDistanceForm({ name: distance.name });
+    } else {
+      setEditDistance(null);
+      setDistanceForm({ name: '' });
+    }
+    setOpenDistanceDialog(true);
+  };
+
+  const handleSaveDistance = () => {
+    const data = { name: distanceForm.name };
+    
+    if (editDistance) {
+      onUpdateDistance(editDistance.id, data);
+      showNotification('Distancia actualizada', 'success');
+    } else {
+      onCreateDistance(data);
+      showNotification('Distancia creada', 'success');
+    }
+    setOpenDistanceDialog(false);
+  };
+
+  const handleDeleteDistance = (id: string) => {
+    if (confirm('¿Eliminar esta distancia?')) {
+      onDeleteDistance(id);
+      showNotification('Distancia eliminada', 'success');
     }
   };
 
@@ -278,6 +330,7 @@ export default function AdminContent({
           <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
             <Tab label="Participantes" />
             <Tab label="Categorías" />
+            <Tab label="Distancias" />
             <Tab label="Códigos" />
           </Tabs>
 
@@ -390,6 +443,52 @@ export default function AdminContent({
 
           {tab === 2 && (
             <Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="body1" color="text.secondary">
+                  {distances.length} distancias configuradas
+                </Typography>
+                <Button 
+                  variant="contained" 
+                  onClick={() => handleOpenDistanceDialog()}
+                  sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                  startIcon={<AddIcon />}
+                >
+                  Nueva Distancia
+                </Button>
+              </Box>
+              <TableContainer component={Paper} elevation={2}>
+                <Table>
+                  <TableHead sx={{ bgcolor: 'action.hover' }}>
+                    <TableRow>
+                      <TableCell>Nombre</TableCell>
+                      <TableCell>Acciones</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {distances.map(d => (
+                      <TableRow key={d.id}>
+                        <TableCell>{d.name}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button size="small" onClick={() => handleOpenDistanceDialog(d)} startIcon={<EditIcon />}>Editar</Button>
+                            <Button size="small" color="error" onClick={() => handleDeleteDistance(d.id)} startIcon={<DeleteIcon />}>Eliminar</Button>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {distances.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} sx={{ textAlign: 'center', py: 4 }}>Sin distancias. Agrega distancias para esta carrera.</TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          )}
+
+          {tab === 3 && (
+            <Box>
               <Button 
                 variant="contained" 
                 onClick={() => setOpenCodesDialog(true)}
@@ -462,6 +561,22 @@ export default function AdminContent({
         <DialogActions>
           <Button onClick={() => setOpenCategoryDialog(false)}>Cancelar</Button>
           <Button variant="contained" onClick={handleSaveCategory} disabled={!categoryForm.name} sx={{ bgcolor: ACCENT }}>Guardar</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openDistanceDialog} onClose={() => setOpenDistanceDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>{editDistance ? 'Editar Distancia' : 'Nueva Distancia'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField 
+            label="Nombre (ej: 5K, 10K, 5K Caminata) *" 
+            value={distanceForm.name} 
+            onChange={(e) => setDistanceForm({...distanceForm, name: e.target.value})} 
+            fullWidth 
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenDistanceDialog(false)}>Cancelar</Button>
+          <Button variant="contained" onClick={handleSaveDistance} disabled={!distanceForm.name} sx={{ bgcolor: ACCENT }}>Guardar</Button>
         </DialogActions>
       </Dialog>
 

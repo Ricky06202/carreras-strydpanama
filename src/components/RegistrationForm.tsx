@@ -47,9 +47,18 @@ interface Race {
   id: string;
   name: string;
   price: number;
+  description: string | null;
+  imageUrl: string | null;
+  technicalInfo: string | null;
+  termsAndConditions: string | null;
 }
 
 interface Category {
+  id: string;
+  name: string;
+}
+
+interface Distance {
   id: string;
   name: string;
 }
@@ -67,7 +76,9 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [distances, setDistances] = useState<Distance[]>([]);
   const [selectedRace, setSelectedRace] = useState(raceId);
+  const [raceInfo, setRaceInfo] = useState<Race | null>(null);
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,13 +86,30 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '',
-    birthDate: '', gender: '', category: '', team: '', size: '', paymentMethod: ''
+    birthDate: '', gender: '', category: '', distance: '', team: '', size: '', paymentMethod: ''
   });
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const loadCategories = (raceId: string) => {
     if (raceId) {
       fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
+    }
+  };
+
+  const loadDistances = (raceId: string) => {
+    if (raceId) {
+      fetch(`/api/admin/distances?raceId=${raceId}`).then(r => r.json()).then(d => setDistances(d.distances || [])).catch(() => {});
+    }
+  };
+
+  const loadRaceInfo = (raceId: string) => {
+    if (raceId) {
+      fetch(`/api/race/${raceId}`).then(r => r.json()).then(d => {
+        if (d.race) setRaceInfo(d.race);
+        if (d.distances) setDistances(d.distances);
+        if (d.categories) setCategories(d.categories);
+      }).catch(() => {});
     }
   };
 
@@ -102,8 +130,8 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
 
   useEffect(() => {
     if (selectedRace) {
-      loadCategories(selectedRace);
-      setFormData(prev => ({ ...prev, category: '' }));
+      loadRaceInfo(selectedRace);
+      setFormData(prev => ({ ...prev, category: '', distance: '' }));
     }
   }, [selectedRace]);
 
@@ -140,12 +168,14 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
           phone: formData.phone,
           birthDate: formData.birthDate,
           gender: formData.gender,
-          categoryId: formData.category,
+          categoryId: formData.category || null,
+          distanceId: formData.distance || null,
           team: formData.team,
           size: formData.size,
           paymentMethod: formData.paymentMethod,
           code, 
-          raceId: selectedRace 
+          raceId: selectedRace,
+          termsAccepted 
         })
       });
       const data = await res.json();
@@ -273,23 +303,40 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
             </Box>
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <FormControl fullWidth>
-                <InputLabel>Categoría *</InputLabel>
-                <Select
-                  value={formData.category}
-                  label="Categoría *"
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
-                >
-                  {categories.map((c) => (
-                    <MenuItem key={c.id} value={c.id}>
-                      {c.name}
-                    </MenuItem>
-                  ))}
-                  {categories.length === 0 && (
-                    <MenuItem disabled value="">Sin categorías disponibles</MenuItem>
-                  )}
-                </Select>
-              </FormControl>
+              {categories.length > 0 && (
+                <FormControl fullWidth>
+                  <InputLabel>Categoría</InputLabel>
+                  <Select
+                    value={formData.category}
+                    label="Categoría"
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  >
+                    <MenuItem value="">Ninguna</MenuItem>
+                    {categories.map((c) => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
+              {distances.length > 0 && (
+                <FormControl fullWidth>
+                  <InputLabel>Distancia *</InputLabel>
+                  <Select
+                    value={formData.distance}
+                    label="Distancia *"
+                    onChange={(e) => setFormData({...formData, distance: e.target.value})}
+                    required
+                  >
+                    {distances.map((d) => (
+                      <MenuItem key={d.id} value={d.id}>
+                        {d.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               <FormControl fullWidth>
                 <InputLabel>Talla de Camiseta</InputLabel>
                 <Select
@@ -312,6 +359,40 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               fullWidth
             />
 
+            {raceInfo?.technicalInfo && (
+              <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Información Técnica:
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                  {raceInfo.technicalInfo}
+                </Typography>
+              </Box>
+            )}
+
+            {raceInfo?.termsAndConditions && (
+              <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Términos y Condiciones / Disclaimer:
+                </Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
+                  {raceInfo.termsAndConditions}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
+                  <input
+                    type="checkbox"
+                    id="termsAccepted"
+                    checked={termsAccepted}
+                    onChange={(e) => setTermsAccepted(e.target.checked)}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Typography variant="body2">
+                    He leído y acepto los términos y condiciones *
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
               <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>
                 Atrás
@@ -319,7 +400,7 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
               <Button
                 variant="contained"
                 onClick={() => setStep(2)}
-                disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.category}
+                disabled={!formData.firstName || !formData.lastName || !formData.email || (distances.length > 0 && !formData.distance) || !!((raceInfo?.termsAndConditions) && !termsAccepted)}
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >

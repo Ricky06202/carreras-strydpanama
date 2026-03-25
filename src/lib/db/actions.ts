@@ -114,3 +114,25 @@ export async function updateCategory(db: Database, id: string, data: Partial<sch
 export async function deleteCategory(db: Database, id: string) {
   return await db.delete(schema.categories).where(eq(schema.categories.id, id));
 }
+
+// Distancias
+export async function getDistancesByRace(db: Database, raceId: string) {
+  return await db.select().from(schema.distances).where(eq(schema.distances.raceId, raceId)).orderBy(schema.distances.name);
+}
+
+export async function getDistanceById(db: Database, id: string) {
+  const result = await db.select().from(schema.distances).where(eq(schema.distances.id, id)).limit(1);
+  return result[0] || null;
+}
+
+export async function createDistance(db: Database, distance: schema.NewDistance) {
+  return await db.insert(schema.distances).values(distance).returning();
+}
+
+export async function updateDistance(db: Database, id: string, data: Partial<schema.Distance>) {
+  return await db.update(schema.distances).set(data).where(eq(schema.distances.id, id)).returning();
+}
+
+export async function deleteDistance(db: Database, id: string) {
+  return await db.delete(schema.distances).where(eq(schema.distances.id, id));
+}

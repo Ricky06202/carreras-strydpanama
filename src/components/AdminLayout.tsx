@@ -25,12 +25,15 @@ function getInitialTheme(): 'light' | 'dark' {
 interface Race {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   date: string;
   status: string;
-  location: string;
+  location: string | null;
   price: number;
-  maxParticipants: number;
+  maxParticipants: number | null;
+  imageUrl: string | null;
+  technicalInfo: string | null;
+  termsAndConditions: string | null;
   timerStart: number | null;
   timerStop: number | null;
 }

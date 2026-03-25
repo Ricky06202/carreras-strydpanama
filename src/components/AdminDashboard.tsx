@@ -41,12 +41,15 @@ const lightTheme = createTheme({
 interface Race {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
   date: string;
   status: string;
-  location: string;
+  location: string | null;
   price: number;
-  maxParticipants: number;
+  maxParticipants: number | null;
+  imageUrl: string | null;
+  technicalInfo: string | null;
+  termsAndConditions: string | null;
   timerStart: number | null;
   timerStop: number | null;
 }
@@ -60,10 +63,17 @@ interface Participant {
   paymentStatus: string;
   size: string;
   categoryId: string | null;
+  distanceId: string | null;
   team: string | null;
+  termsAccepted: boolean;
 }
 
 interface Category {
+  id: string;
+  name: string;
+}
+
+interface Distance {
   id: string;
   name: string;
 }
@@ -80,9 +90,10 @@ export default function AdminDashboard() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [codes, setCodes] = useState<RegistrationCode[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [distances, setDistances] = useState<Distance[]>([]);
   const [openDialog, setOpenDialog] = useState(false);
   const [editRace, setEditRace] = useState<Race | null>(null);
-  const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
+  const [formData, setFormData] = useState({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '' });
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; raceId: string | null }>({ open: false, raceId: null });
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
@@ -96,6 +107,20 @@ export default function AdminDashboard() {
       .then(d => {
         if (d.categories) {
           setCategories(d.categories);
+        }
+      })
+      .catch(() => {});
+  };
+
+  const loadDistances = (raceId: string) => {
+    fetch(`/api/admin/distances?raceId=${raceId}`)
+      .then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e));
+        return r.json();
+      })
+      .then(d => {
+        if (d.distances) {
+          setDistances(d.distances);
         }
       })
       .catch(() => {});
@@ -142,6 +167,7 @@ export default function AdminDashboard() {
         })
         .catch(() => {});
       loadCategories(selectedRace.id);
+      loadDistances(selectedRace.id);
     }
   }, [selectedRace?.id]);
 
@@ -246,17 +272,20 @@ export default function AdminDashboard() {
   const openEdit = (race?: Race) => {
     if (race) {
       setEditRace(race);
-      setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '' });
+      setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '' });
     } else {
       setEditRace(null);
-      setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '' });
+      setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '' });
     }
     setOpenDialog(true);
   };
 
   const handleSelectRace = (race: Race | null) => {
     setSelectedRace(race);
-    if (!race) setCategories([]);
+    if (!race) {
+      setCategories([]);
+      setDistances([]);
+    }
   };
 
   const handleCreateCategory = async (data: Partial<Category>) => {
@@ -281,6 +310,30 @@ export default function AdminDashboard() {
   const handleDeleteCategory = async (id: string) => {
     const res = await fetch(`/api/admin/categories/${id}`, { method: 'DELETE' });
     if (res.ok && selectedRace) loadCategories(selectedRace.id);
+  };
+
+  const handleCreateDistance = async (data: Partial<Distance>) => {
+    if (!selectedRace) return;
+    const res = await fetch('/api/admin/distances', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...data, raceId: selectedRace.id })
+    });
+    if (res.ok) loadDistances(selectedRace.id);
+  };
+
+  const handleUpdateDistance = async (id: string, data: Partial<Distance>) => {
+    const res = await fetch(`/api/admin/distances/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (res.ok && selectedRace) loadDistances(selectedRace.id);
+  };
+
+  const handleDeleteDistance = async (id: string) => {
+    const res = await fetch(`/api/admin/distances/${id}`, { method: 'DELETE' });
+    if (res.ok && selectedRace) loadDistances(selectedRace.id);
   };
 
   const handleUpdateParticipant = async (id: string, data: Partial<Participant>) => {
@@ -322,6 +375,7 @@ export default function AdminDashboard() {
             participants={participants}
             codes={codes}
             categories={categories}
+            distances={distances}
             onActivateRace={handleActivateRace}
             onFinishRace={handleFinishRace}
             onCompleteRace={handleCompleteRace}
@@ -334,12 +388,15 @@ export default function AdminDashboard() {
             onCreateCategory={handleCreateCategory}
             onUpdateCategory={handleUpdateCategory}
             onDeleteCategory={handleDeleteCategory}
+            onCreateDistance={handleCreateDistance}
+            onUpdateDistance={handleUpdateDistance}
+            onDeleteDistance={handleDeleteDistance}
             onUpdateParticipant={handleUpdateParticipant}
             onDeleteParticipant={handleDeleteParticipant}
           />
         </AdminLayout>
 
-        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="sm" fullWidth>
+        <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>
           <DialogTitle>{editRace ? 'Editar Carrera' : 'Nueva Carrera'}</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
             <TextField label="Nombre" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} fullWidth />
@@ -348,6 +405,9 @@ export default function AdminDashboard() {
             <TextField label="Ubicación" value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} fullWidth />
             <TextField label="Precio ($)" type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: parseInt(e.target.value) || 0})} fullWidth />
             <TextField label="Cupo Máximo" type="number" value={formData.maxParticipants} onChange={(e) => setFormData({...formData, maxParticipants: e.target.value})} fullWidth />
+            <TextField label="URL de Imagen" value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} fullWidth placeholder="https://..." />
+            <TextField label="Información Técnica" value={formData.technicalInfo} onChange={(e) => setFormData({...formData, technicalInfo: e.target.value})} multiline rows={3} fullWidth placeholder="Detalles técnicos de la carrera..." />
+            <TextField label="Términos y Condiciones / Disclaimer" value={formData.termsAndConditions} onChange={(e) => setFormData({...formData, termsAndConditions: e.target.value})} multiline rows={4} fullWidth placeholder="Términos y condiciones y descargos de responsabilidad..." />
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setOpenDialog(false)}>Cancelar</Button>

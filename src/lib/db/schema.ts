@@ -8,6 +8,9 @@ export const races = sqliteTable('races', {
   startTimestamp: integer('start_timestamp'),
   location: text('location'),
   routeGpxUrl: text('route_gpx_url'),
+  imageUrl: text('image_url'),
+  technicalInfo: text('technical_info'),
+  termsAndConditions: text('terms_and_conditions'),
   price: integer('price').default(0),
   maxParticipants: integer('max_participants'),
   status: text('status').default('upcoming'),
@@ -24,6 +27,13 @@ export const categories = sqliteTable('categories', {
   createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
 });
 
+export const distances = sqliteTable('distances', {
+  id: text('id').primaryKey(),
+  raceId: text('race_id').notNull(),
+  name: text('name').notNull(),
+  createdAt: integer('created_at').default(Math.floor(Date.now() / 1000)),
+});
+
 export const participants = sqliteTable('participants', {
   id: text('id').primaryKey(),
   raceId: text('race_id').notNull(),
@@ -34,11 +44,13 @@ export const participants = sqliteTable('participants', {
   birthDate: text('birth_date'),
   gender: text('gender'),
   categoryId: text('category_id'),
+  distanceId: text('distance_id'),
   team: text('team'),
   size: text('size'),
   codeId: text('code_id'),
   paymentMethod: text('payment_method'),
   paymentStatus: text('payment_status').default('pending'),
+  termsAccepted: integer('terms_accepted', { mode: 'boolean' }).default(false),
   registeredAt: integer('registered_at').default(Math.floor(Date.now() / 1000)),
 });
 
@@ -65,6 +77,8 @@ export type Race = typeof races.$inferSelect;
 export type NewRace = typeof races.$inferInsert;
 export type Category = typeof categories.$inferSelect;
 export type NewCategory = typeof categories.$inferInsert;
+export type Distance = typeof distances.$inferSelect;
+export type NewDistance = typeof distances.$inferInsert;
 export type Participant = typeof participants.$inferSelect;
 export type NewParticipant = typeof participants.$inferInsert;
 export type RegistrationCode = typeof registrationCodes.$inferSelect;

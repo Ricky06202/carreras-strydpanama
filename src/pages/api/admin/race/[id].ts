@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../../lib/db';
-import { getRaceById, updateRace, createRegistrationCode, getCodesByRace, getParticipantsByRace, deleteRace, createRace, getRaceStats } from '../../../../lib/db/actions';
+import { getRaceById, updateRace, createRegistrationCode, getCodesByRace, getParticipantsByRace, deleteRace, createRace, getRaceStats, getDistancesByRace, getCategoriesByRace } from '../../../../lib/db/actions';
 import { randomUUID } from 'crypto';
 import { env } from 'cloudflare:workers';
 
@@ -21,8 +21,10 @@ export const GET: APIRoute = async ({ params }) => {
     const stats = await getRaceStats(db, id);
     const participants = await getParticipantsByRace(db, id);
     const codes = await getCodesByRace(db, id);
+    const distances = await getDistancesByRace(db, id);
+    const categories = await getCategoriesByRace(db, id);
     
-    return new Response(JSON.stringify({ race, stats, participants, codes }), { 
+    return new Response(JSON.stringify({ race, stats, participants, codes, distances, categories }), { 
       headers: { 'Content-Type': 'application/json' } 
     });
   } catch (e: any) {

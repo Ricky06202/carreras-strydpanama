@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../../lib/db';
-import { getRaceById } from '../../../lib/db/actions';
+import { getRaceById, getDistancesByRace, getCategoriesByRace } from '../../../lib/db/actions';
 import { env } from 'cloudflare:workers';
 
 export const GET: APIRoute = async ({ request, params }) => {
@@ -18,7 +18,10 @@ export const GET: APIRoute = async ({ request, params }) => {
       return new Response(JSON.stringify({ error: 'Carrera no encontrada' }), { status: 404 });
     }
     
-    return new Response(JSON.stringify({ race }), { 
+    const distances = await getDistancesByRace(db, id);
+    const categories = await getCategoriesByRace(db, id);
+    
+    return new Response(JSON.stringify({ race, distances, categories }), { 
       headers: { 'Content-Type': 'application/json' } 
     });
   } catch (e: any) {
