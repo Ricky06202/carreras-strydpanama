@@ -4,6 +4,7 @@ import { getDb } from '../../lib/db';
 import { getRaceById, getParticipantsByRace } from '../../lib/db/actions';
 import RaceTimer from '../../components/RaceTimer.svelte';
 import RaceMap from '../../components/RaceMap.svelte';
+import RouteViewer from '../../components/RouteViewer';
 import { env } from 'cloudflare:workers';
 
 const db = getDb(env.DB as any);
@@ -120,6 +121,13 @@ function formatDate(dateStr: string) {
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
             <h2 class="text-xl font-bold mb-4">Ruta de la Carrera</h2>
             <RaceMap client:load gpxUrl={race.routeGpxUrl} raceName={race.name} />
+          </div>
+        )}
+
+        {(race.routeGeoJson && !race.routeGpxUrl) && (
+          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+            <h2 class="text-xl font-bold mb-4">Ruta de la Carrera</h2>
+            <RouteViewer client:only="react" routeGeoJson={race.routeGeoJson} raceName={race.name} />
           </div>
         )}
       </div>
