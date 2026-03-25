@@ -286,51 +286,73 @@ const [teamMembers, setTeamMembers] = useState([
 
         {step === 1 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-              <TextField
-                label="Nombre *"
-                value={formData.firstName}
-                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                required
-              />
-              <TextField
-                label="Apellido *"
-                value={formData.lastName}
-                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                required
-              />
-              <TextField
-                label="Email *"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                required
-              />
-              <TextField
-                label="Teléfono"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              />
-              <TextField
-                label="Fecha de Nacimiento"
-                type="date"
-                value={formData.birthDate}
-                onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{ sx: { '& input[type=date]::-webkit-calendar-picker-indicator': { filter: mode === 'dark' ? 'invert(1)' : 'none' } } }}
-              />
-              <FormControl>
-                <InputLabel>Género</InputLabel>
-                <Select
-                  value={formData.gender}
-                  label="Género"
-                  onChange={(e) => setFormData({...formData, gender: e.target.value})}
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Tipo de Inscripción</Typography>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  variant={registrationType === 'individual' ? 'contained' : 'outlined'}
+                  onClick={() => setRegistrationType('individual')}
+                  sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}
                 >
-                  <MenuItem value="M">Masculino</MenuItem>
-                  <MenuItem value="F">Femenino</MenuItem>
-                </Select>
-              </FormControl>
+                  Individual
+                </Button>
+                <Button
+                  variant={registrationType === 'team' ? 'contained' : 'outlined'}
+                  onClick={() => setRegistrationType('team')}
+                  sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}
+                >
+                  Equipo (4 personas)
+                </Button>
+              </Box>
             </Box>
+
+            {registrationType === 'individual' && (
+              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                <TextField
+                  label="Nombre *"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+                  required
+                />
+                <TextField
+                  label="Apellido *"
+                  value={formData.lastName}
+                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+                  required
+                />
+                <TextField
+                  label="Email *"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  required
+                />
+                <TextField
+                  label="Teléfono"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                />
+                <TextField
+                  label="Fecha de Nacimiento"
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{ sx: { '& input[type=date]::-webkit-calendar-picker-indicator': { filter: mode === 'dark' ? 'invert(1)' : 'none' } } }}
+                />
+                <FormControl>
+                  <InputLabel>Género</InputLabel>
+                  <Select
+                    value={formData.gender}
+                    label="Género"
+                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
+                  >
+                    <MenuItem value="M">Masculino</MenuItem>
+                    <MenuItem value="F">Femenino</MenuItem>
+                  </Select>
+                </FormControl>
+              </Box>
+            )}
 
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
               {categories.length > 0 && (
@@ -367,7 +389,7 @@ const [teamMembers, setTeamMembers] = useState([
                   </Select>
                 </FormControl>
               )}
-              {raceInfo?.showShirtSize !== false && (
+              {registrationType === 'individual' && raceInfo?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>
                   <Select
@@ -381,26 +403,6 @@ const [teamMembers, setTeamMembers] = useState([
                   </Select>
                 </FormControl>
               )}
-            </Box>
-
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>Tipo de Inscripción</Typography>
-              <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant={registrationType === 'individual' ? 'contained' : 'outlined'}
-                  onClick={() => setRegistrationType('individual')}
-                  sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}
-                >
-                  Individual
-                </Button>
-                <Button
-                  variant={registrationType === 'team' ? 'contained' : 'outlined'}
-                  onClick={() => setRegistrationType('team')}
-                  sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}
-                >
-                  Equipo (4 personas)
-                </Button>
-              </Box>
             </Box>
 
             {registrationType === 'team' && (
