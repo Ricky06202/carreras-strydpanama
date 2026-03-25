@@ -16,7 +16,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
 
-const ACCENT = '#FF6B00';
+const ACCENT = '#facc15';
 
 interface Distance {
   id: string;
@@ -70,9 +70,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <Box sx={{
         height: { xs: 400, md: 500 },
-        background: `linear-gradient(135deg, ${ACCENT} 0%, #FF8C33 100%)`,
+        background: 'radial-gradient(circle at 50% 10%, #1e3a8a 0%, #020617 100%)',
         position: 'relative',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        borderRadius: { xs: '0 0 32px 32px', md: '32px' },
+        mx: { xs: 0, md: 4 },
+        mt: { xs: 0, md: 4 },
+        mb: { xs: 4, md: 8 },
+        boxShadow: '0 10px 40px rgba(0,0,0,0.5)'
       }}>
         <Box sx={{
           position: 'absolute',
@@ -84,7 +89,7 @@ export default function HomePage() {
         }} />
         <Container maxWidth="lg" sx={{ height: '100%', display: 'flex', alignItems: 'center', position: 'relative' }}>
           <Box>
-            <Typography variant="h2" sx={{ fontWeight: 'bold', color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
+            <Typography variant="h2" sx={{ fontWeight: 900, color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
               BIENVENIDO A<br />
               <Box component="span" sx={{ color: 'orange.200' }}>CARRERAS BY STRYD PANAMA</Box>
             </Typography>
@@ -136,13 +141,13 @@ export default function HomePage() {
                     overflow: 'hidden',
                     boxShadow: 3,
                     transition: 'transform 0.3s, box-shadow 0.3s',
-                    '&:hover': { transform: 'translateY(-8px)', boxShadow: 6 }
+                    '&:hover': { transform: 'translateY(-8px)', boxShadow: '0 8px 30px rgba(250, 204, 21, 0.15)' }
                   }}>
                     <Box sx={{
                       height: 160,
                       background: race.imageUrl 
                         ? `url(${race.imageUrl}) center/cover no-repeat`
-                        : `linear-gradient(135deg, ${ACCENT} 0%, #FF8C33 100%)`,
+                        : 'radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -204,7 +209,14 @@ export default function HomePage() {
       </Box>
 
       {/* Últimos Resultados */}
-      <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
+      <Box sx={{ 
+        py: 8, 
+        bgcolor: 'background.paper',
+        borderRadius: '32px',
+        mx: { xs: 2, md: 4 },
+        mb: { xs: 4, md: 8 },
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+       }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
             <Typography variant="h3" sx={{ fontWeight: 'bold', mb: 2 }}>

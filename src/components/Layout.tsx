@@ -7,7 +7,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 
-const ACCENT = '#FF6B00';
+const ACCENT = '#facc15';
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
@@ -48,8 +48,8 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
       mode,
       primary: { main: ACCENT },
       background: {
-        default: mode === 'dark' ? '#111827' : '#F9FAFB',
-        paper: mode === 'dark' ? '#1F2937' : '#FFFFFF',
+        default: mode === 'dark' ? '#020617' : '#F9FAFB',
+        paper: mode === 'dark' ? '#0f172a' : '#FFFFFF',
       },
     },
   });
@@ -93,7 +93,7 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
         <Container maxWidth={maxWidth} sx={{ flex: 1, py: 4 }}>
           {children}
         </Container>
-        <Box component="footer" sx={{ bgcolor: mode === 'dark' ? '#0F172A' : '#1F2937', color: 'white', py: 4 }}>
+        <Box component="footer" sx={{ bgcolor: mode === 'dark' ? '#020617' : '#1F2937', color: 'white', py: 4, borderTop: '1px solid #1e293b' }}>
           <Container maxWidth="lg">
             <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
               <Link href="https://strydpanama.com" target="_blank" rel="noopener noreferrer" sx={{ color: 'grey.400', '&:hover': { color: ACCENT } }}>

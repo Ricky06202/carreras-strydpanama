@@ -31,14 +31,14 @@ export default function MUIThemeProvider({ children }: { children: React.ReactNo
     palette: {
       mode,
       primary: {
-        main: '#FF6B00',
+        main: '#facc15',
       },
       secondary: {
-        main: '#FF8C33',
+        main: '#eab308',
       },
       background: {
-        default: mode === 'dark' ? '#111827' : '#F9FAFB',
-        paper: mode === 'dark' ? '#1F2937' : '#FFFFFF',
+        default: mode === 'dark' ? '#020617' : '#F9FAFB',
+        paper: mode === 'dark' ? '#0f172a' : '#FFFFFF',
       },
     },
     components: {
@@ -46,14 +46,15 @@ export default function MUIThemeProvider({ children }: { children: React.ReactNo
         styleOverrides: {
           root: {
             textTransform: 'none',
-            borderRadius: 8,
+            borderRadius: 12,
+            fontWeight: 'bold',
           },
         },
       },
       MuiCard: {
         styleOverrides: {
           root: {
-            borderRadius: 12,
+            borderRadius: 24,
           },
         },
       },

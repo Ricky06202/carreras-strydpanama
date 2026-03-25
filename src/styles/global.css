@@ -1,8 +1,8 @@
 @import "tailwindcss" ;
 
 @theme {
-  --color-accent: #FF6B00;
-  --color-accent-dark: #FF8C33;
+  --color-accent: #facc15;
+  --color-accent-dark: #eab308;
 }
 
 .bg-accent {
@@ -37,8 +37,8 @@ html.light {
 }
 
 html.dark {
-  --bg-primary: #111827;
-  --bg-secondary: #1F2937;
+  --bg-primary: #020617;
+  --bg-secondary: #0f172a;
   --text-primary: #F9FAFB;
   --text-secondary: #9CA3AF;
 }
