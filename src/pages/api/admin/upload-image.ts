@@ -21,11 +21,11 @@ export const POST: APIRoute = async ({ request }) => {
       }
     });
 
-    const publicUrl = `${(env as any).IMAGES.publicUrlPrefix}${fileName}`;
+    const url = `/api/images/${fileName}`;
     
     return new Response(JSON.stringify({ 
       success: true, 
-      url: publicUrl,
+      url,
       fileName
     }), { 
       headers: { 'Content-Type': 'application/json' } 
