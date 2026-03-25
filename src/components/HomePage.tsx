@@ -235,7 +235,8 @@ export default function HomePage() {
         </Container>
       </Box>
 
-      {/* Sponsors */}
+      {/* Sponsors - Ocultado temporalmente */}
+      {/* 
       <Box sx={{ py: 6, bgcolor: 'background.default' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 4 }}>
@@ -263,6 +264,7 @@ export default function HomePage() {
           </Box>
         </Container>
       </Box>
+      */}
 
       {/* Info Section */}
       <Box sx={{ py: 8, bgcolor: '#1F2937' }}>
