@@ -13,6 +13,7 @@ import StopIcon from '@mui/icons-material/Stop';
 import DoneIcon from '@mui/icons-material/Done';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FinishLineControl from './FinishLineControl';
 import DownloadIcon from '@mui/icons-material/Download';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import AddIcon from '@mui/icons-material/Add';
@@ -235,6 +236,29 @@ export default function AdminContent({
     }
   };
 
+  const handleRecordFinish = async (participantId: string, finishTime: number) => {
+    try {
+      const res = await fetch(`/api/admin/participant/${participantId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ finishTime })
+      });
+      if (res.ok) {
+        showNotification('Tiempo registrado', 'success');
+        if (selectedRace) {
+          fetch(`/api/admin/race/${selectedRace.id}`)
+            .then(r => r.json())
+            .then(d => { if (d.participants) onUpdateParticipant(d.participants[0]?.id || '', {}); })
+            .catch(() => {});
+        }
+      } else {
+        showNotification('Error al registrar tiempo', 'error');
+      }
+    } catch {
+      showNotification('Error al registrar tiempo', 'error');
+    }
+  };
+
   const getCategoryName = (categoryId: string | null) => {
     if (!categoryId) return '-';
     const cat = categories.find(c => c.id === categoryId);
@@ -335,6 +359,7 @@ export default function AdminContent({
             <Tab label="Categorías" />
             <Tab label="Distancias" />
             <Tab label="Códigos" />
+            <Tab label="Llegada" icon={<TimerIcon />} iconPosition="end" />
           </Tabs>
 
           {tab === 0 && (
@@ -530,6 +555,33 @@ export default function AdminContent({
                 </Table>
               </TableContainer>
             </Box>
+          )}
+
+          {tab === 4 && (
+            selectedRace?.status === 'active' ? (
+              <FinishLineControl
+                raceId={selectedRace.id}
+                timerStart={selectedRace.timerStart}
+                participants={participants}
+                onRecordFinish={handleRecordFinish}
+              />
+            ) : (
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="h6" color="text.secondary">
+                  La pestaña de контроля de llegada solo está disponible cuando la carrera está activa.
+                </Typography>
+                {selectedRace && selectedRace.status !== 'active' && (
+                  <Button 
+                    variant="contained" 
+                    onClick={onFinishRace}
+                    sx={{ mt: 2, bgcolor: ACCENT }}
+                    startIcon={<PlayArrowIcon />}
+                  >
+                    Iniciar Carrera
+                  </Button>
+                )}
+              </Box>
+            )
           )}
         </>
       )}

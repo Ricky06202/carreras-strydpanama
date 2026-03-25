@@ -66,7 +66,8 @@ interface Participant {
   size: string;
   categoryId: string | null;
   distanceId: string | null;
-  team: string | null;
+  teamName: string | null;
+  finishTime: number | null;
   termsAccepted: boolean;
 }
 
@@ -204,10 +205,28 @@ export default function AdminDashboard() {
   const handleSaveRace = async () => {
     const method = editRace ? 'PUT' : 'POST';
     const url = editRace ? `/api/admin/race/${editRace.id}` : '/api/admin/race';
-    const payload = { 
+    
+    let payload: any = { 
       ...formData, 
       maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : null 
     };
+    
+    if (editRace) {
+      payload = {
+        name: formData.name || editRace.name,
+        description: formData.description || editRace.description,
+        date: formData.date || editRace.date,
+        location: formData.location || editRace.location,
+        price: formData.price,
+        maxParticipants: formData.maxParticipants ? parseInt(formData.maxParticipants) : editRace.maxParticipants,
+        imageUrl: formData.imageUrl || editRace.imageUrl,
+        technicalInfo: formData.technicalInfo || editRace.technicalInfo,
+        termsAndConditions: formData.termsAndConditions || editRace.termsAndConditions,
+        showTimer: formData.showTimer,
+        showShirtSize: formData.showShirtSize
+      };
+    }
+    
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
