@@ -50,7 +50,8 @@ interface Participant {
   size: string;
   categoryId: string | null;
   distanceId: string | null;
-  team: string | null;
+  teamName: string | null;
+  finishTime: number | null;
   termsAccepted: boolean;
 }
 
@@ -131,7 +132,7 @@ export default function AdminContent({
   const [distanceForm, setDistanceForm] = useState({ name: '' });
   const [openParticipantDialog, setOpenParticipantDialog] = useState(false);
   const [editParticipant, setEditParticipant] = useState<Participant | null>(null);
-  const [participantForm, setParticipantForm] = useState({ firstName: '', lastName: '', email: '', phone: '', paymentStatus: '', team: '' });
+  const [participantForm, setParticipantForm] = useState({ firstName: '', lastName: '', email: '', phone: '', paymentStatus: '', teamName: '' });
 
   const showNotification = (message: string, type: 'success' | 'error') => {
     setNotification({ message, type });
@@ -214,7 +215,7 @@ export default function AdminContent({
       email: participant.email,
       phone: participant.phone || '',
       paymentStatus: participant.paymentStatus,
-      team: participant.team || ''
+      teamName: participant.teamName || ''
     });
     setOpenParticipantDialog(true);
   };
@@ -363,7 +364,7 @@ export default function AdminContent({
                         <TableCell>{p.firstName} {p.lastName}</TableCell>
                         <TableCell>{p.email}</TableCell>
                         <TableCell>{p.phone || '-'}</TableCell>
-                        <TableCell>{p.team || '-'}</TableCell>
+                        <TableCell>{p.teamName || '-'}</TableCell>
                         <TableCell>{getCategoryName(p.categoryId)}</TableCell>
                         <TableCell>{p.size || '-'}</TableCell>
                         <TableCell>
@@ -611,8 +612,8 @@ export default function AdminContent({
           />
           <TextField 
             label="Equipo" 
-            value={participantForm.team} 
-            onChange={(e) => setParticipantForm({...participantForm, team: e.target.value})} 
+            value={participantForm.teamName} 
+            onChange={(e) => setParticipantForm({...participantForm, teamName: e.target.value})} 
             fullWidth 
           />
           <FormControl fullWidth>
