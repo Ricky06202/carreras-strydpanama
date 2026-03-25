@@ -304,6 +304,7 @@ export default function AdminDashboard() {
       setEditRace(race);
       setFormData({ name: race.name, description: race.description || '', date: race.date, location: race.location || '', price: race.price, maxParticipants: race.maxParticipants?.toString() || '', imageUrl: race.imageUrl || '', technicalInfo: race.technicalInfo || '', termsAndConditions: race.termsAndConditions || '', showTimer: race.showTimer || false, showShirtSize: race.showShirtSize !== false });
     } else {
+      setEditRace(null);
       setFormData({ name: '', description: '', date: '', location: '', price: 0, maxParticipants: '', imageUrl: '', technicalInfo: '', termsAndConditions: '', showTimer: false, showShirtSize: true });
     }
     setOpenDialog(true);
