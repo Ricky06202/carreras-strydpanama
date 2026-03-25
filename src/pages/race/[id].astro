@@ -117,14 +117,10 @@ function formatDate(dateStr: string) {
           </div>
         </div>
 
-        {(race.routeGpxUrl || race.routeGeoJson) && (
+        {(race.routeGpxUrl) && (
           <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
             <h2 class="text-xl font-bold mb-4">Ruta de la Carrera</h2>
-            {race.routeGpxUrl ? (
-              <RaceMap client:load gpxUrl={race.routeGpxUrl} raceName={race.name} />
-            ) : (
-              <RouteViewer client:load routeGeoJson={race.routeGeoJson ?? null} raceName={race.name} />
-            )}
+            <RaceMap client:load gpxUrl={race.routeGpxUrl} raceName={race.name} />
           </div>
         )}
       </div>
