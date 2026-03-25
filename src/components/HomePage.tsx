@@ -47,13 +47,11 @@ const sponsors = [
 
 export default function HomePage() {
   const [upcomingRaces, setUpcomingRaces] = useState<Race[]>([]);
-  const [completedRaces, setCompletedRaces] = useState<Race[]>([]);
 
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => {
       const races = d.races || [];
-      setUpcomingRaces(races.filter((r: Race) => r.status === 'upcoming'));
-      setCompletedRaces(races.filter((r: Race) => r.status === 'completed'));
+      setUpcomingRaces(races.filter((r: Race) => r.status === 'accepting'));
     }).catch(() => { });
   }, []);
 
@@ -189,7 +187,7 @@ export default function HomePage() {
         </Container>
       </Box>
 
-      {/* Últimos Resultados */}
+      {/* Últimos Resultados - Ocultado temporalmente
       <Box sx={{ py: 8, bgcolor: 'background.paper' }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 6 }}>
@@ -234,7 +232,7 @@ export default function HomePage() {
           )}
         </Container>
       </Box>
-
+      */}
       {/* Sponsors - Ocultado temporalmente */}
       {/* 
       <Box sx={{ py: 6, bgcolor: 'background.default' }}>
