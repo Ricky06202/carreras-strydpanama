@@ -305,5 +305,121 @@ app.get('/health', (c) => {
   });
 });
 
+// ============================================
+// INTERFAZ ADMIN (raíz)
+// ============================================
+
+app.get('/', (c) => {
+  return c.html(`<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carreras STRYD Panama - Admin API</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #e2e8f0; min-height: 100vh; padding: 2rem; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { font-size: 2rem; margin-bottom: 0.5rem; color: #22d3ee; }
+    .subtitle { color: #94a3b8; margin-bottom: 2rem; }
+    .card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid #334155; }
+    .card h2 { color: #facc15; font-size: 1.25rem; margin-bottom: 1rem; }
+    .status { display: inline-block; padding: 0.25rem 0.75rem; background: #22c55e; color: white; border-radius: 9999px; font-size: 0.875rem; }
+    .endpoints { display: grid; gap: 0.5rem; }
+    .endpoint { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; background: #0f172a; border-radius: 8px; }
+    .method { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
+    .method.get { background: #22c55e; color: white; }
+    .method.post { background: #3b82f6; color: white; }
+    .method.put { background: #f59e0b; color: white; }
+    .method.delete { background: #ef4444; color: white; }
+    a { color: #22d3ee; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+    .btn { display: inline-block; padding: 0.75rem 1.5rem; background: #22d3ee; color: #0f172a; border-radius: 8px; font-weight: bold; text-decoration: none; }
+    .btn:hover { background: #06b6d4; }
+    .btn.secondary { background: #475569; color: white; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Carreras STRYD Panama</h1>
+    <p class="subtitle">Backend API - Hono.js + Cloudflare D1</p>
+    
+    <div class="grid">
+      <div class="card">
+        <h2>Estado del Sistema</h2>
+        <p><span class="status">● Operativo</span></p>
+        <p style="margin-top: 1rem; color: #94a3b8;">
+          Base de datos: D1 (SQLite)<br>
+          Almacenamiento: R2 (imágenes)<br>
+          Cache: KV Store
+        </p>
+      </div>
+      
+      <div class="card">
+        <h2>Enlaces Rápidos</h2>
+        <div class="links">
+          <a href="http://localhost:4321" class="btn">Frontend (Astro)</a>
+          <a href="/health" class="btn secondary" target="_blank">Health Check</a>
+          <a href="/api/races" class="btn secondary" target="_blank">API Races</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="card">
+      <h2>API Endpoints</h2>
+      <div class="endpoints">
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/races</code>
+          <span style="color: #94a3b8">- Carreras públicas</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/race/:id</code>
+          <span style="color: #94a3b8">- Detalle de carrera</span>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <code>/api/register</code>
+          <span style="color: #94a3b8">- Registrar participante</span>
+        </div>
+        <div class="endpoint">
+          <span class="method post">POST</span>
+          <code>/api/validate-code</code>
+          <span style="color: #94a3b8">- Validar código</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/categories/:raceId</code>
+          <span style="color: #94a3b8">- Categorías de carrera</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/distances/:raceId</code>
+          <span style="color: #94a3b8">- Distancias de carrera</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/teams</code>
+          <span style="color: #94a3b8">- Equipos aprobados</span>
+        </div>
+        <div class="endpoint">
+          <span class="method get">GET</span>
+          <code>/api/admin/races</code>
+          <span style="color: #94a3b8">- Todas las carreras (admin)</span>
+        </div>
+      </div>
+    </div>
+    
+    <p style="text-align: center; color: #64748b; margin-top: 2rem;">
+      Panel de administración del frontend: <a href="http://localhost:4321/admin">localhost:4321/admin</a>
+    </p>
+  </div>
+</body>
+</html>`);
+});
+
 // Exportar el worker
 export default app;
