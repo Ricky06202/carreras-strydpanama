@@ -36,7 +36,7 @@ export default {
         title: 'URL del GPX de la Ruta',
       },
       imageUrl: {
-        type: 'string',
+        type: 'media',
         title: 'Imagen de la Carrera',
       },
       technicalInfo: {
