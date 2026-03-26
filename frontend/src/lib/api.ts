@@ -1,37 +1,25 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-// Configuración de la API del backend SonicJS
 
-let cachedConfig: { baseUrl: string; email: string; password: string } | null = null;
+let config = {
+  baseUrl: '',
+  email: '',
+  password: '',
+  authToken: null as string | null
+};
 
-function getEnvVar(key: string, runtime?: any): string | undefined {
-  if (runtime?.env?.[key]) return runtime.env[key];
-  if (typeof process !== 'undefined' && process.env?.[key]) {
-    return process.env[key];
-  }
-  if (typeof globalThis !== 'undefined') {
-    const env = (globalThis as any).env;
-    if (env?.[key]) return env[key];
-  }
-  return undefined;
+export function setupApi(runtime: any) {
+  config.baseUrl = runtime?.env?.SONICJS_API_URL || '';
+  config.email = runtime?.env?.SONICJS_API_EMAIL || '';
+  config.password = runtime?.env?.SONICJS_API_PASSWORD || '';
 }
 
-function initConfig(runtime?: any) {
-  if (cachedConfig) return cachedConfig;
-  
-  const baseUrl = getEnvVar('SONICJS_API_URL', runtime) || '';
-  const email = getEnvVar('SONICJS_API_EMAIL', runtime) || '';
-  const password = getEnvVar('SONICJS_API_PASSWORD', runtime) || '';
-  
-  cachedConfig = { baseUrl, email, password };
-  return cachedConfig;
+function isConfigured(): boolean {
+  return !!(config.baseUrl && config.email && config.password);
 }
-
-let authToken: string | null = null;
 
 async function login(): Promise<string | null> {
-  const config = initConfig();
   if (!config.email || !config.password || !config.baseUrl) {
-    console.error('Missing config:', config);
+    console.error('Configuración incompleta:', config);
     return null;
   }
   
@@ -45,8 +33,8 @@ async function login(): Promise<string | null> {
     
     if (response.ok) {
       const data = await response.json();
-      authToken = data.token || data.accessToken;
-      return authToken;
+      config.authToken = data.token || data.accessToken;
+      return config.authToken;
     }
   } catch (e) {
     console.error('Login failed:', e);
@@ -55,15 +43,13 @@ async function login(): Promise<string | null> {
 }
 
 export async function apiFetch(endpoint: string, options?: RequestInit) {
-  const config = initConfig();
-  
   if (!config.baseUrl) {
-    throw new Error('SONICJS_API_URL not configured');
+    throw new Error('API no inicializada. Llama a setupApi(Astro.locals.runtime) en la página.');
   }
   
   const url = `${config.baseUrl}${endpoint}`;
   
-  if (!authToken && config.email && config.password) {
+  if (!config.authToken && config.email && config.password) {
     await login();
   }
   
@@ -71,7 +57,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(authToken ? { 'Authorization': `Bearer ${authToken}` } : {}),
+      ...(config.authToken ? { 'Authorization': `Bearer ${config.authToken}` } : {}),
       ...options?.headers,
     },
   });
@@ -79,7 +65,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
   if (!response.ok) {
     if (response.status === 401 && config.email && config.password) {
       await login();
-      if (authToken) {
+      if (config.authToken) {
         return apiFetch(endpoint, options);
       }
     }

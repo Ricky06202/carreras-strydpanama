@@ -1,12 +1,13 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { api } from '../../lib/api';
+import { setupApi, api } from '../../lib/api';
 
 const raceId = Astro.params.id;
 let race = null;
-let participants = [];
 
 try {
+  const runtime = Astro.locals.runtime;
+  setupApi(runtime);
   const raceData = await api.getRace(raceId);
   if (raceData?.data?.[0]) {
     race = raceData.data[0];

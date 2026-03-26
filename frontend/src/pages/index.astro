@@ -1,8 +1,19 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import HomePage from '../components/HomePage';
+import { setupApi, api } from '../lib/api';
+
+let racesData = { data: [] };
+
+try {
+  const runtime = Astro.locals.runtime;
+  setupApi(runtime);
+  racesData = await api.getPublicRaces();
+} catch (e) {
+  console.error('Error fetching races:', e);
+}
 ---
 
 <Layout title="Inicio - Carreras by StrydPanama">
-  <HomePage client:only="react" />
+  <HomePage client:only="react" initialRaces={racesData.data} />
 </Layout>

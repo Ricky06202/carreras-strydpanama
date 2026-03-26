@@ -40,35 +40,39 @@ interface Race {
 }
 
 function formatDateLong(dateStr: string) {
+  if (!dateStr) return 'Por definir';
   const date = new Date(dateStr);
   return date.toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatDate(dateStr: string) {
+  if (!dateStr) return '';
   const date = new Date(dateStr);
-  return date.toLocaleDateString('es-PA', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return date.toLocaleDateString('es-PA');
 }
 
-const sponsors = [
-  'Gatorade', 'Aloe King', 'Agua Cristalina', 'Zepol', 'Red Bull',
-  'Detergente 10', 'El Molino Criollo', 'Pasta Dorado', 'Te Hindu',
-  'Guandy', 'Xtreme', 'Borden', 'Berard', 'Sushi Express', 'More',
-  'Juan Valdez', 'Nutrigel', 'Prestigio', 'Destiny Sport', 'Bacterion'
-];
+interface HomePageProps {
+  initialRaces?: Race[];
+}
 
-export default function HomePage() {
+export default function HomePage({ initialRaces = [] }: HomePageProps) {
   const [upcomingRaces, setUpcomingRaces] = useState<Race[]>([]);
   const [completedRaces, setCompletedRaces] = useState<Race[]>([]);
 
   useEffect(() => {
-    import('../lib/api').then(({ api }) => {
-      api.getPublicRaces().then(d => {
-        const races = d.data || [];
-        setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
-        setCompletedRaces(races.filter((r: any) => r.data?.status === 'finished'));
-      }).catch(() => { });
-    });
-  }, []);
+    if (initialRaces.length > 0) {
+      setUpcomingRaces(initialRaces.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
+      setCompletedRaces(initialRaces.filter((r: any) => r.data?.status === 'finished'));
+    } else {
+      import('../lib/api').then(({ api }) => {
+        api.getPublicRaces().then(d => {
+          const races = d.data || [];
+          setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
+          setCompletedRaces(races.filter((r: any) => r.data?.status === 'finished'));
+        }).catch(() => { });
+      });
+    }
+  }, [initialRaces]);
 
   return (
     <Layout>
