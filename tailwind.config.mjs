@@ -1,5 +1,4 @@
-import type { Config } from 'tailwindcss'
-
+/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}'],
   darkMode: 'class',
@@ -7,11 +6,11 @@ export default {
     extend: {
       colors: {
         accent: {
-          DEFAULT: '#FF6B00',
-          dark: '#FF8C33',
+          DEFAULT: '#facc15',
+          dark: '#eab308',
         },
       },
     },
   },
   plugins: [],
-} satisfies Config
+}
