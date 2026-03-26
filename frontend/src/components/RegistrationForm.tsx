@@ -47,14 +47,21 @@ const lightTheme = createTheme({
 
 interface Race {
   id: string;
-  name: string;
-  price: number;
-  description: string | null;
-  imageUrl: string | null;
-  technicalInfo: string | null;
-  termsAndConditions: string | null;
-  showTimer: boolean;
-  showShirtSize: boolean;
+  title: string;
+  status: string;
+  data?: {
+    title?: string;
+    description?: string;
+    date?: string;
+    startTime?: string;
+    location?: string;
+    price?: number;
+    imageUrl?: string;
+    technicalInfo?: string;
+    termsAndConditions?: string;
+    showTimer?: boolean;
+    showShirtSize?: boolean;
+  };
 }
 
 interface Category {
@@ -176,7 +183,7 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
   }, []);
 
   useEffect(() => {
-    if (initialRaces.length > 0) {
+    if (initialRaces && initialRaces.length > 0) {
       setRaces(initialRaces);
     }
     fetch(`${API_BASE}/api/teams`).then(r => r.json()).then(d => {
@@ -282,11 +289,15 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
                 label="Carrera *"
                 onChange={(e) => setSelectedRace(e.target.value)}
               >
-                {races.map((r) => (
-                  <MenuItem key={r.id} value={r.id}>
-                    {r.name} - ${r.price}
-                  </MenuItem>
-                ))}
+{races.map((r) => {
+  const raceTitle = r.data?.title || r.title || 'Sin nombre';
+  const racePrice = r.data?.price !== null ? r.data?.price : 0;
+  return (
+    <MenuItem key={r.id} value={r.id}>
+      {raceTitle} - ${racePrice}
+    </MenuItem>
+  );
+})}
               </Select>
             </FormControl>
 
@@ -404,7 +415,7 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
                   </Select>
                 </FormControl>
               )}
-              {registrationType === 'individual' && raceInfo?.showShirtSize !== false && (
+              {registrationType === 'individual' && raceInfo?.data?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>
                   <Select value={formData.size} label="Talla de Camiseta" onChange={(e) => setFormData({...formData, size: e.target.value})}>
@@ -487,7 +498,7 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
                           <MenuItem value="F">Femenino</MenuItem>
                         </Select>
                       </FormControl>
-                      {raceInfo?.showShirtSize !== false && (
+                      {raceInfo?.data?.showShirtSize !== false && (
                         <FormControl size="small">
                           <InputLabel>Talla</InputLabel>
                           <Select value={member.size} label="Talla" onChange={(e) => updateTeamMember(index, 'size', e.target.value)}>
@@ -501,18 +512,18 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
               </Box>
             )}
 
-            {raceInfo?.technicalInfo && (
+            {raceInfo?.data?.technicalInfo && (
               <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Información Técnica:</Typography>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{raceInfo.technicalInfo}</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{raceInfo.data?.technicalInfo}</Typography>
               </Box>
             )}
 
-            {raceInfo?.termsAndConditions && (
+            {raceInfo?.data?.termsAndConditions && (
               <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
                 <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Términos y Condiciones / Disclaimer:</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
-                  {raceInfo.termsAndConditions}
+                  {raceInfo.data?.termsAndConditions}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
                   <input type="checkbox" id="termsAccepted" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} style={{ marginRight: 8 }} />
@@ -530,7 +541,7 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
                   (registrationType === 'individual' && !isIndividualValid()) ||
                   (registrationType === 'team' && !isTeamMembersValid()) ||
                   (distances.length > 0 && !formData.distance) ||
-                  !!((raceInfo?.termsAndConditions) && !termsAccepted)
+                  !!((raceInfo?.data?.termsAndConditions) && !termsAccepted)
                 }
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
@@ -564,9 +575,9 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
 
             <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
-              <Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.name || '-'}</Typography>
-              <Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
-              <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>Total: ${races.find(r => r.id === selectedRace)?.price || 0}</Typography>
+<Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.data?.title || races.find(r => r.id === selectedRace)?.title || '-'}</Typography>
+<Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
+<Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>Total: ${races.find(r => r.id === selectedRace)?.data?.price || 0}</Typography>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
