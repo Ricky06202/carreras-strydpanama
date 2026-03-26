@@ -69,8 +69,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     if (confirm('¿Estás seguro de reiniciar el cronómetro?')) {
       updateRace(id, { 
         timerStart: null, 
-        timerStop: null,
-        status: 'upcoming'
+        timerStop: null
       });
     }
   };
