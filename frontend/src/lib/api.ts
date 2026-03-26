@@ -1,10 +1,10 @@
 // Configuración de la API del backend SonicJS
 // @ts-ignore
-export const API_BASE_URL = import.meta.env.SONICJS_API_URL || 'http://localhost:8787';
+export const API_BASE_URL = import.meta.env.SONICJS_API_URL || 'https://api.carreras2.strydpanama.com';
 
 // Credenciales para autenticación automática
 // @ts-ignore
-const API_EMAIL = import.meta.env.SONICJS_API_EMAIL || '';
+const API_EMAIL = import.meta.env.SONICJS_API_EMAIL || 'ricardosanjurg@gmail.com';
 // @ts-ignore
 const API_PASSWORD = import.meta.env.SONICJS_API_PASSWORD || '';
 
