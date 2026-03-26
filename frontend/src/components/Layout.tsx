@@ -61,31 +61,16 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
     window.dispatchEvent(new CustomEvent('themechange', { detail: { mode: newMode } }));
   };
 
-  // Eliminamos el if (!mounted) que causaba que el servidor renderizara sin temas.
-  // MUI necesita el ThemeProvider en el servidor para generar los estilos iniciales.
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Box sx={{ 
-        minHeight: '80vh', 
+        minHeight: '100%', 
         display: 'flex', 
         flexDirection: 'column', 
-        bgcolor: 'background.default', // Usamos el color del tema explícitamente
+        bgcolor: 'transparent',
         color: 'text.primary',
-        transition: 'background-color 0.3s, color 0.3s'
       }}>
-        {mounted && (
-          <AppBar position="static" sx={{ bgcolor: 'background.paper', color: 'text.primary', boxShadow: 1 }}>
-            <Toolbar>
-              <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold', color: ACCENT }}>
-                DASHBOARD
-              </Typography>
-              <IconButton onClick={toggleTheme} color="inherit">
-                {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-              </IconButton>
-            </Toolbar>
-          </AppBar>
-        )}
         <Container maxWidth={maxWidth} sx={{ flex: 1, py: 4 }}>
           {children}
         </Container>
