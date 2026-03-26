@@ -2,12 +2,12 @@
 import Layout from '../layouts/Layout.astro';
 import HomePage from '../components/HomePage';
 import { api } from '../lib/api';
+import { env } from 'cloudflare:workers';
 
 let racesData = { data: [] };
-const runtime = Astro.locals.runtime;
 
 try {
-  const response = await api.getPublicRaces(runtime?.env || {});
+  const response = await api.getPublicRaces(env);
   racesData = response;
 } catch (e) {
   console.error('Error fetching races:', e);

@@ -1,13 +1,12 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import { api } from '../../lib/api';
+import { env } from 'cloudflare:workers';
 
 const raceId = Astro.params.id;
 let race = null;
 
 try {
-  const runtime = Astro.locals.runtime;
-  const env = runtime?.env || {};
   const raceData = await api.getRace(env, raceId);
   if (raceData?.data?.[0]) {
     race = raceData.data[0];
