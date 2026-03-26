@@ -378,10 +378,46 @@ const races = response.data || [];
 - Cada request tiene su propio `env` - no se guarda en variables globales (stateless)
 - Las variables deben estar configuradas en **Cloudflare Pages → Settings → Environment Variables → Production**
 
-### Variables requeridas en Cloudflare Pages (Production)
-
-| Variable | Valor |
-|----------|-------|
-| `SONICJS_API_URL` | `https://api.carreras2.strydpanama.com` |
-| `SONICJS_API_EMAIL` | usuario con permisos |
 | `SONICJS_API_PASSWORD` | contraseña |
+
+---
+
+## 🤖 REGLAS ESTRICTAS PARA AGENTES IA (CONOCIMIENTO ACUMULADO)
+
+**¡ATENCIÓN AGENTES!** Antes de escribir cualquier código en este repositorio, DEBES leer, entender y acatar absolutamente las siguientes reglas o de lo contrario el sistema EN PRÓDUCCIÓN SE ROMPERÁ:
+
+### 1. El Peligro del Caché de Cloudflare (GET Requests)
+- **El Problema**: Cloudflare Pages / Workers cachea *agresivamente* las peticiones GET (como el cronómetro, registros nuevos, estado de la carrera).
+- **La Regla de Oro**: Toda la comunicación SSR de Astro o llamadas cliente a SonicJS sobre data que cambia (GET `/api/collections/...`) **DEBE** incluir un **Cache Buster** en la URL (ej. `_t=Date.now()`) y los headers estructurados:
+  ```typescript
+  // ¡NUNCA OLVIDAR ESTO EN LECTURAS GET O SE VERÁ DATA VIEJA!
+  'Cache-Control': 'no-cache, no-store, must-revalidate',
+  'Pragma': 'no-cache',
+  ```
+
+### 2. Bugs del Core de SonicJS (Peticiones POST y PUT)
+- **El Problema de OpenAPI**: La documentación Swagger de SonicJS dice que el campo para especificar una colección es `collection_id` (snake_case). **¡ESTO ES MENTIRA!** Si haces un POST a `/api/content` pasándole `collection_id`, SonicJS tirará un error interno de servidor 500 diciendo `Error: collectionId is required`.
+- **La Regla de Oro**: Cuando actualices o crees registros, manda **AMBAS VARIABLES** en tu payload por seguridad. Es la única manera de evitar rechazos de esquema o caídas silenciosas:
+  ```json
+  {
+    "collectionId": "col-participants-xxx",
+    "collection_id": "col-participants-xxx",
+    "title": "Nuevo Registro",
+    ...
+  }
+  ```
+- **El Doble Anidamiento**: Al hacer GET de un contenido (`/api/content/{id}`), la estructura que el CMS devuelve tiene los datos reales dentro de `response.data.data`. Un error muy común es tratar de acceder directamente a `response.data.timerStart` (será undefined). Siempre mapea bien la diferencia entre los campos core de DB (id, status, title) y los campos personalizados del modelo (que van dentro de `.data`).
+
+### 3. Reglas de Diseño UI Inquebrantables
+- Somos **STRYD Panama**. Nuestra paleta y estética son cruciales para el cliente.
+- **Tu misión es hacer UI's que se vean "Caras y Premium", no proyectos de universidad.**
+- 🧡 **NARANJA (`#FF6B00`) ES LA LEY**: Usarás naranja para botones estelares, bordes de elementos activos y de confirmación.
+- 🖤 **Fondos**: El sistema abraza el **Dark Mode** de alta gama (fondos `#0f0f0f` con tarjetas `#1a1a1a`).
+- 🚫 **PROHIBIDO EL AZUL**: No asumas por accidente clases de Tailwind como `bg-blue-600` o `text-indigo-500` ¡Cero azul en este repo!
+- 🚫 **PROHIBIDO EL AMARILLO**: `bg-yellow-400` y variantes NO DEBEN existir. Usa tonos de naranja claro para variaciones.
+- ⛔ **PROHIBIDO CÓDIGO PLACEHOLDER**: NADA de botones genéricos `<button>Click</button>` sin estilos. Debes proveer un componente funcional de UI (`@mui/material` o `Tailwind CSS`) totalmente responsivo en el primer intento. El operador humano evaluará tu trabajo buscando excelencia al primer impacto.
+
+### 4. Sistema de Tiempos y Cronómetros
+- **Cómo funcionan**: Los cronómetros en las carreras **no son setIntervals independientes** en el front-end que guarden "1 segundo transcurrido, 2 segundos transcurridos".
+- Es una arquitectura sin estado. El backend almacena un timestamp UNIX de cuándo empezó (`timerStart`). El front-end hace la resta matemática en vivo: `Date.now() / 1000 - timerStart`.
+- **Para la Meta**: Los tiempos finales (`finishTime` de los participantes) se calculan en Segundos (Elapsed Time) usando la misma fórmula desde el servidor (no configures el tiempo basándote en un input del cliente, calcúlalo dinámicamente vs el inicio de la carrera para evitar fraude o desincronización).
