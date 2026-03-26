@@ -260,7 +260,7 @@ const handleSubmit = async () => {
         country: formData.country,
         birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
         gender: formData.gender,
-        size: formData.size,
+        size: raceInfo?.data?.showShirtSize !== false ? formData.size : '',
         raceId: selectedRace,
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
@@ -274,6 +274,7 @@ const handleSubmit = async () => {
         participantData.teamName = teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? '' : teamName);
         participantData.teamMembers = teamMembers.map(m => ({
           ...m,
+          size: raceInfo?.data?.showShirtSize !== false ? m.size : '',
           birthDate: `${m.birthYear}-${m.birthMonth}-${m.birthDay}`
         }));
       } else {

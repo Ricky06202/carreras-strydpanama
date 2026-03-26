@@ -39,14 +39,25 @@ export async function apiFetch(endpoint: string, env: any, options?: RequestInit
   });
 
   if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`API Error [${response.status}] ${endpoint}:`, errorBody);
+    
     if (response.status === 401) {
       const newToken = await getAuthToken(env);
       if (newToken) {
         return apiFetch(endpoint, env, options);
       }
     }
-    const error = await response.json().catch(() => ({ error: 'Unknown' }));
-    throw new Error(`API Error: ${error.error || response.status}`);
+    
+    let errorMsg = `API Error: ${response.status}`;
+    try {
+      const errorJson = JSON.parse(errorBody);
+      errorMsg = errorJson.error || errorJson.message || errorMsg;
+    } catch {
+      errorMsg = errorBody || errorMsg;
+    }
+    
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -69,7 +80,7 @@ export const api = {
   createContent: (env: any, collectionId: string, title: string, data: any) => 
     apiFetch('/api/content', env, {
       method: 'POST',
-      body: JSON.stringify({ collectionId, title, data, status: 'published' }),
+      body: JSON.stringify({ collection_id: collectionId, title, data, status: 'published' }),
     }),
   
   registerParticipant: (env: any, data: any) => {
@@ -84,10 +95,10 @@ export const api = {
     return api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, mappedData);
   },
 
-  updateContent: (env: any, id: string, data: any) =>
+  updateContent: (env: any, id: string, payload: any) =>
     apiFetch(`/api/content/${id}`, env, {
       method: 'PUT',
-      body: JSON.stringify({ data }),
+      body: JSON.stringify(payload),
     }),
 
   updateRace: (env: any, id: string, data: any) =>
