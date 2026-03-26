@@ -15,7 +15,7 @@ export default {
         title: 'Nombre de la Carrera',
       },
       description: {
-        type: 'richtext',
+        type: 'textarea',
         title: 'Descripción',
       },
       date: {
@@ -31,19 +31,19 @@ export default {
         title: 'Ubicación',
       },
       routeGpxUrl: {
-        type: 'url',
+        type: 'string',
         title: 'URL del GPX de la Ruta',
       },
       imageUrl: {
-        type: 'media',
+        type: 'string',
         title: 'Imagen de la Carrera',
       },
       technicalInfo: {
-        type: 'richtext',
+        type: 'textarea',
         title: 'Información Técnica',
       },
       termsAndConditions: {
-        type: 'richtext',
+        type: 'textarea',
         title: 'Términos y Condiciones',
       },
       price: {
