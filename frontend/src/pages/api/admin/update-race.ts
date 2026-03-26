@@ -8,7 +8,7 @@ export const POST: APIRoute = async ({ request }) => {
   
   try {
     const body = await request.json();
-    const { id, startTime, stopTime, status } = body;
+    const { id, timerStart, timerStop, status } = body;
     
     if (!id) {
       return new Response(JSON.stringify({ error: 'ID de carrera requerido' }), { status: 400 });
@@ -27,8 +27,8 @@ export const POST: APIRoute = async ({ request }) => {
     const currentData = raceObj.data || {};
     const updatedData = { ...currentData };
     
-    if (startTime !== undefined) updatedData.timerStart = startTime;
-    if (stopTime !== undefined) updatedData.timerStop = stopTime;
+    if (timerStart !== undefined) updatedData.timerStart = timerStart;
+    if (timerStop !== undefined) updatedData.timerStop = timerStop;
     if (status !== undefined) updatedData.status = status;
 
     const payload = {
