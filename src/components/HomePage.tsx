@@ -209,7 +209,7 @@ export default function HomePage() {
       </Box>
 
       {/* Últimos Resultados */}
-      <Box sx={{ 
+      <Box id="resultados" sx={{ 
         py: 8, 
         bgcolor: 'background.paper',
         borderRadius: '32px',
@@ -307,9 +307,9 @@ export default function HomePage() {
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>ENLACES</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <Typography component="a" href="#proximos-eventos" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><CalendarTodayIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Calendario</Typography>
-                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
-                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
-                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
+                <Typography component="a" href="/#resultados" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
+                <Typography component="a" href="https://strydpanama.com" target="_blank" rel="noopener noreferrer" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
+                <Typography component="a" href="/terminos-y-condiciones" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
               </Box>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>

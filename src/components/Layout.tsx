@@ -78,7 +78,7 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
                 <Box sx={{ width: 40, height: 40, bgcolor: ACCENT, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <DirectionsRunIcon sx={{ color: 'white' }} />
                 </Box>
-                <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Stryd Panama</Typography>
+                <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Carreras by StrydPanama</Typography>
               </Link>
               <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
                 <Button component={Link} href="/" sx={{ color: 'text.primary' }}>Carreras</Button>
