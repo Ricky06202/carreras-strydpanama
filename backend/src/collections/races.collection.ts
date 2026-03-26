@@ -68,6 +68,14 @@ export default {
         type: 'boolean',
         title: 'Mostrar Talla de Camiseta',
       },
+      timerStart: {
+        type: 'number',
+        title: 'Inicio Cronómetro (Timestamp)',
+      },
+      timerStop: {
+        type: 'number',
+        title: 'Fin Cronómetro (Timestamp)',
+      },
     },
     required: ['title'],
   },
