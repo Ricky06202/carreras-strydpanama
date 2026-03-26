@@ -1,4 +1,4 @@
-// Configuración de la API del backend
+// Configuración de la API del backend SonicJS
 // @ts-ignore
 export const API_BASE_URL = import.meta.env.SONICJS_API_URL || 'http://localhost:8787';
 
@@ -26,71 +26,78 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
 export interface Distance {
   id: string;
   name: string;
+  raceId?: string;
 }
 
 export interface Category {
   id: string;
   name: string;
+  raceId?: string;
 }
 
 export interface Race {
   id: string;
-  name: string;
-  description: string | null;
-  date: string;
-  startTime: string | null;
-  status: string;
-  location: string | null;
-  price: number;
-  imageUrl: string | null;
-  distances: Distance[];
-  categories?: Category[];
+  data: {
+    name: string;
+    description?: string;
+    date: string;
+    startTime?: string;
+    location?: string;
+    status?: string;
+    price?: number;
+    imageUrl?: string;
+    technicalInfo?: string;
+    termsAndConditions?: string;
+    maxParticipants?: number;
+    showTimer?: boolean;
+    showShirtSize?: boolean;
+    routeGpxUrl?: string;
+    routeGeoJson?: string;
+  };
 }
 
 export interface Participant {
   id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  paymentStatus: string;
+  data: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    paymentStatus?: string;
+  };
 }
 
-// Funciones de la API
+// Funciones de la API para SonicJS
 export const api = {
-  // Carreras
-  getPublicRaces: () => apiFetch('/api/races'),
-  getRace: (id: string) => apiFetch(`/api/race/${id}`),
+  // Carreras - SonicJS usa /api/content y /api/collections/races/content
+  getPublicRaces: () => apiFetch('/api/collections/races/content?status=accepting'),
+  getAllRaces: () => apiFetch('/api/collections/races/content'),
+  getRace: (id: string) => apiFetch(`/api/content/${id}`),
   
-  // Registro
-  registerParticipant: (data: any) => apiFetch('/api/register', {
+  // Categorías
+  getCategories: (raceId: string) => apiFetch(`/api/collections/categories/content?race=${raceId}`),
+  
+  // Distancias
+  getDistances: (raceId: string) => apiFetch(`/api/collections/distances/content?race=${raceId}`),
+  
+  // Participantes
+  getParticipants: (raceId: string) => apiFetch(`/api/collections/participants/content?race=${raceId}`),
+  registerParticipant: (data: any) => apiFetch('/api/content', {
     method: 'POST',
-    body: JSON.stringify(data),
+    body: JSON.stringify({
+      collection: 'participants',
+      data: data
+    }),
   }),
-  
-  // Categorías y distancias
-  getCategories: (raceId: string) => apiFetch(`/api/categories/${raceId}`),
-  getDistances: (raceId: string) => apiFetch(`/api/distances/${raceId}`),
   
   // Códigos
-  validateCode: (code: string, raceId: string) => apiFetch('/api/validate-code', {
-    method: 'POST',
-    body: JSON.stringify({ code, raceId }),
-  }),
+  validateCode: (code: string, raceId: string) => apiFetch(`/api/collections/registration_codes/content?code=${code}&race=${raceId}`),
   
   // Equipos
-  getTeams: () => apiFetch('/api/teams'),
+  getTeams: () => apiFetch('/api/collections/running_teams/content'),
   
-  // Admin (protegido por Zero Trust)
-  getAdminRaces: () => apiFetch('/api/admin/races'),
-  createRace: (data: any) => apiFetch('/api/admin/races', {
+  // Admin - requiere autenticación
+  login: (email: string, password: string) => apiFetch('/auth/login', {
     method: 'POST',
-    body: JSON.stringify(data),
-  }),
-  updateRace: (id: string, data: any) => apiFetch(`/api/admin/races/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify(data),
-  }),
-  deleteRace: (id: string) => apiFetch(`/api/admin/races/${id}`, {
-    method: 'DELETE',
+    body: JSON.stringify({ email, password }),
   }),
 };

@@ -1,19 +1,47 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
+    // Language and Environment
+    "target": "ES2022",
+    "lib": ["ES2022"],
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ESNext"],
-    "types": ["@cloudflare/workers-types"],
+
+    // Emit
+    "noEmit": true,
+    "sourceMap": true,
+
+    // Type Checking
     "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+
+    // Module Resolution
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "outDir": "./dist",
-    "rootDir": "./src"
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Cloudflare Workers Types
+    "types": ["@cloudflare/workers-types", "@types/node"],
+
+    // Skip type checking for node_modules
+    "skipLibCheck": true,
+
+    // Project Structure
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
