@@ -70,41 +70,10 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default', color: 'text.primary' }}>
-        <AppBar position="sticky" sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
-          <Container maxWidth="lg">
-            <Toolbar disableGutters>
-              <Link href="/" underline="none" sx={{ display: 'flex', alignItems: 'center', gap: 1, flexGrow: 1 }}>
-                <Box sx={{ width: 40, height: 40, bgcolor: ACCENT, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <DirectionsRunIcon sx={{ color: 'white' }} />
-                </Box>
-                <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold' }}>Carreras by StrydPanama</Typography>
-              </Link>
-              <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                <Button component={Link} href="/" sx={{ color: 'text.primary' }}>Carreras</Button>
-                <Button component={Link} href="/register" sx={{ color: 'text.primary' }}>Inscribirse</Button>
-                <IconButton onClick={toggleTheme} sx={{ bgcolor: 'action.hover' }}>
-                  {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
-                </IconButton>
-              </Box>
-            </Toolbar>
-          </Container>
-        </AppBar>
+      <Box sx={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', bgcolor: 'transparent', color: 'text.primary' }}>
         <Container maxWidth={maxWidth} sx={{ flex: 1, py: 4 }}>
           {children}
         </Container>
-        <Box component="footer" sx={{ bgcolor: mode === 'dark' ? '#020617' : '#1F2937', color: 'white', py: 4, borderTop: '1px solid #1e293b' }}>
-          <Container maxWidth="lg">
-            <Box sx={{ display: 'flex', justifyContent: 'center', gap: 4, mb: 2 }}>
-              <Link href="https://strydpanama.com" target="_blank" rel="noopener noreferrer" sx={{ color: 'grey.400', '&:hover': { color: ACCENT } }}>
-                Quiénes somos
-              </Link>
-            </Box>
-            <Typography variant="body2" sx={{ color: 'grey.400', textAlign: 'center' }}>
-              © 2026 Stryd Panama. Todos los derechos reservados.
-            </Typography>
-          </Container>
-        </Box>
       </Box>
     </ThemeProvider>
   );

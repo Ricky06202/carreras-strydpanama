@@ -1,10 +1,13 @@
 ---
+import AstroLayout from '../layouts/Layout.astro';
 import Layout from '../components/Layout';
 import RegistrationForm from '../components/RegistrationForm';
 
 const raceId = Astro.url.searchParams.get('race') || '';
 ---
 
-<Layout client:only="react" maxWidth="sm">
-  <RegistrationForm client:only="react" raceId={raceId} />
-</Layout>
+<AstroLayout title="Registro - Carreras by StrydPanama">
+  <Layout client:only="react" maxWidth="sm">
+    <RegistrationForm client:only="react" raceId={raceId} />
+  </Layout>
+</AstroLayout>
