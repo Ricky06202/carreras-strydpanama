@@ -25,15 +25,18 @@ interface Distance {
 
 interface Race {
   id: string;
-  name: string;
-  description: string | null;
-  date: string;
-  startTime: string | null;
+  title: string;
   status: string;
-  location: string | null;
-  price: number;
-  imageUrl: string | null;
-  distances: Distance[];
+  data?: {
+    title?: string;
+    description?: string;
+    date?: string;
+    startTime?: string;
+    status?: string;
+    location?: string;
+    price?: number;
+    imageUrl?: string;
+  };
 }
 
 function formatDateLong(dateStr: string) {
@@ -60,9 +63,9 @@ export default function HomePage() {
   useEffect(() => {
     import('../lib/api').then(({ api }) => {
       api.getPublicRaces().then(d => {
-        const races = d.races || [];
-        setUpcomingRaces(races.filter((r: Race) => r.status === 'accepting'));
-        setCompletedRaces(races.filter((r: Race) => r.status === 'finished'));
+        const races = d.data || [];
+        setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting'));
+        setCompletedRaces(races.filter((r: any) => r.data?.status === 'finished'));
       }).catch(() => { });
     });
   }, []);
@@ -147,16 +150,16 @@ export default function HomePage() {
                   }}>
                     <Box sx={{
                       height: 160,
-                      background: race.imageUrl 
-                        ? `url(${race.imageUrl}) center/cover no-repeat`
+                      background: race.data?.imageUrl 
+                        ? `url(${race.data.imageUrl}) center/cover no-repeat`
                         : 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       position: 'relative'
                     }}>
-                      {!race.imageUrl && <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />}
-                      {race.status === 'active' && (
+                      {!race.data?.imageUrl && <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />}
+                      {race.data?.status === 'active' && (
                         <Chip
                           label="EN VIVO"
                           color="success"
@@ -167,29 +170,23 @@ export default function HomePage() {
                     </Box>
                     <CardContent>
                       <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                        {race.name}
+                        {race.data?.title || race.title}
                       </Typography>
                       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
                         <Typography variant="body2" color="text.secondary">
                           <CalendarTodayIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                          FECHA: {formatDateLong(race.date)}
+                          FECHA: {race.data?.date ? formatDateLong(race.data.date) : 'Por definir'}
                         </Typography>
-                        {race.location && (
+                        {race.data?.location && (
                           <Typography variant="body2" color="text.secondary">
                             <LocationOnIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                            LUGAR: {race.location}
+                            LUGAR: {race.data?.location}
                           </Typography>
                         )}
-                        {race.startTime && (
+                        {race.data?.startTime && (
                           <Typography variant="body2" color="text.secondary">
                             <AccessTimeIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                            HORA: {race.startTime}
-                          </Typography>
-                        )}
-                        {race.distances && race.distances.length > 0 && (
-                          <Typography variant="body2" color="text.secondary">
-                            <SpeedIcon sx={{ fontSize: 16, mr: 1, verticalAlign: 'middle' }} />
-                            DISTANCIAS: {race.distances.map(d => d.name).join(' - ')}
+                            HORA: {race.data?.startTime}
                           </Typography>
                         )}
                       </Box>
@@ -246,9 +243,9 @@ export default function HomePage() {
                   }} component="a" href={`/race/${race.id}`}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{race.name}</Typography>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{race.data?.title || race.title}</Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Publicado: {formatDate(race.date)}
+                         Publicado: {race.data?.date ? formatDate(race.data.date) : ''}
                         </Typography>
                       </Box>
                       <Typography sx={{ color: ACCENT, fontWeight: 'medium' }}>
