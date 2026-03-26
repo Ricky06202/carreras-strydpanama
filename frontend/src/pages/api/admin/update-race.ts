@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { api } from '../../../lib/api';
+import { api, apiFetch } from '../../../lib/api';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -14,22 +14,41 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'ID de carrera requerido' }), { status: 400 });
     }
 
-    // 1. Obtenemos la carrera actual para no perder datos al actualizar (PUT sobreescribe el objeto data)
-    const currentRace = await api.getRace(env, id);
-    if (!currentRace?.data) {
+    // 1. Obtenemos la carrera actual
+    const raceResponse = await api.getRace(env, id);
+    const raceObj = raceResponse?.data;
+    
+    if (!raceObj) {
+      console.error('Race not found for ID:', id);
       return new Response(JSON.stringify({ error: 'Carrera no encontrada' }), { status: 404 });
     }
 
-    const currentData = currentRace.data.data || {};
-
-    // 2. Mezclamos los datos nuevos con los existentes
-    const updateData: any = { ...currentData };
-    if (startTime !== undefined) updateData.timerStart = startTime;
-    if (stopTime !== undefined) updateData.timerStop = stopTime;
-    if (status !== undefined) updateData.status = status;
-
-    const result = await api.updateRace(env, id, updateData);
+    // 2. Preparamos el objeto completo para SonicJS
+    const currentData = raceObj.data || {};
+    const updatedData = { ...currentData };
     
+    if (startTime !== undefined) updatedData.timerStart = startTime;
+    if (stopTime !== undefined) updatedData.timerStop = stopTime;
+    if (status !== undefined) updatedData.status = status;
+
+    const payload = {
+      id: raceObj.id,
+      collectionId: raceObj.collectionId,
+      title: raceObj.title, // El título es obligatorio
+      status: 'published',
+      data: updatedData
+    };
+
+    console.log('Sending update to SonicJS:', JSON.stringify(payload).substring(0, 500));
+    
+    // Usamos apiFetch que ya maneja el token y las cabeceras
+    const result = await apiFetch(`/api/content/${id}`, env, {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    });
+
+    console.log('SonicJS response:', JSON.stringify(result));
+
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
