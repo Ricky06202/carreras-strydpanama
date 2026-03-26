@@ -175,3 +175,57 @@ npm run build
 - "Cannot read properties of undefined" - Usar verificaciones defensivas al acceder a propiedades de respuestas API
 - CORS errors - Asegurar que SonicJS tenga configurado el origen del frontend
 - Colors - USAR SIEMPRE NARANJA (#FF6B00), NUNCA AZUL NI AMARILLO
+
+---
+
+## SonicJS - Reglas de Colecciones
+
+### ⚠️ IMPORTANTE: Campo Title Obligatorio
+Las colecciones en SonicJS SIEMPRE deben tener un campo `title` con `required: true`. Sin esto, fallará al guardar contenido.
+
+```typescript
+// ✅ CORRECTO - con title obligatorio
+export default {
+  name: 'races',
+  displayName: 'Carreras',
+  schema: {
+    type: 'object',
+    properties: {
+      title: {
+        type: 'string',
+        title: 'Nombre de la Carrera',
+        required: true,  // ← OBLIGATORIO
+      },
+      description: {
+        type: 'textarea',
+        title: 'Descripción',
+      },
+    },
+    required: ['title'],  // ← OBLIGATORIO
+  },
+  managed: true,
+  isActive: true,
+} satisfies CollectionConfig
+```
+
+### Tipos de Campos Soportados
+- `string` - Texto corto
+- `textarea` - Texto largo
+- `number` - Números
+- `boolean` - true/false
+- `date` - Fechas
+- `select` - Opciones (con enum)
+- `email` - Email (validado)
+
+### Referencia de Colecciones
+- **races** - Carreras
+- **categories** - Categorías
+- **distances** - Distancias
+- **participants** - Participantes
+- **registration_codes** - Códigos de registro
+- **transactions** - Transacciones
+- **running_teams** - Equipos
+
+### URLs de Producción
+- **Backend (SonicJS)**: `https://carreras2.strydpanama.com`
+- **Frontend (Astro)**: `https://carreras.strydpanama.com`
