@@ -2,7 +2,9 @@
   "name": "carreras-strydpanama-cms-api",
   "main": "src/index.ts",
   "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat_v2"],
+  "compatibility_flags": [
+    "nodejs_compat_v2"
+  ],
   "workers_dev": true,
   "d1_databases": [
     {
@@ -15,11 +17,8 @@
   "r2_buckets": [
     {
       "binding": "R2",
-      "bucket_name": "carreras-strydpanama-images"
-    },
-    {
-      "binding": "STORAGE",
-      "bucket_name": "carreras-strydpanama-images"
+      "bucket_name": "carreras-strydpanama-images",
+      "preview_bucket_name": "carreras-strydpanama-images-preview"
     }
   ],
   "kv_namespaces": [
@@ -35,7 +34,9 @@
   "env": {
     "production": {
       "name": "carreras-strydpanama-cms-api-production",
-      "vars": { "ENVIRONMENT": "production" }
+      "vars": {
+        "ENVIRONMENT": "production"
+      }
     }
   },
   "observability": {
