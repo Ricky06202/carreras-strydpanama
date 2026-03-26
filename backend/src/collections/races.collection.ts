@@ -75,6 +75,6 @@ export default {
   defaultSort: 'date',
   defaultSortOrder: 'desc',
 
-  managed: false,
+  managed: true,
   isActive: true,
 } satisfies CollectionConfig
