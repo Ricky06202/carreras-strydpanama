@@ -75,6 +75,23 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     }
   };
 
+  const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setNow(Math.floor(Date.now() / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    if (hrs > 0) return `${hrs}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ mb: 4, textAlign: 'center' }}>
@@ -120,10 +137,14 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                   border: '1px solid #333'
                 }}>
                   <Typography variant="h4" sx={{ color: ACCENT, fontFamily: 'monospace', fontWeight: 'bold' }}>
-                    {race.data?.timerStart ? 'CON DATOS' : 'SIN INICIAR'}
+                    {race.data?.timerStart 
+                      ? formatTime((race.data.timerStop || now) - race.data.timerStart) 
+                      : '00:00'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'grey.500' }}>
-                    {race.data?.timerStart ? `Inicio: ${new Date(race.data.timerStart * 1000).toLocaleTimeString()}` : '--:--:--'}
+                    {race.data?.timerStart 
+                      ? (race.data.timerStop ? 'Carrera finalizada' : `En curso (Inicio: ${new Date(race.data.timerStart * 1000).toLocaleTimeString()})`) 
+                      : 'Listo para iniciar'}
                   </Typography>
                 </Box>
 
