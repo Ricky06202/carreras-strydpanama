@@ -1,0 +1,150 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { API_BASE_URL } from '../../lib/api';
+
+const raceId = Astro.params.id;
+let race = null;
+let participants = [];
+
+try {
+  // Obtener carrera del backend
+  const raceResponse = await fetch(`${API_BASE_URL}/api/race/${raceId}`);
+  if (raceResponse.ok) {
+    const data = await raceResponse.json();
+    race = data.race;
+  }
+  
+  // Obtener participantes (necesitaríamos un endpoint para esto)
+  // Por ahora solo mostramos el conteo
+} catch (e) {
+  console.error('Error fetching race:', e);
+}
+
+if (!race) {
+  return Astro.redirect('/');
+}
+
+function formatDate(dateStr: string) {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('es-PA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+---
+
+<Layout title={`${race.name} - Stryd Panama`}>
+  <div class="max-w-7xl mx-auto px-4 py-8">
+    <a href="/" class="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-accent mb-6 transition-colors">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      Volver a Carreras
+    </a>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="lg:col-span-2 space-y-8">
+        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg overflow-hidden relative">
+          {race.imageUrl ? (
+            <img src={race.imageUrl} alt={race.name} class="w-full h-auto min-h-[300px] max-h-[500px] object-contain bg-slate-950" />
+          ) : (
+            <div class="h-48 bg-[radial-gradient(circle_at_50%_0%,#1e293b_0%,#0f172a_100%)] flex items-center justify-center relative">
+              <svg class="w-24 h-24 text-white opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            </div>
+          )}
+          {race.status === 'active' && (
+            <div class="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold animate-pulse">
+              EN VIVO
+            </div>
+          )}
+          <div class="p-8">
+            <h1 class="text-3xl font-bold mb-4 dark:text-white">{race.name}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">{race.description}</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">${race.price}</div>
+                <div class="text-sm text-gray-500">Precio</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">
+                  {race.maxParticipants ? race.maxParticipants : '∞'}
+                </div>
+                <div class="text-sm text-gray-500">Cupo Máximo</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">{formatDate(race.date)}</div>
+                <div class="text-sm text-gray-500">Fecha</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">{race.status === 'accepting' ? 'Abierta' : race.status}</div>
+                <div class="text-sm text-gray-500">Estado</div>
+              </div>
+            </div>
+
+            {race.location && (
+              <div class="flex items-center gap-2 text-gray-600 dark:text-gray-400 mb-4">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {race.location}
+              </div>
+            )}
+
+            {race.technicalInfo && (
+              <div class="bg-gray-50 dark:bg-slate-800 rounded-2xl p-6 mb-6">
+                <h3 class="text-lg font-bold mb-3 dark:text-white">Información Técnica</h3>
+                <p class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{race.technicalInfo}</p>
+              </div>
+            )}
+
+            {race.termsAndConditions && (
+              <div class="bg-gray-50 dark:bg-slate-800 rounded-2xl p-6 mb-6">
+                <h3 class="text-lg font-bold mb-3 dark:text-white">Términos y Condiciones</h3>
+                <p class="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{race.termsAndConditions}</p>
+              </div>
+            )}
+
+            {(race.status === 'upcoming' || race.status === 'accepting') && (
+              <a href={`/register?race=${race.id}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-2xl hover:bg-yellow-500 transition-colors">
+                Inscribirse Ahora
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div class="space-y-8">
+        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-6">
+          <h2 class="text-xl font-bold mb-4">Información</h2>
+          <div class="space-y-4">
+            <div>
+              <div class="text-sm text-gray-500">Distancias</div>
+              {race.distances && race.distances.length > 0 ? (
+                <div class="flex flex-wrap gap-2 mt-1">
+                  {race.distances.map((d: any) => (
+                    <span class="px-3 py-1 bg-gray-100 dark:bg-slate-700 rounded-full text-sm">{d.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <div class="text-gray-400">No especificadas</div>
+              )}
+            </div>
+            <div>
+              <div class="text-sm text-gray-500">Categorías</div>
+              {race.categories && race.categories.length > 0 ? (
+                <div class="flex flex-wrap gap-2 mt-1">
+                  {race.categories.map((c: any) => (
+                    <span class="px-3 py-1 bg-gray-100 dark:bg-slate-700 rounded-full text-sm">{c.name}</span>
+                  ))}
+                </div>
+              ) : (
+                <div class="text-gray-400">No especificadas</div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</Layout>

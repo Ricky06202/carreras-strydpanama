@@ -1,0 +1,29 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "SonicJS backend for Carreras STRYD Panama",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run",
+    "deploy": "wrangler deploy",
+    "db:migrate": "wrangler d1 migrations apply DB --local",
+    "db:migrate:prod": "wrangler d1 migrations apply DB --env production"
+  },
+  "keywords": ["sonicjs", "cms", "cloudflare", "hono"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20260317.1",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.12.9",
+    "@sonicjs-cms/core": "^2.8.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10",
+    "typescript": "^5.5.0",
+    "wrangler": "^4.76.0"
+  }
+}

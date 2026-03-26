@@ -1,0 +1,25 @@
+{
+  "name": "carreras-strydpanama-backend",
+  "main": "src/index.ts",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat_v2"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "carreras-strydpanama-db",
+      "database_id": "199bd2c8-cbf2-42a3-a8c9-caa77e5e8394"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "MEDIA_BUCKET",
+      "bucket_name": "carreras-strydpanama-images"
+    }
+  ],
+  "kv_namespaces": [
+    {
+      "binding": "KV",
+      "id": "placeholder-kv-id"
+    }
+  ]
+}
