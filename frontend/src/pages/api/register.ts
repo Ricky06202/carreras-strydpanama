@@ -13,7 +13,7 @@ export const POST: APIRoute = async ({ request }) => {
     });
   } catch (error: any) {
     return new Response(JSON.stringify({ 
-      error: error.message || 'Error en el registro',
+      message: error.message || 'Error en el registro',
       env_url: env?.SONICJS_API_URL ? 'PRESENT' : 'MISSING'
     }), {
       status: 500,

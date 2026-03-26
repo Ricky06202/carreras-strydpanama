@@ -290,7 +290,7 @@ const handleSubmit = async () => {
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Error al registrar');
+      if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
       setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(3);
     } catch (e: any) {
