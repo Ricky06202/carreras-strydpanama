@@ -193,18 +193,19 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           </Typography>
                         )}
                       </Box>
-                      <Link 
+                      <Button
+                        component="a"
                         href={`/race/${race.id}`}
-                        underline="none"
+                        variant="contained"
+                        fullWidth
+                        sx={{ 
+                          bgcolor: ACCENT, 
+                          textDecoration: 'none',
+                          '&:hover': { bgcolor: '#E55A00' } 
+                        }}
                       >
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
-                        >
-                          VER MÁS
-                        </Button>
-                      </Link>
+                        VER MÁS
+                      </Button>
                     </CardContent>
                   </Card>
                 </Grid>
