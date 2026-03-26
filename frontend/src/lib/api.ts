@@ -72,8 +72,17 @@ export const api = {
       body: JSON.stringify({ collectionId, title, data, status: 'published' }),
     }),
   
-  registerParticipant: (env: any, data: any) => 
-    api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, data),
+  registerParticipant: (env: any, data: any) => {
+    // Mapeamos los campos del frontend a los nombres que espera SonicJS en el backend
+    const mappedData = {
+      ...data,
+      race: data.raceId,
+      category: data.categoryId,
+      distance: data.distanceId,
+      paymentStatus: data.paymentMethod,
+    };
+    return api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, mappedData);
+  },
 
   updateContent: (env: any, id: string, data: any) =>
     apiFetch(`/api/content/${id}`, env, {

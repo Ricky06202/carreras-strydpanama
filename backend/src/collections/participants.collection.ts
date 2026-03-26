@@ -10,11 +10,15 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Nombre', required: true },
+      title: { type: 'string', title: 'Nombre Completo', required: true },
       firstName: { type: 'string', title: 'Nombre' },
       lastName: { type: 'string', title: 'Apellido' },
       email: { type: 'email', title: 'Email' },
       phone: { type: 'string', title: 'Teléfono' },
+      cedula: { type: 'string', title: 'Cédula/Pasaporte' },
+      birthDate: { type: 'string', title: 'Fecha Nacimiento' },
+      gender: { type: 'string', title: 'Género' },
+      country: { type: 'string', title: 'País' },
       race: { type: 'string', title: 'Carrera' },
       category: { type: 'string', title: 'Categoría' },
       distance: { type: 'string', title: 'Distancia' },
@@ -23,7 +27,7 @@ export default {
       size: { type: 'string', title: 'Talla' },
       paymentStatus: { type: 'string', title: 'Pago' },
     },
-    required: ['title'],
+    required: ['title', 'firstName', 'lastName', 'email'],
   },
 
   listFields: ['title', 'email', 'race', 'paymentStatus'],
