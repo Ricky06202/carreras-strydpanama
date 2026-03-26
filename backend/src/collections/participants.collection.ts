@@ -1,7 +1,7 @@
 // src/collections/participants.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-const participantsCollection: CollectionConfig = {
+export default {
   name: 'participants',
   displayName: 'Participantes',
   description: 'Participantes inscritos en carreras',
@@ -10,35 +10,24 @@ const participantsCollection: CollectionConfig = {
   schema: {
     type: 'object',
     properties: {
-      firstName: { type: 'string', title: 'Nombre', required: true },
-      lastName: { type: 'string', title: 'Apellido', required: true },
-      email: { type: 'email', title: 'Email', required: true },
+      title: { type: 'string', title: 'Nombre' },
+      firstName: { type: 'string', title: 'Nombre' },
+      lastName: { type: 'string', title: 'Apellido' },
+      email: { type: 'email', title: 'Email' },
       phone: { type: 'string', title: 'Teléfono' },
-      birthDate: { type: 'date', title: 'Fecha de Nacimiento' },
-      gender: { type: 'select', title: 'Género', enum: ['M', 'F', 'Otro'] },
-      race: { type: 'reference', title: 'Carrera', collection: 'races', required: true },
+      race: { type: 'reference', title: 'Carrera', collection: 'races' },
       category: { type: 'reference', title: 'Categoría', collection: 'categories' },
       distance: { type: 'reference', title: 'Distancia', collection: 'distances' },
-      teamName: { type: 'string', title: 'Nombre del Equipo' },
-      bibNumber: { type: 'number', title: 'Número de Dorsal' },
-      size: { type: 'select', title: 'Talla de Camiseta', enum: ['XS', 'S', 'M', 'L', 'XL', 'XXL'] },
-      cedula: { type: 'string', title: 'Cédula' },
-      country: { type: 'string', title: 'País' },
-      paymentMethod: { type: 'select', title: 'Método de Pago', enum: ['yappy', 'transfer', 'card', 'cash'] },
-      paymentStatus: { type: 'select', title: 'Estado del Pago', enum: ['pending', 'paid', 'refunded'], default: 'pending' },
-      termsAccepted: { type: 'checkbox', title: 'Términos Aceptados', default: false },
-      finishTime: { type: 'number', title: 'Tiempo de Finalización (segundos)' },
+      teamName: { type: 'string', title: 'Equipo' },
+      bibNumber: { type: 'number', title: 'Dorsal' },
+      size: { type: 'string', title: 'Talla' },
+      paymentStatus: { type: 'string', title: 'Pago' },
     },
-    required: ['firstName', 'lastName', 'email', 'race'],
   },
 
-  listFields: ['firstName', 'lastName', 'email', 'race', 'paymentStatus'],
-  searchFields: ['firstName', 'lastName', 'email', 'teamName'],
-  defaultSort: 'createdAt',
-  defaultSortOrder: 'desc',
+  listFields: ['title', 'email', 'race', 'paymentStatus'],
+  searchFields: ['title', 'email', 'teamName'],
 
   managed: true,
   isActive: true,
-}
-
-export default participantsCollection
+} satisfies CollectionConfig

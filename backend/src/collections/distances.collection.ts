@@ -1,7 +1,7 @@
 // src/collections/distances.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-const distancesCollection: CollectionConfig = {
+export default {
   name: 'distances',
   displayName: 'Distancias',
   description: 'Distancias de cada carrera',
@@ -10,17 +10,16 @@ const distancesCollection: CollectionConfig = {
   schema: {
     type: 'object',
     properties: {
-      name: { type: 'string', title: 'Nombre de la Distancia', required: true },
-      race: { type: 'reference', title: 'Carrera', collection: 'races', required: true },
+      title: { type: 'string', title: 'Nombre' },
+      race: { type: 'reference', title: 'Carrera', collection: 'races' },
+      kilometers: { type: 'number', title: 'Kilómetros' },
+      description: { type: 'textarea', title: 'Descripción' },
     },
-    required: ['name', 'race'],
   },
 
-  listFields: ['name', 'race'],
-  searchFields: ['name'],
+  listFields: ['title', 'race', 'kilometers'],
+  searchFields: ['title', 'description'],
 
   managed: true,
   isActive: true,
-}
-
-export default distancesCollection
+} satisfies CollectionConfig

@@ -10,20 +10,19 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: {
-        type: 'string',
-        title: 'Nombre',
-      },
-      content: {
-        type: 'textarea',
-        title: 'Contenido',
-      },
+      title: { type: 'string', title: 'Nombre' },
+      description: { type: 'textarea', title: 'Descripción' },
+      date: { type: 'date', title: 'Fecha' },
+      location: { type: 'string', title: 'Ubicación' },
+      price: { type: 'number', title: 'Precio' },
+      imageUrl: { type: 'string', title: 'Imagen' },
+      status: { type: 'string', title: 'Estado' },
     },
   },
 
-  listFields: ['title'],
-  searchFields: ['title', 'content'],
-  defaultSort: 'createdAt',
+  listFields: ['title', 'date', 'status', 'price'],
+  searchFields: ['title', 'description', 'location'],
+  defaultSort: 'date',
   defaultSortOrder: 'desc',
 
   managed: true,

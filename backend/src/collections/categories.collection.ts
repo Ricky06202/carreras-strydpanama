@@ -1,7 +1,7 @@
 // src/collections/categories.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-const categoriesCollection: CollectionConfig = {
+export default {
   name: 'categories',
   displayName: 'Categorías',
   description: 'Categorías de cada carrera',
@@ -10,17 +10,15 @@ const categoriesCollection: CollectionConfig = {
   schema: {
     type: 'object',
     properties: {
-      name: { type: 'string', title: 'Nombre de la Categoría', required: true },
-      race: { type: 'reference', title: 'Carrera', collection: 'races', required: true },
+      title: { type: 'string', title: 'Nombre' },
+      race: { type: 'reference', title: 'Carrera', collection: 'races' },
+      description: { type: 'textarea', title: 'Descripción' },
     },
-    required: ['name', 'race'],
   },
 
-  listFields: ['name', 'race'],
-  searchFields: ['name'],
+  listFields: ['title', 'race'],
+  searchFields: ['title', 'description'],
 
   managed: true,
   isActive: true,
-}
-
-export default categoriesCollection
+} satisfies CollectionConfig

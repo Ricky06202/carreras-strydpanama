@@ -1,7 +1,7 @@
 // src/collections/transactions.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-const transactionsCollection: CollectionConfig = {
+export default {
   name: 'transactions',
   displayName: 'Transacciones',
   description: 'Transacciones de pagos',
@@ -10,20 +10,16 @@ const transactionsCollection: CollectionConfig = {
   schema: {
     type: 'object',
     properties: {
-      participant: { type: 'reference', title: 'Participante', collection: 'participants', required: true },
-      yappyOrderId: { type: 'string', title: 'ID de Orden Yappy' },
-      amount: { type: 'number', title: 'Monto', required: true },
-      status: { type: 'select', title: 'Estado', enum: ['pending', 'completed', 'failed', 'refunded'], default: 'pending' },
+      title: { type: 'string', title: 'Transacción' },
+      participant: { type: 'reference', title: 'Participante', collection: 'participants' },
+      amount: { type: 'number', title: 'Monto' },
+      status: { type: 'string', title: 'Estado' },
     },
-    required: ['participant', 'amount'],
   },
 
-  listFields: ['participant', 'amount', 'status'],
-  defaultSort: 'createdAt',
-  defaultSortOrder: 'desc',
+  listFields: ['title', 'amount', 'status'],
+  searchFields: ['title'],
 
   managed: true,
   isActive: true,
-}
-
-export default transactionsCollection
+} satisfies CollectionConfig
