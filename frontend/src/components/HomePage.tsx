@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Typography, Button, Card, CardContent, Grid, Container, Chip } from '@mui/material';
+import Link from '@mui/material/Link';
 import Layout from './Layout';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -192,14 +193,18 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           </Typography>
                         )}
                       </Box>
-                      <Button
+                      <Link 
                         href={`/race/${race.id}`}
-                        variant="contained"
-                        fullWidth
-                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                        underline="none"
                       >
-                        VER MÁS
-                      </Button>
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                        >
+                          VER MÁS
+                        </Button>
+                      </Link>
                     </CardContent>
                   </Card>
                 </Grid>
