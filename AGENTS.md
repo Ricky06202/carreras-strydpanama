@@ -331,3 +331,57 @@ curl -X POST https://api.carreras2.strydpanama.com/api/content \
 ```bash
 curl -s https://api.carreras2.strydpanama.com/api/collections | jq '.data[] | select(.name == "races") | .id'
 ```
+
+---
+
+## Astro v6 + Cloudflare Pages - Variables de Entorno
+
+### ⚠️ IMPORTANTE: No usar import.meta.env
+
+En **Astro v6 con Cloudflare**, las variables de entorno NO se acceden con `import.meta.env`. En su lugar, se debe usar el módulo `cloudflare:workers`.
+
+### Pattern Correcto (Stateless)
+
+```typescript
+// src/lib/api.ts
+// Las funciones reciben env como parámetro
+export async function apiFetch(endpoint: string, env: any, options?: RequestInit) {
+  const baseUrl = env.SONICJS_API_URL;
+  // ... resto del código
+}
+
+export const api = {
+  getPublicRaces: (env: any) => apiFetch('/api/collections/races/content', env),
+  getRace: (env: any, id: string) => apiFetch(`/api/content/${id}`, env),
+  // ...
+};
+```
+
+### En las páginas Astro
+
+```typescript
+---
+// src/pages/index.astro
+import { api } from '../lib/api';
+import { env } from 'cloudflare:workers';
+
+const response = await api.getPublicRaces(env);
+const races = response.data || [];
+---
+
+<HomePage client:load initialRaces={races} />
+```
+
+### Por qué este patrón funciona
+
+- `cloudflare:workers` es el módulo nativo de Cloudflare que da acceso a las variables de entorno en runtime
+- Cada request tiene su propio `env` - no se guarda en variables globales (stateless)
+- Las variables deben estar configuradas en **Cloudflare Pages → Settings → Environment Variables → Production**
+
+### Variables requeridas en Cloudflare Pages (Production)
+
+| Variable | Valor |
+|----------|-------|
+| `SONICJS_API_URL` | `https://api.carreras2.strydpanama.com` |
+| `SONICJS_API_EMAIL` | usuario con permisos |
+| `SONICJS_API_PASSWORD` | contraseña |
