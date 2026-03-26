@@ -1,7 +1,7 @@
 // src/collections/running-teams.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-export default {
+const runningTeamsCollection: CollectionConfig = {
   name: 'running_teams',
   displayName: 'Equipos de Running',
   description: 'Equipos registrados',
@@ -10,16 +10,8 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      name: {
-        type: 'string',
-        title: 'Nombre del Equipo',
-        required: true,
-      },
-      isApproved: {
-        type: 'checkbox',
-        title: 'Aprobado',
-        default: false,
-      },
+      name: { type: 'string', title: 'Nombre del Equipo', required: true },
+      isApproved: { type: 'checkbox', title: 'Aprobado', default: false },
     },
     required: ['name'],
   },
@@ -30,3 +22,5 @@ export default {
   managed: true,
   isActive: true,
 }
+
+export default runningTeamsCollection

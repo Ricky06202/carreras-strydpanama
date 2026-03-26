@@ -1,7 +1,7 @@
 // src/collections/registration-codes.collection.ts
 import type { CollectionConfig } from '@sonicjs-cms/core'
 
-export default {
+const registrationCodesCollection: CollectionConfig = {
   name: 'registration_codes',
   displayName: 'Códigos de Registro',
   description: 'Códigos para registro gratuito o con descuento',
@@ -10,23 +10,9 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      code: {
-        type: 'string',
-        title: 'Código',
-        required: true,
-        pattern: '^[A-Z0-9-]+$',
-      },
-      race: {
-        type: 'reference',
-        title: 'Carrera',
-        collection: 'races',
-        required: true,
-      },
-      used: {
-        type: 'checkbox',
-        title: 'Usado',
-        default: false,
-      },
+      code: { type: 'string', title: 'Código', required: true },
+      race: { type: 'reference', title: 'Carrera', collection: 'races', required: true },
+      used: { type: 'checkbox', title: 'Usado', default: false },
     },
     required: ['code', 'race'],
   },
@@ -37,3 +23,5 @@ export default {
   managed: true,
   isActive: true,
 }
+
+export default registrationCodesCollection
