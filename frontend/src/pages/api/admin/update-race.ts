@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { api } from '../../lib/api';
+import { api } from '../../../lib/api';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
