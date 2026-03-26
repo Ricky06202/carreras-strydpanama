@@ -64,7 +64,7 @@ export default function HomePage() {
     import('../lib/api').then(({ api }) => {
       api.getPublicRaces().then(d => {
         const races = d.data || [];
-        setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting'));
+        setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
         setCompletedRaces(races.filter((r: any) => r.data?.status === 'finished'));
       }).catch(() => { });
     });

@@ -122,7 +122,7 @@ export const api = {
   login: () => login(),
   
   // Carreras
-  getPublicRaces: () => getCollectionContent('races', { status: 'published' }),
+  getPublicRaces: () => getCollectionContent('races'),
   getAllRaces: () => getCollectionContent('races'),
   getRace: (id: string) => getContentById(id),
   
