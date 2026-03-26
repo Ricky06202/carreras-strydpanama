@@ -43,6 +43,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const payload = {
       id: participant.id,
+      collectionId: participant.collectionId || participant.collection_id,
       collection_id: participant.collectionId || participant.collection_id,
       title: participant.title, // Obligatorio
       status: 'published',

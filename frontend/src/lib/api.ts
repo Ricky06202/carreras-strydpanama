@@ -89,7 +89,13 @@ export const api = {
   createContent: (env: any, collectionId: string, title: string, data: any) => 
     apiFetch('/api/content', env, {
       method: 'POST',
-      body: JSON.stringify({ collection_id: collectionId, title, data, status: 'published' }),
+      body: JSON.stringify({ 
+        collectionId: collectionId, 
+        collection_id: collectionId, 
+        title, 
+        data, 
+        status: 'published' 
+      }),
     }),
   
   registerParticipant: (env: any, data: any) => {
