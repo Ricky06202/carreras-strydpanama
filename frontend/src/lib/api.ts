@@ -28,11 +28,20 @@ export async function apiFetch(endpoint: string, env: any, options?: RequestInit
 
   const token = await getAuthToken(env);
   const url = `${baseUrl.replace(/\/$/, '')}${endpoint}`;
+  
+  // Evitar la caché abusiva de Cloudflare CDN en GET
+  let finalUrl = url;
+  if (!options || !options.method || options.method === 'GET') {
+    const divider = finalUrl.includes('?') ? '&' : '?';
+    finalUrl = `${finalUrl}${divider}_t=${Date.now()}`;
+  }
 
-  const response = await fetch(url, {
+  const response = await fetch(finalUrl, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options?.headers,
     },
