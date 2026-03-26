@@ -1,0 +1,17 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import AdminDashboard from '../../components/AdminDashboard';
+import { api } from '../../lib/api';
+import { env } from 'cloudflare:workers';
+
+// En un entorno real, aquí validaríamos la sesión
+// Para este demo, usaremos la API pública para listar
+const response = await api.getPublicRaces(env);
+const races = response.data || [];
+---
+
+<Layout title="Admin Dashboard - Stryd Panama">
+  <div class="min-h-screen bg-slate-50 dark:bg-black pt-20">
+    <AdminDashboard client:only="react" initialRaces={races} />
+  </div>
+</Layout>
