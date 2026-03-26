@@ -14,24 +14,28 @@ interface RaceTimerProps {
 export default function RaceTimer({ timerStart, timerStop, raceName, raceStatus }: RaceTimerProps) {
   const [elapsed, setElapsed] = useState(0);
 
+  // Convertimos a número por si vienen como string de la API
+  const start = timerStart ? Number(timerStart) : null;
+  const stop = timerStop ? Number(timerStop) : null;
+
   useEffect(() => {
-    if (!timerStart) {
+    if (!start) {
       setElapsed(0);
       return;
     }
 
     const calculateElapsed = () => {
-      const now = timerStop || Math.floor(Date.now() / 1000);
-      setElapsed(now - timerStart);
+      const now = stop || Math.floor(Date.now() / 1000);
+      setElapsed(now - start);
     };
 
     calculateElapsed();
     
-    if (!timerStop) {
+    if (!stop) {
       const interval = setInterval(calculateElapsed, 1000);
       return () => clearInterval(interval);
     }
-  }, [timerStart, timerStop]);
+  }, [start, stop]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);
@@ -44,7 +48,8 @@ export default function RaceTimer({ timerStart, timerStop, raceName, raceStatus 
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  if (raceStatus !== 'active' || !timerStart) {
+  // Se muestra siempre que haya un tiempo de inicio definido
+  if (!start) {
     return null;
   }
 
