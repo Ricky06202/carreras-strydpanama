@@ -1,45 +1,45 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Configuración de la API del backend SonicJS
-// @ts-ignore
-const getEnv = (key: string) => {
-  // Cloudflare Workers runtime
-  if (typeof globalThis !== 'undefined') {
-    const cfEnv = (globalThis as any).env || (globalThis as any).cenv || {};
-    if (cfEnv[key]) return cfEnv[key];
-  }
-  // Node.js / Vite
+
+let cachedConfig: { baseUrl: string; email: string; password: string } | null = null;
+
+function getEnvVar(key: string, runtime?: any): string | undefined {
+  if (runtime?.env?.[key]) return runtime.env[key];
   if (typeof process !== 'undefined' && process.env?.[key]) {
     return process.env[key];
   }
-  // Astro import.meta.env
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env?.[key]) {
-    // @ts-ignore
-    return import.meta.env[key];
+  if (typeof globalThis !== 'undefined') {
+    const env = (globalThis as any).env;
+    if (env?.[key]) return env[key];
   }
   return undefined;
-};
+}
 
-// @ts-ignore
-export const API_BASE_URL = getEnv('SONICJS_API_URL');
+function initConfig(runtime?: any) {
+  if (cachedConfig) return cachedConfig;
+  
+  const baseUrl = getEnvVar('SONICJS_API_URL', runtime) || '';
+  const email = getEnvVar('SONICJS_API_EMAIL', runtime) || '';
+  const password = getEnvVar('SONICJS_API_PASSWORD', runtime) || '';
+  
+  cachedConfig = { baseUrl, email, password };
+  return cachedConfig;
+}
 
-// Credenciales para autenticación automática
-// @ts-ignore
-const API_EMAIL = getEnv('SONICJS_API_EMAIL');
-// @ts-ignore
-const API_PASSWORD = getEnv('SONICJS_API_PASSWORD');
-
-// Token en memoria
 let authToken: string | null = null;
 
-// Función para hacer login y obtener token
 async function login(): Promise<string | null> {
-  if (!API_EMAIL || !API_PASSWORD) return null;
+  const config = initConfig();
+  if (!config.email || !config.password || !config.baseUrl) {
+    console.error('Missing config:', config);
+    return null;
+  }
   
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
+    const response = await fetch(`${config.baseUrl}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: API_EMAIL, password: API_PASSWORD }),
+      body: JSON.stringify({ email: config.email, password: config.password }),
       credentials: 'include',
     });
     
@@ -54,12 +54,16 @@ async function login(): Promise<string | null> {
   return null;
 }
 
-// Helper para hacer fetch a la API
 export async function apiFetch(endpoint: string, options?: RequestInit) {
-  const url = `${API_BASE_URL}${endpoint}`;
+  const config = initConfig();
   
-  // Obtener token si no existe y hay credenciales
-  if (!authToken && API_EMAIL && API_PASSWORD) {
+  if (!config.baseUrl) {
+    throw new Error('SONICJS_API_URL not configured');
+  }
+  
+  const url = `${config.baseUrl}${endpoint}`;
+  
+  if (!authToken && config.email && config.password) {
     await login();
   }
   
@@ -73,8 +77,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
   });
 
   if (!response.ok) {
-    // Si es 401, intentar login de nuevo
-    if (response.status === 401 && API_EMAIL && API_PASSWORD) {
+    if (response.status === 401 && config.email && config.password) {
       await login();
       if (authToken) {
         return apiFetch(endpoint, options);
@@ -87,28 +90,24 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
   return response.json();
 }
 
-// Obtener todas las colecciones
 export async function getCollections() {
   return apiFetch('/api/collections');
 }
 
-// Obtener contenido de una colección
 export async function getCollectionContent(collection: string, params?: Record<string, string>) {
   const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
   return apiFetch(`/api/collections/${collection}/content${queryString}`);
 }
 
-// Obtener contenido por ID
 export async function getContentById(id: string) {
   return apiFetch(`/api/content/${id}`);
 }
 
-// Crear contenido (requiere auth)
 export async function createContent(collectionId: string, title: string, data: Record<string, any>, status: string = 'published') {
   return apiFetch('/api/content', {
     method: 'POST',
     body: JSON.stringify({
-      collectionId: collectionId,
+      collectionId,
       title,
       data,
       status,
@@ -116,7 +115,6 @@ export async function createContent(collectionId: string, title: string, data: R
   });
 }
 
-// Actualizar contenido (requiere auth)
 export async function updateContent(id: string, data: Record<string, any>) {
   return apiFetch(`/api/content/${id}`, {
     method: 'PUT',
@@ -124,14 +122,12 @@ export async function updateContent(id: string, data: Record<string, any>) {
   });
 }
 
-// Eliminar contenido (requiere auth)
 export async function deleteContent(id: string) {
   return apiFetch(`/api/content/${id}`, {
     method: 'DELETE',
   });
 }
 
-// Alias para compatibilidad
 export const api = {
   getCollections,
   getCollectionContent,
@@ -141,27 +137,19 @@ export const api = {
   deleteContent,
   login: () => login(),
   
-  // Carreras
   getPublicRaces: () => getCollectionContent('races'),
   getAllRaces: () => getCollectionContent('races'),
   getRace: (id: string) => getContentById(id),
   
-  // Categorías
   getCategories: (raceId: string) => getCollectionContent('categories', { race: raceId }),
-  
-  // Distancias
   getDistances: (raceId: string) => getCollectionContent('distances', { race: raceId }),
   
-  // Participantes
   getParticipants: (raceId: string) => getCollectionContent('participants', { race: raceId }),
   registerParticipant: (data: any) => createContent('participants', data.title || `${data.firstName} ${data.lastName}`, data),
   
-  // Códigos
   validateCode: async (code: string, raceId: string) => {
-    const result = await getCollectionContent('registration_codes', { code, race: raceId });
-    return result;
+    return getCollectionContent('registration_codes', { code, race: raceId });
   },
   
-  // Equipos
   getTeams: () => getCollectionContent('running_teams'),
 };
