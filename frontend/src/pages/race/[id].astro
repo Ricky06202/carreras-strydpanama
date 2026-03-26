@@ -19,17 +19,14 @@ try {
   console.log('ENV keys:', envKeys);
   
   const raceData = await api.getRace(env, raceId);
-  console.log('Race data response:', JSON.stringify(raceData, null, 2).substring(0, 500));
+  console.log('Race data:', JSON.stringify(raceData, null, 2).substring(0, 300));
   
-  // getRace returns { data: { ...race object... } } not array
-  if (raceData?.data && typeof raceData.data === 'object' && raceData.data.id) {
+  // getRace returns { data: { race object } }
+  if (raceData?.data?.id) {
     race = raceData.data;
     console.log('Race found:', race.title);
-  } else if (raceData?.data?.[0]) {
-    race = raceData.data[0];
-    console.log('Race found (array):', race.title);
   } else {
-    console.log('No race data found in response');
+    console.log('No race data found');
   }
 } catch (e) {
   error = e.message;
