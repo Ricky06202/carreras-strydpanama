@@ -12,6 +12,11 @@ const racesCollection: CollectionConfig = {
     properties: {
       name: { type: 'string', title: 'Nombre de la Carrera', required: true },
       description: { type: 'richtext', title: 'Descripción' },
+      date: { type: 'date', title: 'Fecha', required: true },
+      startTime: { type: 'string', title: 'Hora de Inicio' },
+      location: { type: 'string', title: 'Ubicación' },
+      routeGpxUrl: { type: 'url', title: 'URL del GPX de la Ruta' },
+      imageUrl: { type: 'media', title: 'Imagen de la Carrera' },
       technicalInfo: { type: 'richtext', title: 'Información Técnica' },
       termsAndConditions: { type: 'richtext', title: 'Términos y Condiciones' },
       price: { type: 'number', title: 'Precio', default: 0 },
