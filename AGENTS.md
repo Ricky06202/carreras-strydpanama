@@ -227,5 +227,105 @@ export default {
 - **running_teams** - Equipos
 
 ### URLs de Producción
-- **Backend (SonicJS)**: `https://carreras2.strydpanama.com`
+- **Backend (SonicJS)**: `https://api.carreras2.strydpanama.com`
+- **Admin Panel**: `https://carreras2.strydpanama.com/admin`
 - **Frontend (Astro)**: `https://carreras.strydpanama.com`
+
+---
+
+## API de SonicJS
+
+### Endpoints Principales
+
+| Método | Endpoint | Descripción |
+|--------|----------|-------------|
+| GET | `/api/collections` | Listar todas las colecciones |
+| GET | `/api/collections/{collection}/content` | Obtener contenido de una colección |
+| GET | `/api/content/{id}` | Obtener contenido por ID |
+| POST | `/api/content` | Crear contenido (requiere auth) |
+| PUT | `/api/content/{id}` | Actualizar contenido (requiere auth) |
+| DELETE | `/api/content/{id}` | Eliminar contenido (requiere auth) |
+| POST | `/auth/login` | Iniciar sesión |
+
+### Estructura de Respuesta
+
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "title": "Título",
+      "status": "published",
+      "collectionId": "col-...",
+      "data": {
+        "title": "Título",
+        "description": "...",
+        "date": "2026-01-01"
+      },
+      "created_at": 1774506332395,
+      "updated_at": 1774507418597
+    }
+  ],
+  "meta": { ... }
+}
+```
+
+**IMPORTANTE**: Los datos del contenido están en `data.data` (respuesta.data[0].data)
+
+### Autenticación
+
+1. **Login** - Obtener token:
+```bash
+curl -X POST https://api.carreras2.strydpanama.com/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"correo@ejemplo.com","password":"contraseña"}'
+```
+
+2. **Usar token** en headers:
+```
+Authorization: Bearer {token}
+```
+
+### Variables de Entorno para el Frontend
+
+En **Cloudflare Pages** agregar:
+- `SONICJS_API_URL` = `https://api.carreras2.strydpanama.com`
+- `SONICJS_API_EMAIL` = `admin@strydpanama.com` (usuario con permisos)
+- `SONICJS_API_PASSWORD` = `contraseña`
+
+### Ejemplo de Crear Contenido
+
+```bash
+TOKEN="eyJhbGci..."
+
+curl -X POST https://api.carreras2.strydpanama.com/api/content \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "collectionId": "col-participants-xxx",
+    "title": "Juan Pérez",
+    "status": "published",
+    "data": {
+      "title": "Juan Pérez",
+      "firstName": "Juan",
+      "lastName": "Pérez",
+      "email": "juan@test.com"
+    }
+  }'
+```
+
+### Colecciones y sus IDs (Producción)
+
+- **races**: `col-races-fa0146f5`
+- **categories**: `col-categories-xxx`
+- **distances**: `col-distances-xxx`
+- **participants**: `col-participants-93d1ac21`
+- **registration_codes**: `col-registration-codes-xxx`
+- **transactions**: `col-transactions-xxx`
+- **running_teams**: `col-running-teams-xxx`
+
+### Cómo obtener el ID de una colección
+
+```bash
+curl -s https://api.carreras2.strydpanama.com/api/collections | jq '.data[] | select(.name == "races") | .id'
+```

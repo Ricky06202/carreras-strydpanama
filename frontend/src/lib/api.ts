@@ -88,7 +88,7 @@ export async function createContent(collectionId: string, title: string, data: R
   return apiFetch('/api/content', {
     method: 'POST',
     body: JSON.stringify({
-      collection_id: collectionId,
+      collectionId: collectionId,
       title,
       data,
       status,
