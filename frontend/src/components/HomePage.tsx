@@ -16,7 +16,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
 
-const ACCENT = '#facc15';
+const ACCENT = '#FF6B00'; // Naranja STRYD - NO CAMBIAR
 
 interface Distance {
   id: string;
@@ -72,7 +72,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <Box sx={{
         height: { xs: 400, md: 500 },
-        background: 'radial-gradient(circle at 50% 10%, #1e3a8a 0%, #020617 100%)',
+        background: 'linear-gradient(135deg, #000000 0%, #1a1a1a 100%)',
         position: 'relative',
         overflow: 'hidden',
         borderRadius: { xs: '0 0 32px 32px', md: '32px' },
@@ -93,7 +93,7 @@ export default function HomePage() {
           <Box>
             <Typography variant="h2" sx={{ fontWeight: 900, color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
               BIENVENIDO A<br />
-              <Box component="span" sx={{ color: 'orange.200' }}>CARRERAS BY STRYD PANAMA</Box>
+              <Box component="span" sx={{ color: ACCENT }}>CARRERAS BY STRYD PANAMA</Box>
             </Typography>
             <Typography variant="h5" sx={{ color: 'white', mb: 4, maxWidth: 600 }}>
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá
@@ -103,12 +103,12 @@ export default function HomePage() {
               variant="contained"
               size="large"
               sx={{
-                bgcolor: 'white',
-                color: ACCENT,
+                bgcolor: ACCENT,
+                color: '#FFFFFF',
                 fontWeight: 'bold',
                 px: 4,
                 py: 1.5,
-                '&:hover': { bgcolor: 'grey.100' }
+                '&:hover': { bgcolor: '#E55A00' }
               }}
             >
               VER CALENDARIO DE EVENTOS
@@ -149,7 +149,7 @@ export default function HomePage() {
                       height: 160,
                       background: race.imageUrl 
                         ? `url(${race.imageUrl}) center/cover no-repeat`
-                        : 'radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%)',
+                        : 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',

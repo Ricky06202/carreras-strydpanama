@@ -7,7 +7,7 @@ import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import DirectionsRunIcon from '@mui/icons-material/DirectionsRun';
 
-const ACCENT = '#facc15';
+const ACCENT = '#FF6B00'; // Naranja STRYD
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
@@ -48,8 +48,8 @@ export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
       mode,
       primary: { main: ACCENT },
       background: {
-        default: mode === 'dark' ? '#020617' : '#F9FAFB',
-        paper: mode === 'dark' ? '#0f172a' : '#FFFFFF',
+        default: mode === 'dark' ? '#0f0f0f' : '#F9FAFB',
+        paper: mode === 'dark' ? '#1a1a1a' : '#FFFFFF',
       },
     },
   });

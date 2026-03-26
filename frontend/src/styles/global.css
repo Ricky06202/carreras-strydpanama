@@ -3,8 +3,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-accent: #facc15;
-  --color-accent-dark: #eab308;
+  --color-accent: #FF6B00;
+  --color-accent-dark: #E55A00;
 }
 
 .bg-accent {
@@ -39,8 +39,8 @@ html.light {
 }
 
 html.dark {
-  --bg-primary: #020617;
-  --bg-secondary: #0f172a;
+  --bg-primary: #0f0f0f;
+  --bg-secondary: #1a1a1a;
   --text-primary: #F9FAFB;
   --text-secondary: #9CA3AF;
 }

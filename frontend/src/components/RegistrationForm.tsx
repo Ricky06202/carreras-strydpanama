@@ -10,7 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-const ACCENT = '#facc15';
+const ACCENT = '#FF6B00'; // Naranja STRYD
 // @ts-ignore
 const API_BASE = import.meta.env.SONICJS_API_URL || 'http://localhost:8787';
 
@@ -28,8 +28,8 @@ const darkTheme = createTheme({
     mode: 'dark',
     primary: { main: ACCENT },
     background: {
-      default: '#020617',
-      paper: '#0f172a',
+      default: '#0f0f0f',
+      paper: '#1a1a1a',
     },
   },
 });

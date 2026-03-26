@@ -31,14 +31,14 @@ export default function MUIThemeProvider({ children }: { children: React.ReactNo
     palette: {
       mode,
       primary: {
-        main: '#facc15',
+        main: '#FF6B00', // Naranja STRYD
       },
       secondary: {
-        main: '#eab308',
+        main: '#E55A00', // Naranja más oscuro
       },
       background: {
-        default: mode === 'dark' ? '#020617' : '#F9FAFB',
-        paper: mode === 'dark' ? '#0f172a' : '#FFFFFF',
+        default: mode === 'dark' ? '#0f0f0f' : '#F9FAFB',
+        paper: mode === 'dark' ? '#1a1a1a' : '#FFFFFF',
       },
     },
     components: {
