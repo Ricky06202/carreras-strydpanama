@@ -60,17 +60,15 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
   const [completedRaces, setCompletedRaces] = useState<Race[]>([]);
 
   useEffect(() => {
-    if (initialRaces.length > 0) {
-      setUpcomingRaces(initialRaces.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
-      setCompletedRaces(initialRaces.filter((r: any) => r.data?.status === 'finished'));
-    } else {
-      import('../lib/api').then(({ api }) => {
-        api.getPublicRaces().then(d => {
-          const races = d.data || [];
-          setUpcomingRaces(races.filter((r: any) => r.data?.status === 'accepting' || r.data?.status === 'upcoming'));
-          setCompletedRaces(races.filter((r: any) => r.data?.status === 'finished'));
-        }).catch(() => { });
-      });
+    if (initialRaces && initialRaces.length > 0) {
+      const upcoming = initialRaces.filter((r: any) => 
+        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.status === 'published'
+      );
+      const completed = initialRaces.filter((r: any) => 
+        r.data?.status === 'finished'
+      );
+      setUpcomingRaces(upcoming);
+      setCompletedRaces(completed);
     }
   }, [initialRaces]);
 
