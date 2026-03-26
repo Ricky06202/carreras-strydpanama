@@ -2,9 +2,7 @@ import type { APIRoute } from 'astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async (context) => {
-  const { request, locals } = context;
-  const env = locals.runtime?.env || (globalThis as any).process?.env;
+export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
   const raceId = url.searchParams.get('raceId');
 
@@ -25,11 +23,10 @@ export const GET: APIRoute = async (context) => {
     const [raceRes, categoriesRes, distancesRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
 
     if (!raceRes) {
-      const error = (results[0] as PromiseRejectedResult)?.reason?.message || 'Carrera no encontrada';
-      throw new Error(error);
+      const errorDetail = (results[0] as PromiseRejectedResult)?.reason?.message || 'Carrera no encontrada';
+      throw new Error(`SonicJS Error: ${errorDetail}`);
     }
 
-    // Extraemos la data real de las respuestas de SonicJS
     const race = raceRes?.data || null;
     const categories = (categoriesRes?.data || []).map((item: any) => ({
       id: item.id,
@@ -40,18 +37,14 @@ export const GET: APIRoute = async (context) => {
       name: item.data?.title || item.title || 'Sin nombre'
     }));
 
-    return new Response(JSON.stringify({
-      race,
-      categories,
-      distances
-    }), {
+    return new Response(JSON.stringify({ race, categories, distances }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
-    console.error('Error in /api/race-info:', error);
     return new Response(JSON.stringify({ 
-      error: error.message || 'Error al obtener información de la carrera' 
+      error: error.message || 'Error desconocido',
+      env_url: env?.SONICJS_API_URL ? 'PRESENT' : 'MISSING'
     }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
