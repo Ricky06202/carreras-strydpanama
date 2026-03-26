@@ -1,21 +1,16 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import { API_BASE_URL } from '../../lib/api';
+import { api } from '../../lib/api';
 
 const raceId = Astro.params.id;
 let race = null;
 let participants = [];
 
 try {
-  // Obtener carrera del backend
-  const raceResponse = await fetch(`${API_BASE_URL}/api/race/${raceId}`);
-  if (raceResponse.ok) {
-    const data = await raceResponse.json();
-    race = data.race;
+  const raceData = await api.getRace(raceId);
+  if (raceData?.data?.[0]) {
+    race = raceData.data[0];
   }
-  
-  // Obtener participantes (necesitaríamos un endpoint para esto)
-  // Por ahora solo mostramos el conteo
 } catch (e) {
   console.error('Error fetching race:', e);
 }
@@ -30,7 +25,7 @@ function formatDate(dateStr: string) {
 }
 ---
 
-<Layout title={`${race.name} - Stryd Panama`}>
+<Layout title={`${race?.data?.title || 'Carrera'} - Stryd Panama`}>
   <div class="max-w-7xl mx-auto px-4 py-8">
     <a href="/" class="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-accent mb-6 transition-colors">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,13 +37,43 @@ function formatDate(dateStr: string) {
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-8">
         <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg overflow-hidden relative">
-          {race.imageUrl ? (
-            <img src={race.imageUrl} alt={race.name} class="w-full h-auto min-h-[300px] max-h-[500px] object-contain bg-slate-950" />
+          {race?.data?.imageUrl ? (
+            <img src={race.data.imageUrl} alt={race.data.title} class="w-full h-auto min-h-[300px] max-h-[500px] object-contain bg-slate-950" />
           ) : (
             <div class="h-48 bg-gradient-to-br from-neutral-800 to-neutral-900 flex items-center justify-center relative">
               <svg class="w-24 h-24 text-white opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
+            </div>
+          )}
+          {race?.data?.status === 'active' && (
+            <div class="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold animate-pulse">
+              EN VIVO
+            </div>
+          )}
+          <div class="p-8">
+            <h1 class="text-3xl font-bold mb-4 dark:text-white">{race?.data?.title}</h1>
+            <p class="text-gray-600 dark:text-gray-400 mb-6">{race?.data?.description}</p>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">${race?.data?.price || 0}</div>
+                <div class="text-sm text-gray-500">Precio</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">
+                  {race?.data?.maxParticipants ? race.data.maxParticipants : '∞'}
+                </div>
+                <div class="text-sm text-gray-500">Cupo Máximo</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">{formatDate(race?.data?.date)}</div>
+                <div class="text-sm text-gray-500">Fecha</div>
+              </div>
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-2xl font-bold text-accent">{race?.data?.status === 'accepting' ? 'Abierta' : race?.data?.status}</div>
+                <div class="text-sm text-gray-500">Estado</div>
+              </div>
             </div>
           )}
           {race.status === 'active' && (
