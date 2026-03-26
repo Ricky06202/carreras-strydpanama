@@ -1,141 +1,77 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-let config = {
-  baseUrl: '',
-  email: '',
-  password: '',
-  authToken: null as string | null
-};
-
-export function setupApi(runtime: any) {
-  config.baseUrl = runtime?.env?.SONICJS_API_URL || '';
-  config.email = runtime?.env?.SONICJS_API_EMAIL || '';
-  config.password = runtime?.env?.SONICJS_API_PASSWORD || '';
-}
-
-function isConfigured(): boolean {
-  return !!(config.baseUrl && config.email && config.password);
-}
-
-async function login(): Promise<string | null> {
-  if (!config.email || !config.password || !config.baseUrl) {
-    console.error('Configuración incompleta:', config);
-    return null;
-  }
+async function getAuthToken(env: any): Promise<string | null> {
+  const { SONICJS_API_URL, SONICJS_API_EMAIL, SONICJS_API_PASSWORD } = env;
   
+  if (!SONICJS_API_URL || !SONICJS_API_EMAIL || !SONICJS_API_PASSWORD) return null;
+
   try {
-    const response = await fetch(`${config.baseUrl}/auth/login`, {
+    const response = await fetch(`${SONICJS_API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: config.email, password: config.password }),
+      body: JSON.stringify({ email: SONICJS_API_EMAIL, password: SONICJS_API_PASSWORD }),
       credentials: 'include',
     });
-    
     if (response.ok) {
       const data = await response.json();
-      config.authToken = data.token || data.accessToken;
-      return config.authToken;
+      return data.token || data.accessToken;
     }
   } catch (e) {
-    console.error('Login failed:', e);
+    console.error('Login error:', e);
   }
   return null;
 }
 
-export async function apiFetch(endpoint: string, options?: RequestInit) {
-  if (!config.baseUrl) {
-    throw new Error('API no inicializada. Llama a setupApi(Astro.locals.runtime) en la página.');
-  }
-  
-  const url = `${config.baseUrl}${endpoint}`;
-  
-  if (!config.authToken && config.email && config.password) {
-    await login();
-  }
-  
+export async function apiFetch(endpoint: string, env: any, options?: RequestInit) {
+  const baseUrl = env.SONICJS_API_URL;
+  if (!baseUrl) throw new Error('SONICJS_API_URL is missing in Cloudflare ENV');
+
+  const token = await getAuthToken(env);
+  const url = `${baseUrl}${endpoint}`;
+
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(config.authToken ? { 'Authorization': `Bearer ${config.authToken}` } : {}),
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
 
   if (!response.ok) {
-    if (response.status === 401 && config.email && config.password) {
-      await login();
-      if (config.authToken) {
-        return apiFetch(endpoint, options);
+    if (response.status === 401) {
+      const newToken = await getAuthToken(env);
+      if (newToken) {
+        return apiFetch(endpoint, env, options);
       }
     }
-    const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    const error = await response.json().catch(() => ({ error: 'Unknown' }));
+    throw new Error(`API Error: ${error.error || response.status}`);
   }
 
   return response.json();
 }
 
-export async function getCollections() {
-  return apiFetch('/api/collections');
-}
-
-export async function getCollectionContent(collection: string, params?: Record<string, string>) {
-  const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-  return apiFetch(`/api/collections/${collection}/content${queryString}`);
-}
-
-export async function getContentById(id: string) {
-  return apiFetch(`/api/content/${id}`);
-}
-
-export async function createContent(collectionId: string, title: string, data: Record<string, any>, status: string = 'published') {
-  return apiFetch('/api/content', {
-    method: 'POST',
-    body: JSON.stringify({
-      collectionId,
-      title,
-      data,
-      status,
-    }),
-  });
-}
-
-export async function updateContent(id: string, data: Record<string, any>) {
-  return apiFetch(`/api/content/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ data }),
-  });
-}
-
-export async function deleteContent(id: string) {
-  return apiFetch(`/api/content/${id}`, {
-    method: 'DELETE',
-  });
-}
-
 export const api = {
-  getCollections,
-  getCollectionContent,
-  getContentById,
-  createContent,
-  updateContent,
-  deleteContent,
-  login: () => login(),
+  getAllRaces: (env: any) => apiFetch('/api/collections/races/content', env),
+  getPublicRaces: (env: any) => apiFetch('/api/collections/races/content', env),
+  getRace: (env: any, id: string) => apiFetch(`/api/content/${id}`, env),
   
-  getPublicRaces: () => getCollectionContent('races'),
-  getAllRaces: () => getCollectionContent('races'),
-  getRace: (id: string) => getContentById(id),
-  
-  getCategories: (raceId: string) => getCollectionContent('categories', { race: raceId }),
-  getDistances: (raceId: string) => getCollectionContent('distances', { race: raceId }),
-  
-  getParticipants: (raceId: string) => getCollectionContent('participants', { race: raceId }),
-  registerParticipant: (data: any) => createContent('participants', data.title || `${data.firstName} ${data.lastName}`, data),
-  
-  validateCode: async (code: string, raceId: string) => {
-    return getCollectionContent('registration_codes', { code, race: raceId });
+  getCollectionContent: (env: any, collection: string, params?: Record<string, string>) => {
+    const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
+    return apiFetch(`/api/collections/${collection}/content${queryString}`, env);
   },
   
-  getTeams: () => getCollectionContent('running_teams'),
+  getCategories: (env: any, raceId: string) => api.getCollectionContent(env, 'categories', { race: raceId }),
+  getDistances: (env: any, raceId: string) => api.getCollectionContent(env, 'distances', { race: raceId }),
+  getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, 'participants', { race: raceId }),
+  
+  createContent: (env: any, collectionId: string, title: string, data: any) => 
+    apiFetch('/api/content', env, {
+      method: 'POST',
+      body: JSON.stringify({ collectionId, title, data, status: 'published' }),
+    }),
+  
+  registerParticipant: (env: any, data: any) => 
+    api.createContent(env, 'participants', data.title || `${data.firstName} ${data.lastName}`, data),
 };
