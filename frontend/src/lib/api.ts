@@ -1,6 +1,6 @@
 // Configuración de la API del backend SonicJS
 // @ts-ignore
-const getEnv = (key: string, fallback?: string) => {
+const getEnv = (key: string) => {
   // Cloudflare Workers runtime
   if (typeof globalThis !== 'undefined') {
     const cfEnv = (globalThis as any).env || (globalThis as any).cenv || {};
@@ -16,17 +16,17 @@ const getEnv = (key: string, fallback?: string) => {
     // @ts-ignore
     return import.meta.env[key];
   }
-  return fallback;
+  return undefined;
 };
 
 // @ts-ignore
-export const API_BASE_URL = getEnv('SONICJS_API_URL', 'https://api.carreras2.strydpanama.com');
+export const API_BASE_URL = getEnv('SONICJS_API_URL');
 
 // Credenciales para autenticación automática
 // @ts-ignore
-const API_EMAIL = getEnv('SONICJS_API_EMAIL', '');
+const API_EMAIL = getEnv('SONICJS_API_EMAIL');
 // @ts-ignore
-const API_PASSWORD = getEnv('SONICJS_API_PASSWORD', '');
+const API_PASSWORD = getEnv('SONICJS_API_PASSWORD');
 
 // Token en memoria
 let authToken: string | null = null;
