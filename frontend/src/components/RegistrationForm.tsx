@@ -186,9 +186,13 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
     if (initialRaces && initialRaces.length > 0) {
       setRaces(initialRaces);
     }
+    // Teams endpoint might not exist, handle gracefully
     fetch(`${API_BASE}/api/teams`).then(r => r.json()).then(d => {
       if(d.teams) setTeamOptions(d.teams.map((t: any) => t.name));
-    }).catch(() => {});
+    }).catch(err => {
+      console.log('Teams endpoint not available (expected):', err.message);
+      // Continue without teams - not critical for registration
+    });
   }, [initialRaces]);
 
   useEffect(() => {
