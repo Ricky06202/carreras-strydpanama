@@ -11,8 +11,9 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD
-// @ts-ignore
-const API_BASE = import.meta.env.SONICJS_API_URL || '';
+
+// Eliminamos API_BASE y el uso directo de variables de entorno en el cliente
+// Las peticiones se harán a las rutas de API locales de Astro
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
@@ -98,7 +99,7 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({length: 100}, (_, i) => String(currentYear - i));
 
-export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId: string; initialRaces?: any[] }) {
+export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApiUrl }: { raceId: string; initialRaces?: any[]; sonicjsApiUrl?: string }) {
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -155,22 +156,18 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const loadCategories = (raceId: string) => {
-    if (raceId) fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
-  };
-
-  const loadDistances = (raceId: string) => {
-    if (raceId) fetch(`/api/admin/distances?raceId=${raceId}`).then(r => r.json()).then(d => setDistances(d.distances || [])).catch(() => {});
-  };
-
-  const loadRaceInfo = (raceId: string) => {
-    if (raceId) {
-      fetch(`/api/race/${raceId}`).then(r => r.json()).then(d => {
+  const loadRaceInfo = (id: string) => {
+    if (!id) return;
+    setLoading(true);
+    fetch(`/api/race-info?raceId=${id}`)
+      .then(res => res.json())
+      .then(d => {
         if (d.race) setRaceInfo(d.race);
-        if (d.distances) setDistances(d.distances);
         if (d.categories) setCategories(d.categories);
-      }).catch(() => {});
-    }
+        if (d.distances) setDistances(d.distances);
+      })
+      .catch(err => console.error('Error loading race info:', err))
+      .finally(() => setLoading(false));
   };
 
   useEffect(() => {
@@ -186,8 +183,9 @@ export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId
     if (initialRaces && initialRaces.length > 0) {
       setRaces(initialRaces);
     }
-    // Teams endpoint might not exist, handle gracefully
-    fetch(`${API_BASE}/api/teams`).then(r => r.json()).then(d => {
+    // Los equipos ahora se cargan a través de nuestro proxy de info de carrera o un endpoint dedicado
+    // Por simplicidad, si el endpoint /api/teams no existe en Astro, fallará silenciosamente como antes
+    fetch(`/api/teams`).then(r => r.json()).then(d => {
       if(d.teams) setTeamOptions(d.teams.map((t: any) => t.name));
     }).catch(err => {
       console.log('Teams endpoint not available (expected):', err.message);
@@ -282,20 +280,13 @@ const handleSubmit = async () => {
         participantData.teamName = formData.teamName === 'Agregar manualmente' ? manualTeamNameInd : (formData.teamName === 'Ninguno' ? '' : formData.teamName);
       }
 
-      // Use the correct SonicJS API endpoint to create a participant
-      const res = await fetch(`${API_BASE}/api/content`, {
+      // Usamos el nuevo endpoint de Astro que maneja la autenticación y SonicJS server-side
+      const res = await fetch('/api/register', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          // Note: In a real app, we'd need auth token here
-          // For now we'll try without auth and see if it works
         },
-        body: JSON.stringify({
-          collectionId: 'col-participants-93d1ac21', // From AGENTS.md
-          title: `${formData.firstName} ${formData.lastName}`,
-          data: participantData,
-          status: 'published'
-        })
+        body: JSON.stringify(participantData)
       });
       
       const data = await res.json();
