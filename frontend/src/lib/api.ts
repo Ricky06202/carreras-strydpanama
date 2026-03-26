@@ -23,14 +23,8 @@ async function getAuthToken(env: any): Promise<string | null> {
 }
 
 export async function apiFetch(endpoint: string, env: any, options?: RequestInit) {
-  let baseUrl = env.SONICJS_API_URL;
+  const baseUrl = env.SONICJS_API_URL;
   if (!baseUrl) throw new Error('SONICJS_API_URL is missing in Cloudflare ENV');
-
-  // Asegurar que usamos el subdominio api.carreras2 si no está presente
-  // según la regla de AGENTS.md y el comportamiento detectado
-  if (typeof baseUrl === 'string' && !baseUrl.includes('api.')) {
-    baseUrl = baseUrl.replace(/^(https?:\/\/)([^.]+\.)/, '$1api.carreras2.');
-  }
 
   const token = await getAuthToken(env);
   const url = `${baseUrl.replace(/\/$/, '')}${endpoint}`;
@@ -58,28 +52,19 @@ export async function apiFetch(endpoint: string, env: any, options?: RequestInit
   return response.json();
 }
 
-// IDs de colecciones según AGENTS.md
-const COLLECTIONS = {
-  RACES: 'col-races-fa0146f5',
-  CATEGORIES: 'col-categories-26d3d058',
-  DISTANCES: 'col-distances-93815733',
-  PARTICIPANTS: 'col-participants-93d1ac21',
-  RUNNING_TEAMS: 'col-running_teams-5c6748a6',
-};
-
 export const api = {
-  getAllRaces: (env: any) => apiFetch(`/api/collections/${COLLECTIONS.RACES}/content`, env),
-  getPublicRaces: (env: any) => apiFetch(`/api/collections/${COLLECTIONS.RACES}/content`, env),
+  getAllRaces: (env: any) => apiFetch('/api/collections/races/content', env),
+  getPublicRaces: (env: any) => apiFetch('/api/collections/races/content', env),
   getRace: (env: any, id: string) => apiFetch(`/api/content/${id}`, env),
   
-  getCollectionContent: (env: any, collectionId: string, params?: Record<string, string>) => {
+  getCollectionContent: (env: any, collection: string, params?: Record<string, string>) => {
     const queryString = params ? '?' + new URLSearchParams(params).toString() : '';
-    return apiFetch(`/api/collections/${collectionId}/content${queryString}`, env);
+    return apiFetch(`/api/collections/${collection}/content${queryString}`, env);
   },
   
-  getCategories: (env: any, raceId: string) => api.getCollectionContent(env, COLLECTIONS.CATEGORIES, { race: raceId }),
-  getDistances: (env: any, raceId: string) => api.getCollectionContent(env, COLLECTIONS.DISTANCES, { race: raceId }),
-  getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, COLLECTIONS.PARTICIPANTS, { race: raceId }),
+  getCategories: (env: any, raceId: string) => api.getCollectionContent(env, 'categories', { race: raceId }),
+  getDistances: (env: any, raceId: string) => api.getCollectionContent(env, 'distances', { race: raceId }),
+  getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, 'participants', { race: raceId }),
   
   createContent: (env: any, collectionId: string, title: string, data: any) => 
     apiFetch('/api/content', env, {
@@ -88,5 +73,5 @@ export const api = {
     }),
   
   registerParticipant: (env: any, data: any) => 
-    api.createContent(env, COLLECTIONS.PARTICIPANTS, data.title || `${data.firstName} ${data.lastName}`, data),
+    api.createContent(env, 'participants', data.title || `${data.firstName} ${data.lastName}`, data),
 };
