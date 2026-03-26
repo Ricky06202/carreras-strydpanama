@@ -206,6 +206,16 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                   ) : (
                     <>
                       <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={loading === race.id ? <CircularProgress size={20} color="inherit" /> : <StopIcon />}
+                        onClick={() => stopTimer(race.id)}
+                        disabled={!!loading || !!race.data?.timerStop}
+                        sx={{ color: '#ff4444', borderColor: '#ff4444', '&:hover': { borderColor: '#cc0000', bgcolor: 'rgba(255,0,0,0.05)' } }}
+                      >
+                        DETENER
+                      </Button>
+                      <Button
                         variant="outlined"
                         onClick={() => resetTimer(race.id)}
                         disabled={!!loading}
