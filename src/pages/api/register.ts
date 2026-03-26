@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
 import { getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction, getMaxBib } from '../../lib/db/actions';
+import { sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { env } from 'cloudflare:workers';
 
@@ -8,7 +9,7 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const db = getDb(env.DB as any);
     const body = await request.json();
-    const { firstName, lastName, email, phone, birthDate, gender, categoryId, distanceId, teamName, teamMembers, size, paymentMethod, code, raceId, termsAccepted } = body;
+    const { firstName, lastName, cedula, country, email, phone, birthDate, gender, categoryId, distanceId, teamName, teamMembers, size, paymentMethod, code, raceId, termsAccepted } = body;
     
     const race = await getRaceById(db, raceId);
     if (!race) {
@@ -36,6 +37,15 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
     
+    // Catch custom written teamNames and queue them for Admin Approval
+    if (teamName) {
+      try {
+        await db.run(sql`INSERT INTO running_teams (id, name, is_approved) VALUES (${randomUUID()}, ${teamName}, 0) ON CONFLICT(name) DO NOTHING`);
+      } catch (e) {
+        // Assume failure means it already formally exists
+      }
+    }
+    
     if (isTeam) {
       // Register all team members
       const participants = [];
@@ -56,6 +66,8 @@ export const POST: APIRoute = async ({ request }) => {
           firstName: member.firstName,
           lastName: member.lastName,
           email: member.email,
+          cedula: member.cedula || null,
+          country: member.country || null,
           phone: member.phone || null,
           birthDate: member.birthDate || null,
           gender: member.gender || null,
@@ -117,6 +129,8 @@ export const POST: APIRoute = async ({ request }) => {
         firstName,
         lastName,
         email,
+        cedula: cedula || null,
+        country: country || null,
         phone: phone || null,
         birthDate: birthDate || null,
         gender: gender || null,

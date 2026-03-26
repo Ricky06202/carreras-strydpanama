@@ -48,9 +48,10 @@ interface AdminLayoutProps {
   selectedRaceId: string | null;
   onSelectRace: (race: Race | null) => void;
   onNewRace: () => void;
+  onManageTeams: () => void;
 }
 
-export default function AdminLayout({ children, races, selectedRaceId, onSelectRace, onNewRace }: AdminLayoutProps) {
+export default function AdminLayout({ children, races, selectedRaceId, onSelectRace, onNewRace, onManageTeams }: AdminLayoutProps) {
   const [mode, setMode] = useState<'light' | 'dark'>('light');
   const [mounted, setMounted] = useState(false);
 
@@ -145,6 +146,14 @@ export default function AdminLayout({ children, races, selectedRaceId, onSelectR
                   startIcon={<AddIcon />}
                 >
                   Nueva Carrera
+                </Button>
+                <Button 
+                  fullWidth 
+                  variant="outlined" 
+                  onClick={onManageTeams}
+                  sx={{ mt: 2, borderColor: 'divider', color: textColor }}
+                >
+                  Gestión de Equipos
                 </Button>
               </Box>
               <Box>

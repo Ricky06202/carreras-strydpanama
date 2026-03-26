@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Snackbar, Alert, Typography, ThemeProvider, createTheme, CssBaseline, Box, CardMedia } from '@mui/material';
 import AdminLayout from './AdminLayout';
 import AdminContent from './AdminContent';
+import AdminTeamsDashboard from './AdminTeamsDashboard';
 
 const ACCENT = '#FF6B00';
 
@@ -69,6 +70,7 @@ interface Participant {
   categoryId: string | null;
   distanceId: string | null;
   teamName: string | null;
+  bibNumber: number | null;
   finishTime: number | null;
   termsAccepted: boolean;
 }
@@ -103,6 +105,7 @@ export default function AdminDashboard() {
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [showTeamsDashboard, setShowTeamsDashboard] = useState(false);
 
   const loadCategories = (raceId: string) => {
     fetch(`/api/categories/${raceId}`)
@@ -339,6 +342,7 @@ export default function AdminDashboard() {
 
   const handleSelectRace = (race: Race | null) => {
     setSelectedRace(race);
+    setShowTeamsDashboard(false);
     if (!race) {
       setCategories([]);
       setDistances([]);
@@ -425,32 +429,37 @@ export default function AdminDashboard() {
           races={races}
           selectedRaceId={selectedRace?.id || null}
           onSelectRace={handleSelectRace}
-          onNewRace={() => openEdit()}
+          onNewRace={() => { openEdit(); setShowTeamsDashboard(false); }}
+          onManageTeams={() => { setShowTeamsDashboard(true); setSelectedRace(null); }}
         >
-          <AdminContent
-            selectedRace={selectedRace}
-            participants={participants}
-            codes={codes}
-            categories={categories}
-            distances={distances}
-            onActivateRace={handleActivateRace}
-            onFinishRace={handleFinishRace}
-            onCompleteRace={handleCompleteRace}
-            onStartTimer={handleStartTimer}
-            onStopTimer={handleStopTimer}
-            onEditRace={openEdit}
-            onDeleteRace={handleDeleteRace}
-            onExportCSV={exportCSV}
-            onGenerateCodes={handleGenerateCodes}
-            onCreateCategory={handleCreateCategory}
-            onUpdateCategory={handleUpdateCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onCreateDistance={handleCreateDistance}
-            onUpdateDistance={handleUpdateDistance}
-            onDeleteDistance={handleDeleteDistance}
-            onUpdateParticipant={handleUpdateParticipant}
-            onDeleteParticipant={handleDeleteParticipant}
-          />
+          {showTeamsDashboard ? (
+            <AdminTeamsDashboard />
+          ) : (
+            <AdminContent
+              selectedRace={selectedRace}
+              participants={participants}
+              codes={codes}
+              categories={categories}
+              distances={distances}
+              onActivateRace={handleActivateRace}
+              onFinishRace={handleFinishRace}
+              onCompleteRace={handleCompleteRace}
+              onStartTimer={handleStartTimer}
+              onStopTimer={handleStopTimer}
+              onEditRace={openEdit}
+              onDeleteRace={handleDeleteRace}
+              onExportCSV={exportCSV}
+              onGenerateCodes={handleGenerateCodes}
+              onCreateCategory={handleCreateCategory}
+              onUpdateCategory={handleUpdateCategory}
+              onDeleteCategory={handleDeleteCategory}
+              onCreateDistance={handleCreateDistance}
+              onUpdateDistance={handleUpdateDistance}
+              onDeleteDistance={handleDeleteDistance}
+              onUpdateParticipant={handleUpdateParticipant}
+              onDeleteParticipant={handleDeleteParticipant}
+            />
+          )}
         </AdminLayout>
 
         <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth>

@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
   Box, Typography, Stepper, Step, StepLabel, Alert, Paper, Snackbar,
-  ThemeProvider, createTheme, CssBaseline
+  ThemeProvider, createTheme, CssBaseline, Autocomplete
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -74,11 +74,27 @@ const paymentMethods = [
   { value: 'cash', label: 'Efectivo en persona' },
 ];
 
+const countriesList = [
+  "Panamá", "Costa Rica", "Colombia", "Venezuela", "Estados Unidos", "México", "Argentina", "España", "Chile", "Perú",
+  "Ecuador", "Guatemala", "Honduras", "Nicaragua", "El Salvador", "Brasil", "Uruguay", "Paraguay", "Bolivia", "Canadá", "Otro"
+];
+
+const days = Array.from({length: 31}, (_, i) => String(i + 1).padStart(2, '0'));
+const months = [
+  { val: '01', lab: 'Enero' }, { val: '02', lab: 'Febrero' }, { val: '03', lab: 'Marzo' },
+  { val: '04', lab: 'Abril' }, { val: '05', lab: 'Mayo' }, { val: '06', lab: 'Junio' },
+  { val: '07', lab: 'Julio' }, { val: '08', lab: 'Agosto' }, { val: '09', lab: 'Septiembre' },
+  { val: '10', lab: 'Octubre' }, { val: '11', lab: 'Noviembre' }, { val: '12', lab: 'Diciembre' }
+];
+const currentYear = new Date().getFullYear();
+const years = Array.from({length: 100}, (_, i) => String(currentYear - i));
+
 export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [distances, setDistances] = useState<Distance[]>([]);
+  const [teamOptions, setTeamOptions] = useState<string[]>([]);
   const [selectedRace, setSelectedRace] = useState(raceId);
   const [raceInfo, setRaceInfo] = useState<Race | null>(null);
   const [code, setCode] = useState('');
@@ -86,18 +102,24 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
   const [registrationType, setRegistrationType] = useState<'individual' | 'team'>('individual');
+  
   const [teamName, setTeamName] = useState('');
+  const [manualTeamNameGroup, setManualTeamNameGroup] = useState('');
 
   const [formData, setFormData] = useState({
-    firstName: '', lastName: '', email: '', phone: '',
-    birthDate: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: ''
+    firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
+    birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: ''
+  });
+  const [manualTeamNameInd, setManualTeamNameInd] = useState('');
+
+  // Helper for generating initial blank members
+  const createEmptyMember = () => ({
+    firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
+    birthDay: '', birthMonth: '', birthYear: '', gender: '', size: ''
   });
 
-const [teamMembers, setTeamMembers] = useState([
-    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
-    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
-    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
-    { firstName: '', lastName: '', email: '', phone: '', birthDate: '', gender: '', size: '' },
+  const [teamMembers, setTeamMembers] = useState([
+    createEmptyMember(), createEmptyMember(), createEmptyMember(), createEmptyMember()
   ]);
 
   const updateTeamMember = (index: number, field: string, value: string) => {
@@ -106,24 +128,30 @@ const [teamMembers, setTeamMembers] = useState([
     ));
   };
 
+  const isIndividualValid = () => {
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.cedula || !formData.country) return false;
+    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) return false;
+    if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) return false;
+    return true;
+  };
+
   const isTeamMembersValid = () => {
     if (registrationType !== 'team') return true;
-    return teamMembers.every(m => m.firstName && m.lastName && m.email);
+    if (!teamName || (teamName === 'Agregar manualmente' && !manualTeamNameGroup)) return false;
+    return teamMembers.every(m => 
+      m.firstName && m.lastName && m.email && m.cedula && m.country && m.birthDay && m.birthMonth && m.birthYear
+    );
   };
 
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const loadCategories = (raceId: string) => {
-    if (raceId) {
-      fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
-    }
+    if (raceId) fetch(`/api/categories/${raceId}`).then(r => r.json()).then(d => setCategories(d.categories || [])).catch(() => {});
   };
 
   const loadDistances = (raceId: string) => {
-    if (raceId) {
-      fetch(`/api/admin/distances?raceId=${raceId}`).then(r => r.json()).then(d => setDistances(d.distances || [])).catch(() => {});
-    }
+    if (raceId) fetch(`/api/admin/distances?raceId=${raceId}`).then(r => r.json()).then(d => setDistances(d.distances || [])).catch(() => {});
   };
 
   const loadRaceInfo = (raceId: string) => {
@@ -139,9 +167,7 @@ const [teamMembers, setTeamMembers] = useState([
   useEffect(() => {
     const handleThemeChange = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail && detail.mode) {
-        setMode(detail.mode);
-      }
+      if (detail && detail.mode) setMode(detail.mode);
     };
     window.addEventListener('themechange', handleThemeChange);
     return () => window.removeEventListener('themechange', handleThemeChange);
@@ -149,6 +175,9 @@ const [teamMembers, setTeamMembers] = useState([
 
   useEffect(() => {
     fetch('/api/races').then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+    fetch('/api/teams').then(r => r.json()).then(d => {
+      if(d.teams) setTeamOptions(d.teams.map((t: any) => t.name));
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -188,19 +217,27 @@ const [teamMembers, setTeamMembers] = useState([
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
         paymentMethod: formData.paymentMethod,
-        teamName: registrationType === 'team' ? teamName : (formData.teamName || null),
       };
 
       if (registrationType === 'team') {
-        payload.teamMembers = teamMembers;
+        const finalGroupTeamName = teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? '' : teamName);
+        payload.teamName = finalGroupTeamName;
+        payload.teamMembers = teamMembers.map(m => ({
+          ...m,
+          birthDate: `${m.birthYear}-${m.birthMonth}-${m.birthDay}`
+        }));
       } else {
+        const finalIndTeamName = formData.teamName === 'Agregar manualmente' ? manualTeamNameInd : (formData.teamName === 'Ninguno' ? '' : formData.teamName);
         payload.firstName = formData.firstName;
         payload.lastName = formData.lastName;
+        payload.cedula = formData.cedula;
+        payload.country = formData.country;
         payload.email = formData.email;
         payload.phone = formData.phone;
-        payload.birthDate = formData.birthDate;
+        payload.birthDate = `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`;
         payload.gender = formData.gender;
         payload.size = formData.size;
+        payload.teamName = finalIndTeamName;
       }
 
       const res = await fetch('/api/register', {
@@ -217,6 +254,8 @@ const [teamMembers, setTeamMembers] = useState([
     }
     setLoading(false);
   };
+
+  const getTeamAutocompleteOptions = () => ['Ninguno', 'Agregar manualmente', ...teamOptions];
 
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
@@ -248,36 +287,16 @@ const [teamMembers, setTeamMembers] = useState([
             </FormControl>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField
-                fullWidth
-                label="Código de descuento (opcional)"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-              />
-              <Button 
-                variant="outlined" 
-                onClick={validateCode} 
-                disabled={loading}
-                sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { borderColor: ACCENT, backgroundColor: 'rgba(255,107,0,0.08)' } }}
-              >
+              <TextField fullWidth label="Código de descuento (opcional)" value={code} onChange={(e) => setCode(e.target.value)} />
+              <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' } }}>
                 Validar
               </Button>
             </Box>
             
-            {codeValid && (
-              <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">
-                {codeValid.message}
-              </Typography>
-            )}
+            {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">{codeValid.message}</Typography>}
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button
-                variant="contained"
-                onClick={() => setStep(1)}
-                disabled={!selectedRace}
-                endIcon={<NavigateNextIcon />}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
-              >
+              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}>
                 Continuar
               </Button>
             </Box>
@@ -289,18 +308,10 @@ const [teamMembers, setTeamMembers] = useState([
             <Box sx={{ mb: 2 }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Tipo de Inscripción</Typography>
               <Box sx={{ display: 'flex', gap: 2 }}>
-                <Button
-                  variant={registrationType === 'individual' ? 'contained' : 'outlined'}
-                  onClick={() => setRegistrationType('individual')}
-                  sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}
-                >
+                <Button variant={registrationType === 'individual' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('individual')} sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}>
                   Individual
                 </Button>
-                <Button
-                  variant={registrationType === 'team' ? 'contained' : 'outlined'}
-                  onClick={() => setRegistrationType('team')}
-                  sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}
-                >
+                <Button variant={registrationType === 'team' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('team')} sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}>
                   Equipo (4 personas)
                 </Button>
               </Box>
@@ -308,55 +319,66 @@ const [teamMembers, setTeamMembers] = useState([
 
             {registrationType === 'individual' && (
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField
-                  label="Nombre *"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                  required
+                <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} required />
+                <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} required />
+                <TextField label="Cédula / Pasaporte *" value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} required />
+                <Autocomplete
+                  options={countriesList}
+                  value={formData.country}
+                  onChange={(_, newValue) => setFormData({...formData, country: newValue || ''})}
+                  renderInput={(params) => <TextField {...params} label="Nacionalidad *" required />}
                 />
-                <TextField
-                  label="Apellido *"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                  required
-                />
-                <TextField
-                  label="Email *"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  required
-                />
-                <TextField
-                  label="Teléfono"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                />
-                <TextField
-                  label="Fecha de Nacimiento"
-                  type="date"
-                  value={formData.birthDate}
-                  onChange={(e) => setFormData({...formData, birthDate: e.target.value})}
-                  InputLabelProps={{ shrink: true }}
-                  InputProps={{ sx: { '& input[type=date]::-webkit-calendar-picker-indicator': { filter: mode === 'dark' ? 'invert(1)' : 'none' } } }}
-                />
-                <FormControl>
+                <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required sx={{ gridColumn: '1 / -1' }}/>
+                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required sx={{ gridColumn: '1 / -1' }}/>
+                
+                <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
+                  <Typography variant="body2" sx={{ alignSelf: 'center', mr: 2 }}>Nacimiento *</Typography>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Día</InputLabel>
+                    <Select value={formData.birthDay} label="Día" onChange={(e) => setFormData({...formData, birthDay: e.target.value})}>
+                      {days.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Mes</InputLabel>
+                    <Select value={formData.birthMonth} label="Mes" onChange={(e) => setFormData({...formData, birthMonth: e.target.value})}>
+                      {months.map(m => <MenuItem key={m.val} value={m.val}>{m.lab}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Año</InputLabel>
+                    <Select value={formData.birthYear} label="Año" onChange={(e) => setFormData({...formData, birthYear: e.target.value})}>
+                      {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Box>
+
+                <FormControl fullWidth>
                   <InputLabel>Género</InputLabel>
-                  <Select
-                    value={formData.gender}
-                    label="Género"
-                    onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                  >
+                  <Select value={formData.gender} label="Género" onChange={(e) => setFormData({...formData, gender: e.target.value})}>
                     <MenuItem value="M">Masculino</MenuItem>
                     <MenuItem value="F">Femenino</MenuItem>
                   </Select>
                 </FormControl>
-                <TextField
-                  label="Equipo (Opcional)"
-                  value={formData.teamName}
-                  onChange={(e) => setFormData({...formData, teamName: e.target.value})}
-                  InputLabelProps={{ shrink: true }}
-                />
+                
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Autocomplete
+                    options={getTeamAutocompleteOptions()}
+                    value={formData.teamName || null}
+                    onChange={(_, newValue) => setFormData({...formData, teamName: newValue || ''})}
+                    renderInput={(params) => <TextField {...params} label="Equipo (Opcional)" />}
+                  />
+                  {formData.teamName === 'Agregar manualmente' && (
+                    <TextField 
+                      label="Escribe tu equipo *" 
+                      value={manualTeamNameInd} 
+                      onChange={(e) => setManualTeamNameInd(e.target.value)} 
+                      fullWidth 
+                      sx={{ mt: 2 }}
+                      required
+                    />
+                  )}
+                </Box>
               </Box>
             )}
 
@@ -364,48 +386,25 @@ const [teamMembers, setTeamMembers] = useState([
               {categories.length > 0 && (
                 <FormControl fullWidth>
                   <InputLabel>Categoría</InputLabel>
-                  <Select
-                    value={formData.category}
-                    label="Categoría"
-                    onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  >
+                  <Select value={formData.category} label="Categoría" onChange={(e) => setFormData({...formData, category: e.target.value})}>
                     <MenuItem value="">Ninguna</MenuItem>
-                    {categories.map((c) => (
-                      <MenuItem key={c.id} value={c.id}>
-                        {c.name}
-                      </MenuItem>
-                    ))}
+                    {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
                   </Select>
                 </FormControl>
               )}
               {distances.length > 0 && (
                 <FormControl fullWidth>
-                  <InputLabel>Distancia *</InputLabel>
-                  <Select
-                    value={formData.distance}
-                    label="Distancia *"
-                    onChange={(e) => setFormData({...formData, distance: e.target.value})}
-                    required
-                  >
-                    {distances.map((d) => (
-                      <MenuItem key={d.id} value={d.id}>
-                        {d.name}
-                      </MenuItem>
-                    ))}
+                  <InputLabel>Distancia a correr *</InputLabel>
+                  <Select value={formData.distance} label="Distancia a correr *" onChange={(e) => setFormData({...formData, distance: e.target.value})} required>
+                    {distances.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
                   </Select>
                 </FormControl>
               )}
               {registrationType === 'individual' && raceInfo?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>
-                  <Select
-                    value={formData.size}
-                    label="Talla de Camiseta"
-                    onChange={(e) => setFormData({...formData, size: e.target.value})}
-                  >
-                    {sizes.map((s) => (
-                      <MenuItem key={s} value={s}>{s}</MenuItem>
-                    ))}
+                  <Select value={formData.size} label="Talla de Camiseta" onChange={(e) => setFormData({...formData, size: e.target.value})}>
+                    {sizes.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
                   </Select>
                 </FormControl>
               )}
@@ -413,15 +412,24 @@ const [teamMembers, setTeamMembers] = useState([
 
             {registrationType === 'team' && (
               <Box sx={{ mb: 2 }}>
-                <TextField
-                  label="Nombre del Equipo *"
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="Ej: Los Rápidos"
-                  fullWidth
-                  required
-                  sx={{ mb: 3 }}
-                />
+                <Box sx={{ mb: 3 }}>
+                  <Autocomplete
+                    options={getTeamAutocompleteOptions()}
+                    value={teamName || null}
+                    onChange={(_, newValue) => setTeamName(newValue || '')}
+                    renderInput={(params) => <TextField {...params} label="Nombre del Equipo *" required />}
+                  />
+                  {teamName === 'Agregar manualmente' && (
+                    <TextField 
+                      label="Escribe tu equipo *" 
+                      value={manualTeamNameGroup} 
+                      onChange={(e) => setManualTeamNameGroup(e.target.value)} 
+                      fullWidth 
+                      sx={{ mt: 2 }}
+                      required
+                    />
+                  )}
+                </Box>
                 
                 <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
                   Datos de los 4 integrantes del equipo:
@@ -433,46 +441,44 @@ const [teamMembers, setTeamMembers] = useState([
                       Integrante {index + 1} {index === 0 ? '(Capitán)' : ''}
                     </Typography>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                      <TextField
-                        label={`Nombre *`}
-                        value={member.firstName}
-                        onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)}
-                        size="small"
+                      <TextField label="Nombre *" value={member.firstName} onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)} size="small" />
+                      <TextField label="Apellido *" value={member.lastName} onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)} size="small" />
+                      <TextField label="Cédula *" value={member.cedula} onChange={(e) => updateTeamMember(index, 'cedula', e.target.value)} size="small" />
+                      
+                      <Autocomplete
+                        options={countriesList}
+                        value={member.country}
+                        onChange={(_, newValue) => updateTeamMember(index, 'country', newValue || '')}
+                        renderInput={(params) => <TextField {...params} label="Nacionalidad *" size="small" required />}
                       />
-                      <TextField
-                        label={`Apellido *`}
-                        value={member.lastName}
-                        onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)}
-                        size="small"
-                      />
-                      <TextField
-                        label={`Email *`}
-                        type="email"
-                        value={member.email}
-                        onChange={(e) => updateTeamMember(index, 'email', e.target.value)}
-                        size="small"
-                      />
-                      <TextField
-                        label={`Teléfono`}
-                        value={member.phone}
-                        onChange={(e) => updateTeamMember(index, 'phone', e.target.value)}
-                        size="small"
-                      />
-                      <TextField
-                        label="Fecha de Nacimiento"
-                        type="date"
-                        value={member.birthDate}
-                        onChange={(e) => updateTeamMember(index, 'birthDate', e.target.value)}
-                        size="small"
-                        InputLabelProps={{ shrink: true }}
-                      />
+                      
+                      <TextField label="Email *" type="email" value={member.email} onChange={(e) => updateTeamMember(index, 'email', e.target.value)} size="small" sx={{ gridColumn: '1 / -1' }}/>
+                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} size="small" sx={{ gridColumn: '1 / -1' }}/>
+
+                      <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Día</InputLabel>
+                          <Select value={member.birthDay} label="Día" onChange={(e) => updateTeamMember(index, 'birthDay', e.target.value)}>
+                            {days.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                          </Select>
+                        </FormControl>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Mes</InputLabel>
+                          <Select value={member.birthMonth} label="Mes" onChange={(e) => updateTeamMember(index, 'birthMonth', e.target.value)}>
+                            {months.map(m => <MenuItem key={m.val} value={m.val}>{m.lab}</MenuItem>)}
+                          </Select>
+                        </FormControl>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Año</InputLabel>
+                          <Select value={member.birthYear} label="Año" onChange={(e) => updateTeamMember(index, 'birthYear', e.target.value)}>
+                            {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                          </Select>
+                        </FormControl>
+                      </Box>
+
                       <FormControl size="small">
                         <InputLabel>Género</InputLabel>
-                        <Select
-                          value={member.gender}
-                          label="Género"
-                          onChange={(e) => updateTeamMember(index, 'gender', e.target.value)}
-                        >
+                        <Select value={member.gender} label="Género" onChange={(e) => updateTeamMember(index, 'gender', e.target.value)}>
                           <MenuItem value="M">Masculino</MenuItem>
                           <MenuItem value="F">Femenino</MenuItem>
                         </Select>
@@ -480,14 +486,8 @@ const [teamMembers, setTeamMembers] = useState([
                       {raceInfo?.showShirtSize !== false && (
                         <FormControl size="small">
                           <InputLabel>Talla</InputLabel>
-                          <Select
-                            value={member.size}
-                            label="Talla"
-                            onChange={(e) => updateTeamMember(index, 'size', e.target.value)}
-                          >
-                            {sizes.map((s) => (
-                              <MenuItem key={s} value={s}>{s}</MenuItem>
-                            ))}
+                          <Select value={member.size} label="Talla" onChange={(e) => updateTeamMember(index, 'size', e.target.value)}>
+                            {sizes.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
                           </Select>
                         </FormControl>
                       )}
@@ -499,48 +499,32 @@ const [teamMembers, setTeamMembers] = useState([
 
             {raceInfo?.technicalInfo && (
               <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                  Información Técnica:
-                </Typography>
-                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
-                  {raceInfo.technicalInfo}
-                </Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Información Técnica:</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{raceInfo.technicalInfo}</Typography>
               </Box>
             )}
 
             {raceInfo?.termsAndConditions && (
               <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2 }}>
-                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
-                  Términos y Condiciones / Disclaimer:
-                </Typography>
+                <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>Términos y Condiciones / Disclaimer:</Typography>
                 <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', maxHeight: 150, overflow: 'auto' }}>
                   {raceInfo.termsAndConditions}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-                  <input
-                    type="checkbox"
-                    id="termsAccepted"
-                    checked={termsAccepted}
-                    onChange={(e) => setTermsAccepted(e.target.checked)}
-                    style={{ marginRight: 8 }}
-                  />
-                  <Typography variant="body2">
-                    He leído y acepto los términos y condiciones *
-                  </Typography>
+                  <input type="checkbox" id="termsAccepted" checked={termsAccepted} onChange={(e) => setTermsAccepted(e.target.checked)} style={{ marginRight: 8 }} />
+                  <Typography variant="body2">He leído y acepto los términos y condiciones *</Typography>
                 </Box>
               </Box>
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>
-                Atrás
-              </Button>
+              <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Button
                 variant="contained"
                 onClick={() => setStep(2)}
                 disabled={
-                  (registrationType === 'individual' && (!formData.firstName || !formData.lastName || !formData.email)) ||
-                  (registrationType === 'team' && (!teamName || !isTeamMembersValid())) ||
+                  (registrationType === 'individual' && !isIndividualValid()) ||
+                  (registrationType === 'team' && !isTeamMembersValid()) ||
                   (distances.length > 0 && !formData.distance) ||
                   !!((raceInfo?.termsAndConditions) && !termsAccepted)
                 }
@@ -559,14 +543,8 @@ const [teamMembers, setTeamMembers] = useState([
             
             <FormControl fullWidth>
               <InputLabel>Método de Pago *</InputLabel>
-              <Select
-                value={formData.paymentMethod}
-                label="Método de Pago *"
-                onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}
-              >
-                {paymentMethods.map((pm) => (
-                  <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>
-                ))}
+              <Select value={formData.paymentMethod} label="Método de Pago *" onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
+                {paymentMethods.map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
               </Select>
             </FormControl>
 
@@ -582,27 +560,14 @@ const [teamMembers, setTeamMembers] = useState([
 
             <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
-              <Typography variant="body2">
-                Carrera: {races.find(r => r.id === selectedRace)?.name || '-'}
-              </Typography>
-              <Typography variant="body2">
-                Participante: {formData.firstName} {formData.lastName}
-              </Typography>
-              <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>
-                Total: ${races.find(r => r.id === selectedRace)?.price || 0}
-              </Typography>
+              <Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.name || '-'}</Typography>
+              <Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
+              <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>Total: ${races.find(r => r.id === selectedRace)?.price || 0}</Typography>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>
-                Atrás
-              </Button>
-              <Button
-                variant="contained"
-                onClick={handleSubmit}
-                disabled={loading || !formData.paymentMethod}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
-              >
+              <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>Atrás</Button>
+              <Button variant="contained" onClick={handleSubmit} disabled={loading || !formData.paymentMethod} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}>
                 {loading ? 'Procesando...' : 'Confirmar Inscripción'}
               </Button>
             </Box>
@@ -612,23 +577,13 @@ const [teamMembers, setTeamMembers] = useState([
         {step === 3 && (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-            <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>
-              ¡Inscripción Exitosa!
-            </Typography>
-            <Typography color="text.secondary">
-              Te hemos enviado un correo de confirmación.
-            </Typography>
+            <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>¡Inscripción Exitosa!</Typography>
+            <Typography color="text.secondary">Te hemos enviado un correo de confirmación.</Typography>
           </Box>
         )}
 
         <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-          <Box>
-            {notification && (
-              <Alert severity={notification.type} sx={{ width: '100%' }}>
-                {notification.message}
-              </Alert>
-            )}
-          </Box>
+          <Box>{notification && <Alert severity={notification.type} sx={{ width: '100%' }}>{notification.message}</Alert>}</Box>
         </Snackbar>
       </Paper>
     </ThemeProvider>

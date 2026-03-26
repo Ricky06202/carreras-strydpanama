@@ -53,6 +53,8 @@ export const participants = sqliteTable('participants', {
   teamId: text('team_id'),
   bibNumber: integer('team_position'),
   size: text('size'),
+  cedula: text('cedula'),
+  country: text('country'),
   codeId: text('code_id'),
   paymentMethod: text('payment_method'),
   paymentStatus: text('payment_status').default('pending'),
@@ -92,3 +94,12 @@ export type RegistrationCode = typeof registrationCodes.$inferSelect;
 export type NewRegistrationCode = typeof registrationCodes.$inferInsert;
 export type Transaction = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+
+export const runningTeams = sqliteTable('running_teams', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  isApproved: integer('is_approved').notNull().default(0),
+});
+
+export type RunningTeam = typeof runningTeams.$inferSelect;
+export type NewRunningTeam = typeof runningTeams.$inferInsert;
