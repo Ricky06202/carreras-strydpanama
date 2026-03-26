@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
+import RaceTimer from '../../components/RaceTimer';
 
 const raceId = Astro.params.id;
 let race = null;
@@ -18,7 +19,7 @@ try {
   console.log('Fetching race:', raceId);
   console.log('ENV keys:', envKeys);
   
-  const raceData = await api.getRace(env, raceId);
+  const raceData = await api.getRace(env, raceId || '');
   console.log('Race data:', JSON.stringify(raceData, null, 2).substring(0, 300));
   
   // getRace returns { data: { race object } }
@@ -135,7 +136,16 @@ const raceData = race?.data || {};
       <div class="space-y-8">
         <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-6">
           <h2 class="text-xl font-bold mb-4">Información</h2>
-          <div class="text-gray-400">No hay información adicional</div>
+          <div class="space-y-4">
+            <RaceTimer 
+              client:only="react"
+              raceName={raceData.title || race.title}
+              raceStatus={raceData.status}
+              timerStart={raceData.timerStart}
+              timerStop={raceData.timerStop}
+            />
+            {!raceData.timerStart && <div class="text-gray-400">No hay información adicional</div>}
+          </div>
         </div>
       </div>
     </div>

@@ -74,4 +74,13 @@ export const api = {
   
   registerParticipant: (env: any, data: any) => 
     api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, data),
+
+  updateContent: (env: any, id: string, data: any) =>
+    apiFetch(`/api/content/${id}`, env, {
+      method: 'PUT',
+      body: JSON.stringify({ data }),
+    }),
+
+  updateRace: (env: any, id: string, data: any) =>
+    api.updateContent(env, id, data),
 };
