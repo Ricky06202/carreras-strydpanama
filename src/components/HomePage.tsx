@@ -292,43 +292,6 @@ export default function HomePage() {
       </Box>
       */}
 
-      {/* Info Section */}
-      <Box sx={{ 
-        py: 6, 
-        bgcolor: 'background.paper',
-        borderRadius: '32px',
-        mx: { xs: 2, md: 4 },
-        mb: { xs: 4, md: 8 },
-        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
-       }}>
-        <Container maxWidth="lg">
-          <Grid container spacing={4}>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>ENLACES</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography component="a" href="#proximos-eventos" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><CalendarTodayIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Calendario</Typography>
-                <Typography component="a" href="/#resultados" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
-                <Typography component="a" href="https://strydpanama.com" target="_blank" rel="noopener noreferrer" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
-                <Typography component="a" href="/terminos-y-condiciones" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>CONTÁCTENOS</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ color: 'grey.300' }}><PlaceIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />David, Chiriquí</Typography>
-                <Typography sx={{ color: 'grey.300' }}><PhoneIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />WhatsApp: (507) 6676-9050</Typography>
-                <Typography sx={{ color: 'grey.300' }}><EmailIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Email: carreras@strydpanama.com</Typography>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>STRYD PANAMA</Typography>
-              <Typography sx={{ color: 'grey.300' }}>
-                Una organización deportiva cuya visión es organizar actividades de correr y caminar dentro de una estructura comunitaria que involucre todos los estratos sociales.
-              </Typography>
-            </Grid>
-          </Grid>
-        </Container>
-      </Box>
     </Layout>
   );
 }
