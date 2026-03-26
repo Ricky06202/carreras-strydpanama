@@ -134,19 +134,20 @@ const raceData = race?.data || {};
       </div>
 
       <div class="space-y-8">
-        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-6">
-          <h2 class="text-xl font-bold mb-4">Información</h2>
-          <div class="space-y-4">
-            <RaceTimer 
-              client:only="react"
-              raceName={raceData.title || race.title}
-              raceStatus={raceData.status}
-              timerStart={raceData.timerStart}
-              timerStop={raceData.timerStop}
-            />
-            {!raceData.timerStart && <div class="text-gray-400">No hay información adicional</div>}
+        {raceData.showTimer !== false && raceData.timerStart && (
+          <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-6">
+            <h2 class="text-xl font-bold mb-4">Información</h2>
+            <div class="space-y-4">
+              <RaceTimer 
+                client:only="react"
+                raceName={raceData.title || race.title}
+                raceStatus={raceData.status}
+                timerStart={raceData.timerStart}
+                timerStop={raceData.timerStop}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   </div>
