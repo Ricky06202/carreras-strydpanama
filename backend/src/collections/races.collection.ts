@@ -8,28 +8,17 @@ const racesCollection: CollectionConfig = {
   icon: '🏃',
 
   schema: {
-    name: { type: 'string' },
-    description: { type: 'text' },
-    date: { type: 'date' },
-    startTime: { type: 'string' },
-    location: { type: 'string' },
-    routeGpxUrl: { type: 'url' },
-    imageUrl: { type: 'string' },
-    technicalInfo: { type: 'text' },
-    termsAndConditions: { type: 'text' },
-    price: { type: 'number' },
-    maxParticipants: { type: 'number' },
-    status: { type: 'string' },
-    showTimer: { type: 'boolean' },
-    showShirtSize: { type: 'boolean' },
+    type: 'object',
+    properties: {
+      name: { type: 'string' },
+      description: { type: 'textarea' },
+      date: { type: 'date' },
+      location: { type: 'string' },
+      price: { type: 'number' },
+    }
   },
 
-  listFields: ['name', 'date', 'status', 'price'],
-  searchFields: ['name', 'description', 'location'],
-  defaultSort: 'date',
-  defaultSortOrder: 'desc',
-
-  managed: true,
+  managed: false,
   isActive: true,
 }
 
