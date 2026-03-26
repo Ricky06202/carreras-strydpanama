@@ -15,6 +15,7 @@ describe("api.ts - registerParticipant", () => {
       email: "juan@test.com"
     };
 
+    const originalFetch = global.fetch;
     // Mock global fetch
     global.fetch = (async (url: any, options: any) => {
       // Mock login response

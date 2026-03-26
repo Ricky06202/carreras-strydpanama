@@ -2,7 +2,8 @@ import type { APIRoute } from 'astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async () => {
+export const GET: APIRoute = async (context) => {
+  const env = context.locals.runtime?.env || (globalThis as any).process?.env;
   try {
     // Intentamos obtener el contenido de la colección running_teams
     // Según AGENTS.md el nombre de la colección es 'running_teams'
