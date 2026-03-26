@@ -12,7 +12,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD
 // @ts-ignore
-const API_BASE = import.meta.env.SONICJS_API_URL || 'http://localhost:8787';
+const API_BASE = import.meta.env.SONICJS_API_URL || '';
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
