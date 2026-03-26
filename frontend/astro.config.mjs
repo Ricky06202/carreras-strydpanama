@@ -17,14 +17,5 @@ export default defineConfig({
         '@': '/src'
       }
     }
-  },
-  env: {
-    schema: {
-      SONICJS_API_URL: {
-        context: 'server',
-        access: 'public',
-        type: 'string',
-      }
-    }
   }
 });

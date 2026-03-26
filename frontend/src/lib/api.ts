@@ -1,12 +1,23 @@
 // Configuración de la API del backend SonicJS
 // @ts-ignore
-export const API_BASE_URL = import.meta.env.SONICJS_API_URL;
+const getEnv = (key: string, fallback: string) => {
+  if (typeof globalThis !== 'undefined' && (globalThis as any).env?.[key]) {
+    return (globalThis as any).env[key];
+  }
+  if (typeof process !== 'undefined' && process.env?.[key]) {
+    return process.env[key];
+  }
+  return fallback;
+};
+
+// @ts-ignore
+export const API_BASE_URL = getEnv('SONICJS_API_URL', 'https://api.carreras2.strydpanama.com');
 
 // Credenciales para autenticación automática
 // @ts-ignore
-const API_EMAIL = import.meta.env.SONICJS_API_EMAIL;
+const API_EMAIL = getEnv('SONICJS_API_EMAIL', '');
 // @ts-ignore
-const API_PASSWORD = import.meta.env.SONICJS_API_PASSWORD;
+const API_PASSWORD = getEnv('SONICJS_API_PASSWORD', '');
 
 // Token en memoria
 let authToken: string | null = null;
