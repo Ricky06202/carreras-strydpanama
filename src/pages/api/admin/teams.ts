@@ -2,10 +2,11 @@ import type { APIRoute } from 'astro';
 import { drizzle } from 'drizzle-orm/d1';
 import { runningTeams } from '../../../lib/db/schema';
 import { sql } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async ({ locals }) => {
+export const GET: APIRoute = async () => {
   try {
-    const rawDb = (locals as any).runtime?.env?.DB;
+    const rawDb = env.DB;
     if (!rawDb) throw new Error("No DB bind found");
     const db = drizzle(rawDb);
 

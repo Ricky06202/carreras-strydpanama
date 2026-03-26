@@ -2,13 +2,14 @@ import type { APIRoute } from 'astro';
 import { drizzle } from 'drizzle-orm/d1';
 import { runningTeams, participants } from '../../../../lib/db/schema';
 import { eq } from 'drizzle-orm';
+import { env } from 'cloudflare:workers';
 
-export const PUT: APIRoute = async ({ request, locals, params }) => {
+export const PUT: APIRoute = async ({ request, params }) => {
   try {
     const id = params.id;
     if (!id) throw new Error("ID requerido");
     
-    const rawDb = (locals as any).runtime?.env?.DB;
+    const rawDb = env.DB;
     if (!rawDb) throw new Error("No DB bind found");
     const db = drizzle(rawDb);
     
@@ -38,12 +39,12 @@ export const PUT: APIRoute = async ({ request, locals, params }) => {
   }
 };
 
-export const DELETE: APIRoute = async ({ locals, params }) => {
+export const DELETE: APIRoute = async ({ params }) => {
   try {
     const id = params.id;
     if (!id) throw new Error("ID requerido");
 
-    const rawDb = (locals as any).runtime?.env?.DB;
+    const rawDb = env.DB;
     if (!rawDb) throw new Error("No DB bind found");
     const db = drizzle(rawDb);
 
