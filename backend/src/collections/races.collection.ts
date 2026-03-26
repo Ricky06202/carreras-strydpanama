@@ -10,14 +10,66 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Nombre' },
-      description: { type: 'textarea', title: 'Descripción' },
-      date: { type: 'date', title: 'Fecha' },
-      location: { type: 'string', title: 'Ubicación' },
-      price: { type: 'number', title: 'Precio' },
-      imageUrl: { type: 'string', title: 'Imagen' },
-      status: { type: 'string', title: 'Estado' },
+      title: {
+        type: 'string',
+        title: 'Nombre de la Carrera',
+        required: true,
+      },
+      description: {
+        type: 'textarea',
+        title: 'Descripción',
+      },
+      date: {
+        type: 'date',
+        title: 'Fecha',
+      },
+      startTime: {
+        type: 'string',
+        title: 'Hora de Inicio',
+      },
+      location: {
+        type: 'string',
+        title: 'Ubicación',
+      },
+      routeGpxUrl: {
+        type: 'string',
+        title: 'URL del GPX de la Ruta',
+      },
+      imageUrl: {
+        type: 'string',
+        title: 'Imagen de la Carrera',
+      },
+      technicalInfo: {
+        type: 'textarea',
+        title: 'Información Técnica',
+      },
+      termsAndConditions: {
+        type: 'textarea',
+        title: 'Términos y Condiciones',
+      },
+      price: {
+        type: 'number',
+        title: 'Precio',
+      },
+      maxParticipants: {
+        type: 'number',
+        title: 'Máximo de Participantes',
+      },
+      status: {
+        type: 'select',
+        title: 'Estado',
+        enum: ['upcoming', 'accepting', 'active', 'finished'],
+      },
+      showTimer: {
+        type: 'boolean',
+        title: 'Mostrar Temporizador',
+      },
+      showShirtSize: {
+        type: 'boolean',
+        title: 'Mostrar Talla de Camiseta',
+      },
     },
+    required: ['title'],
   },
 
   listFields: ['title', 'date', 'status', 'price'],

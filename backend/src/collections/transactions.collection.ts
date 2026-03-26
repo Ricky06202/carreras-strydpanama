@@ -10,11 +10,12 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Transacción' },
-      participant: { type: 'reference', title: 'Participante', collection: 'participants' },
+      title: { type: 'string', title: 'Transacción', required: true },
+      participant: { type: 'string', title: 'Participante' },
       amount: { type: 'number', title: 'Monto' },
       status: { type: 'string', title: 'Estado' },
     },
+    required: ['title'],
   },
 
   listFields: ['title', 'amount', 'status'],

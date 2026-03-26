@@ -10,10 +10,11 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Nombre' },
-      race: { type: 'reference', title: 'Carrera', collection: 'races' },
+      title: { type: 'string', title: 'Nombre', required: true },
+      race: { type: 'string', title: 'Carrera' },
       description: { type: 'textarea', title: 'Descripción' },
     },
+    required: ['title'],
   },
 
   listFields: ['title', 'race'],

@@ -10,9 +10,10 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Nombre del Equipo' },
+      title: { type: 'string', title: 'Nombre del Equipo', required: true },
       isApproved: { type: 'boolean', title: 'Aprobado' },
     },
+    required: ['title'],
   },
 
   listFields: ['title', 'isApproved'],
