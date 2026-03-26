@@ -23,11 +23,17 @@ async function getAuthToken(env: any): Promise<string | null> {
 }
 
 export async function apiFetch(endpoint: string, env: any, options?: RequestInit) {
-  const baseUrl = env.SONICJS_API_URL;
+  let baseUrl = env.SONICJS_API_URL;
   if (!baseUrl) throw new Error('SONICJS_API_URL is missing in Cloudflare ENV');
 
+  // Asegurar que usamos el subdominio api.carreras2 si no está presente
+  // según la regla de AGENTS.md y el comportamiento detectado
+  if (typeof baseUrl === 'string' && !baseUrl.includes('api.')) {
+    baseUrl = baseUrl.replace(/^(https?:\/\/)([^.]+\.)/, '$1api.carreras2.');
+  }
+
   const token = await getAuthToken(env);
-  const url = `${baseUrl}${endpoint}`;
+  const url = `${baseUrl.replace(/\/$/, '')}${endpoint}`;
 
   const response = await fetch(url, {
     ...options,

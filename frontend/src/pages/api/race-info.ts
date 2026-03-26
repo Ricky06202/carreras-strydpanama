@@ -2,7 +2,9 @@ import type { APIRoute } from 'astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
-export const GET: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async (context) => {
+  const { request, locals } = context;
+  const env = locals.runtime?.env || (globalThis as any).process?.env;
   const url = new URL(request.url);
   const raceId = url.searchParams.get('raceId');
 
@@ -14,14 +16,20 @@ export const GET: APIRoute = async ({ request }) => {
   }
 
   try {
-    const [raceRes, categoriesRes, distancesRes] = await Promise.all([
+    const results = await Promise.allSettled([
       api.getRace(env, raceId),
       api.getCategories(env, raceId),
       api.getDistances(env, raceId)
     ]);
 
+    const [raceRes, categoriesRes, distancesRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+
+    if (!raceRes) {
+      const error = (results[0] as PromiseRejectedResult)?.reason?.message || 'Carrera no encontrada';
+      throw new Error(error);
+    }
+
     // Extraemos la data real de las respuestas de SonicJS
-    // Según AGENTS.md, la respuesta es { data: [...] } o { data: { ... } }
     const race = raceRes?.data || null;
     const categories = (categoriesRes?.data || []).map((item: any) => ({
       id: item.id,

@@ -2,7 +2,10 @@ import type { APIRoute } from 'astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async (context) => {
+  const { request, locals } = context;
+  const env = locals.runtime?.env || (globalThis as any).process?.env;
+  
   try {
     const body = await request.json();
     

@@ -32,11 +32,6 @@ const { title = 'Carreras Panama' } = Astro.props;
           document.documentElement.classList.remove('dark');
         }
         document.documentElement.style.colorScheme = theme;
-        
-        // Apply body styles immediately to prevent flash
-        document.body.style.backgroundColor = getComputedStyle(document.documentElement).getPropertyValue('--bg-primary');
-        document.body.style.color = getComputedStyle(document.documentElement).getPropertyValue('--text-primary');
-        document.body.style.transition = 'background-color 0.3s, color 0.3s';
       })();
     </script>
   </head>
@@ -101,7 +96,7 @@ const { title = 'Carreras Panama' } = Astro.props;
       const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
       const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
 
-      if (themeToggleBtn) {
+      if (themeToggleBtn && themeToggleDarkIcon && themeToggleLightIcon) {
         if (localStorage.getItem('theme') === 'dark') {
             themeToggleLightIcon.classList.remove('hidden');
         } else {
