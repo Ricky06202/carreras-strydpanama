@@ -14,9 +14,16 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'ID de carrera requerido' }), { status: 400 });
     }
 
-    // Actualizamos la carrera en SonicJS
-    // Guardamos los datos en el objeto 'data' de la carrera
-    const updateData: any = {};
+    // 1. Obtenemos la carrera actual para no perder datos al actualizar (PUT sobreescribe el objeto data)
+    const currentRace = await api.getRace(env, id);
+    if (!currentRace?.data) {
+      return new Response(JSON.stringify({ error: 'Carrera no encontrada' }), { status: 404 });
+    }
+
+    const currentData = currentRace.data.data || {};
+
+    // 2. Mezclamos los datos nuevos con los existentes
+    const updateData: any = { ...currentData };
     if (startTime !== undefined) updateData.timerStart = startTime;
     if (stopTime !== undefined) updateData.timerStop = stopTime;
     if (status !== undefined) updateData.status = status;
