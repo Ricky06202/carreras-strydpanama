@@ -91,7 +91,7 @@ const months = [
 const currentYear = new Date().getFullYear();
 const years = Array.from({length: 100}, (_, i) => String(currentYear - i));
 
-export default function RegistrationForm({ raceId }: { raceId: string }) {
+export default function RegistrationForm({ raceId, initialRaces = [] }: { raceId: string; initialRaces?: any[] }) {
   const [step, setStep] = useState(0);
   const [races, setRaces] = useState<Race[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -176,11 +176,13 @@ export default function RegistrationForm({ raceId }: { raceId: string }) {
   }, []);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/races`).then(r => r.json()).then(d => setRaces(d.races || [])).catch(() => {});
+    if (initialRaces.length > 0) {
+      setRaces(initialRaces);
+    }
     fetch(`${API_BASE}/api/teams`).then(r => r.json()).then(d => {
       if(d.teams) setTeamOptions(d.teams.map((t: any) => t.name));
     }).catch(() => {});
-  }, []);
+  }, [initialRaces]);
 
   useEffect(() => {
     if (selectedRace) {
