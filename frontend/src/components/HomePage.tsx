@@ -57,8 +57,24 @@ interface HomePageProps {
 }
 
 export default function HomePage({ initialRaces = [] }: HomePageProps) {
-  const [upcomingRaces, setUpcomingRaces] = useState<Race[]>([]);
-  const [completedRaces, setCompletedRaces] = useState<Race[]>([]);
+  const [upcomingRaces, setUpcomingRaces] = useState<Race[]>(() => {
+    if (initialRaces && initialRaces.length > 0) {
+      const upcoming = initialRaces.filter((r: any) => 
+        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.status === 'published'
+      );
+      return upcoming;
+    }
+    return [];
+  });
+  const [completedRaces, setCompletedRaces] = useState<Race[]>(() => {
+    if (initialRaces && initialRaces.length > 0) {
+      const completed = initialRaces.filter((r: any) => 
+        r.data?.status === 'finished'
+      );
+      return completed;
+    }
+    return [];
+  });
 
   useEffect(() => {
     if (initialRaces && initialRaces.length > 0) {

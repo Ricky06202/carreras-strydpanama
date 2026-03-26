@@ -24,12 +24,10 @@ interface LayoutProps {
 }
 
 export default function Layout({ children, maxWidth = 'lg' }: LayoutProps) {
-  const [mode, setMode] = useState<'light' | 'dark'>('light');
+  const [mode, setMode] = useState<'light' | 'dark'>(() => getInitialTheme());
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    const theme = getInitialTheme();
-    setMode(theme);
     setMounted(true);
 
     const handleThemeChange = (e: Event) => {
