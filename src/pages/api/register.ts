@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getDb } from '../../lib/db';
-import { getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction } from '../../lib/db/actions';
+import { getRaceById, getRegistrationCode, createParticipant, useRegistrationCode, createTransaction, getMaxBib } from '../../lib/db/actions';
 import { randomUUID } from 'crypto';
 import { env } from 'cloudflare:workers';
 
@@ -40,6 +40,7 @@ export const POST: APIRoute = async ({ request }) => {
       // Register all team members
       const participants = [];
       const firstParticipantId = randomUUID();
+      const currentMaxBib = await getMaxBib(db, raceId);
       
       for (let i = 0; i < teamMembers.length; i++) {
         const member = teamMembers[i];
@@ -60,7 +61,8 @@ export const POST: APIRoute = async ({ request }) => {
           gender: member.gender || null,
           categoryId: categoryId || null,
           distanceId: distanceId || null,
-          team: teamName || null,
+          teamName: teamName || null,
+          bibNumber: currentMaxBib + i + 1,
           size: member.size || null,
           codeId: i === 0 ? codeId || null : null,
           paymentMethod: paymentMethod || null,
@@ -107,6 +109,7 @@ export const POST: APIRoute = async ({ request }) => {
       }
       
       const participantId = randomUUID();
+      const currentMaxBib = await getMaxBib(db, raceId);
       
       const participant = await createParticipant(db, {
         id: participantId,
@@ -119,7 +122,8 @@ export const POST: APIRoute = async ({ request }) => {
         gender: gender || null,
         categoryId: categoryId || null,
         distanceId: distanceId || null,
-        team: null,
+        teamName: teamName || null,
+        bibNumber: currentMaxBib + 1,
         size: size || null,
         codeId: codeId || null,
         paymentMethod: paymentMethod || null,

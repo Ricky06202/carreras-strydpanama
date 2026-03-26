@@ -35,9 +35,9 @@ function formatDate(dateStr: string) {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-8">
-        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg overflow-hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg overflow-hidden relative">
           {race.imageUrl ? (
-            <img src={race.imageUrl} alt={race.name} class="w-full h-64 object-cover" />
+            <img src={race.imageUrl} alt={race.name} class="w-full h-auto min-h-[300px] max-h-[500px] object-contain bg-slate-950" />
           ) : (
             <div class="h-48 bg-[radial-gradient(circle_at_50%_0%,#1e293b_0%,#0f172a_100%)] flex items-center justify-center relative">
               <svg class="w-24 h-24 text-white opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">

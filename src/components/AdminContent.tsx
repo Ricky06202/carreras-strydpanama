@@ -56,6 +56,7 @@ interface Participant {
   categoryId: string | null;
   distanceId: string | null;
   teamName: string | null;
+  bibNumber: number | null;
   finishTime: number | null;
   termsAccepted: boolean;
 }
@@ -378,6 +379,7 @@ export default function AdminContent({
                 <Table>
                   <TableHead sx={{ bgcolor: 'action.hover' }}>
                     <TableRow>
+                      <TableCell>Dorsal</TableCell>
                       <TableCell>Nombre</TableCell>
                       <TableCell>Email</TableCell>
                       <TableCell>Teléfono</TableCell>
@@ -391,6 +393,7 @@ export default function AdminContent({
                   <TableBody>
                     {participants.map(p => (
                       <TableRow key={p.id}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>#{p.bibNumber || '-'}</TableCell>
                         <TableCell>{p.firstName} {p.lastName}</TableCell>
                         <TableCell>{p.email}</TableCell>
                         <TableCell>{p.phone || '-'}</TableCell>
@@ -414,7 +417,7 @@ export default function AdminContent({
                     ))}
                     {participants.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={8} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
+                        <TableCell colSpan={9} sx={{ textAlign: 'center', py: 4 }}>Sin participantes</TableCell>
                       </TableRow>
                     )}
                   </TableBody>

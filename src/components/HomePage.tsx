@@ -306,10 +306,10 @@ export default function HomePage() {
             <Grid size={{ xs: 12, md: 4 }}>
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2, color: ACCENT }}>ENLACES</Typography>
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><CalendarTodayIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Calendario</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
-                <Typography sx={{ color: 'grey.300', '&:hover': { color: ACCENT }, cursor: 'pointer' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
+                <Typography component="a" href="#proximos-eventos" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><CalendarTodayIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Calendario</Typography>
+                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><EmojiEventsIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Resultados</Typography>
+                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><InfoIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />¿Quiénes somos?</Typography>
+                <Typography component="a" href="/" sx={{ color: 'grey.300', textDecoration: 'none', '&:hover': { color: ACCENT }, cursor: 'pointer', display: 'block' }}><DescriptionIcon sx={{ fontSize: 18, mr: 1, verticalAlign: 'middle' }} />Términos y condiciones</Typography>
               </Box>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>

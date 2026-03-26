@@ -45,6 +45,13 @@ export async function getParticipantById(db: Database, id: string) {
   return result[0] || null;
 }
 
+export async function getMaxBib(db: Database, raceId: string) {
+  const result = await db.select({ maxBib: sql<number | null>`MAX(${schema.participants.bibNumber})` })
+    .from(schema.participants)
+    .where(eq(schema.participants.raceId, raceId));
+  return result[0]?.maxBib || 0;
+}
+
 export async function createParticipant(db: Database, participant: schema.NewParticipant) {
   return await db.insert(schema.participants).values(participant).returning();
 }

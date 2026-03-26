@@ -51,7 +51,7 @@ export const participants = sqliteTable('participants', {
   distanceId: text('distance_id'),
   teamName: text('team_name'),
   teamId: text('team_id'),
-  teamPosition: integer('team_position'),
+  bibNumber: integer('team_position'),
   size: text('size'),
   codeId: text('code_id'),
   paymentMethod: text('payment_method'),

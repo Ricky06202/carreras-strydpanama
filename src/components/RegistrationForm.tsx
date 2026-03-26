@@ -188,7 +188,7 @@ const [teamMembers, setTeamMembers] = useState([
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
         paymentMethod: formData.paymentMethod,
-        teamName: registrationType === 'team' ? teamName : null,
+        teamName: registrationType === 'team' ? teamName : (formData.teamName || null),
       };
 
       if (registrationType === 'team') {
@@ -351,6 +351,12 @@ const [teamMembers, setTeamMembers] = useState([
                     <MenuItem value="F">Femenino</MenuItem>
                   </Select>
                 </FormControl>
+                <TextField
+                  label="Equipo (Opcional)"
+                  value={formData.teamName}
+                  onChange={(e) => setFormData({...formData, teamName: e.target.value})}
+                  InputLabelProps={{ shrink: true }}
+                />
               </Box>
             )}
 
