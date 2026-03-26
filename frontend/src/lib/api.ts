@@ -73,5 +73,5 @@ export const api = {
     }),
   
   registerParticipant: (env: any, data: any) => 
-    api.createContent(env, 'participants', data.title || `${data.firstName} ${data.lastName}`, data),
+    api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, data),
 };

@@ -43,7 +43,7 @@ export const GET: APIRoute = async ({ request }) => {
     });
   } catch (error: any) {
     return new Response(JSON.stringify({ 
-      error: error.message || 'Error desconocido',
+      message: error.message || 'Error desconocido',
       env_url: env?.SONICJS_API_URL ? 'PRESENT' : 'MISSING'
     }), {
       status: 500,
