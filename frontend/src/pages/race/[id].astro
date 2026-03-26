@@ -33,8 +33,9 @@ try {
 }
 
 if (!race) {
-  console.log('Redirecting to home. raceId:', raceId, 'error:', error);
-  return Astro.redirect('/');
+  console.log('Race is null. RaceId:', raceId, 'Error:', error);
+  // Don't redirect, just show debug info
+  race = { id: raceId, title: 'DEBUG: Race not found', data: { title: 'Race not found', description: error || 'No race data' } };
 }
 
 function formatDate(dateStr: string) {
