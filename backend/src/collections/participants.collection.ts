@@ -26,6 +26,7 @@ export default {
       bibNumber: { type: 'number', title: 'Dorsal' },
       size: { type: 'string', title: 'Talla' },
       paymentStatus: { type: 'string', title: 'Pago' },
+      finishTime: { type: 'number', title: 'Tiempo de Llegada (s)' },
     },
     required: ['title', 'firstName', 'lastName', 'email'],
   },
