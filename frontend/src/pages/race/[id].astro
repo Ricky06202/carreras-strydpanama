@@ -6,16 +6,26 @@ import { env } from 'cloudflare:workers';
 const raceId = Astro.params.id;
 let race = null;
 let error = null;
+let envKeys = 'NO ENV';
+
+if (env) {
+  envKeys = Object.keys(env).join(', ');
+} else {
+  console.error('ENV IS UNDEFINED!');
+}
 
 try {
   console.log('Fetching race:', raceId);
-  console.log('ENV keys:', Object.keys(env || {}));
+  console.log('ENV keys:', envKeys);
   
   const raceData = await api.getRace(env, raceId);
-  console.log('Race data:', JSON.stringify(raceData));
+  console.log('Race data response:', JSON.stringify(raceData, null, 2).substring(0, 500));
   
   if (raceData?.data?.[0]) {
     race = raceData.data[0];
+    console.log('Race found:', race.title);
+  } else {
+    console.log('No race data found in response');
   }
 } catch (e) {
   error = e.message;
@@ -23,7 +33,7 @@ try {
 }
 
 if (!race) {
-  console.log('No race found, redirecting. Error:', error);
+  console.log('Redirecting to home. raceId:', raceId, 'error:', error);
   return Astro.redirect('/');
 }
 
