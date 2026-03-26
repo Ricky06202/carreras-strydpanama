@@ -33,7 +33,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const payload = {
       id: raceObj.id,
-      collectionId: raceObj.collectionId,
+      collection_id: raceObj.collectionId || raceObj.collection_id,
       title: raceObj.title, // El título es obligatorio
       status: 'published',
       data: updatedData
