@@ -35,12 +35,12 @@ function formatDate(dateStr: string) {
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
       <div class="lg:col-span-2 space-y-8">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg overflow-hidden">
           {race.imageUrl ? (
             <img src={race.imageUrl} alt={race.name} class="w-full h-64 object-cover" />
           ) : (
-            <div class="h-48 bg-gradient-to-br from-accent to-orange-400 flex items-center justify-center relative">
-              <svg class="w-24 h-24 text-white opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="h-48 bg-[radial-gradient(circle_at_50%_0%,#1e293b_0%,#0f172a_100%)] flex items-center justify-center relative">
+              <svg class="w-24 h-24 text-white opacity-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
@@ -55,15 +55,15 @@ function formatDate(dateStr: string) {
             <p class="text-gray-600 dark:text-gray-400 mb-6">{race.description}</p>
             
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
                 <div class="text-2xl font-bold text-accent">{participants.length}</div>
                 <div class="text-sm text-gray-500">Participantes</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
                 <div class="text-2xl font-bold text-accent">${race.price}</div>
                 <div class="text-sm text-gray-500">Precio</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
                 <div class="text-2xl font-bold text-accent">
                   {race.maxParticipants 
                     ? `${race.maxParticipants - participants.length} / ${race.maxParticipants}`
@@ -72,7 +72,7 @@ function formatDate(dateStr: string) {
                 </div>
                 <div class="text-sm text-gray-500">Cupo Disponible</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
                 <div class="text-2xl font-bold text-accent">{formatDate(race.date)}</div>
                 <div class="text-sm text-gray-500">Fecha</div>
               </div>
@@ -89,28 +89,28 @@ function formatDate(dateStr: string) {
             )}
 
             {race.technicalInfo && (
-              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+              <div class="bg-gray-50 dark:bg-slate-800 rounded-2xl p-6 mb-6">
                 <h3 class="text-lg font-bold mb-3 dark:text-white">Información Técnica</h3>
                 <p class="text-gray-600 dark:text-gray-400 whitespace-pre-wrap">{race.technicalInfo}</p>
               </div>
             )}
 
             {race.termsAndConditions && (
-              <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-6 mb-6">
+              <div class="bg-gray-50 dark:bg-slate-800 rounded-2xl p-6 mb-6">
                 <h3 class="text-lg font-bold mb-3 dark:text-white">Términos y Condiciones</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm whitespace-pre-wrap">{race.termsAndConditions}</p>
               </div>
             )}
 
             {race.showTimer && race.status === 'active' && race.timerStart && (
-              <div class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-6 mb-8">
-                <h3 class="text-lg font-bold text-orange-800 dark:text-orange-200 mb-4 text-center">Tiempo Transcurrido</h3>
+              <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl p-6 mb-8">
+                <h3 class="text-lg font-bold text-yellow-800 dark:text-yellow-200 mb-4 text-center">Tiempo Transcurrido</h3>
                 <RaceTimer client:load startTimestamp={race.timerStart} />
               </div>
             )}
 
             {(race.status === 'upcoming' || race.status === 'accepting') && (
-              <a href={`/register?race=${race.id}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-lg hover:bg-orange-600 transition-colors">
+              <a href={`/register?race=${race.id}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-2xl hover:bg-yellow-500 transition-colors">
                 Inscribirse Ahora
               </a>
             )}
@@ -118,14 +118,14 @@ function formatDate(dateStr: string) {
         </div>
 
         {(race.routeGpxUrl) && (
-          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+          <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-8">
             <h2 class="text-xl font-bold mb-4">Ruta de la Carrera</h2>
             <RaceMap client:load gpxUrl={race.routeGpxUrl} raceName={race.name} />
           </div>
         )}
 
         {(race.routeGeoJson && !race.routeGpxUrl) && (
-          <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
+          <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-8">
             <h2 class="text-xl font-bold mb-4">Ruta de la Carrera</h2>
             <RouteViewer client:only="react" routeGeoJson={race.routeGeoJson} raceName={race.name} />
           </div>
@@ -133,14 +133,14 @@ function formatDate(dateStr: string) {
       </div>
 
       <div class="space-y-8">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6">
+        <div class="bg-white dark:bg-slate-900 rounded-[32px] shadow-lg p-6">
           <h2 class="text-xl font-bold mb-4">Participantes Recientes</h2>
           {participants.length === 0 ? (
             <p class="text-gray-500 text-center py-4">Aún no hay participantes</p>
           ) : (
             <div class="space-y-3 max-h-96 overflow-y-auto">
               {participants.slice(0, 10).map((p) => (
-                <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-slate-800 rounded-2xl">
                   <div class="w-10 h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold">
                     {p.firstName[0]}{p.lastName[0]}
                   </div>

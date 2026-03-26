@@ -10,7 +10,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
-const ACCENT = '#FF6B00';
+const ACCENT = '#facc15';
 
 function getInitialTheme(): 'light' | 'dark' {
   if (typeof document !== 'undefined') {
@@ -26,8 +26,8 @@ const darkTheme = createTheme({
     mode: 'dark',
     primary: { main: ACCENT },
     background: {
-      default: '#111827',
-      paper: '#1F2937',
+      default: '#020617',
+      paper: '#0f172a',
     },
   },
 });
@@ -221,7 +221,7 @@ const [teamMembers, setTeamMembers] = useState([
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Paper elevation={3} sx={{ p: 3, borderRadius: 3 }}>
+      <Paper elevation={3} sx={{ p: { xs: 2, md: 4 }, borderRadius: '32px' }}>
         <Stepper activeStep={step} sx={{ mb: 4 }}>
           {steps.map((label) => (
             <Step key={label}>
@@ -276,7 +276,7 @@ const [teamMembers, setTeamMembers] = useState([
                 onClick={() => setStep(1)}
                 disabled={!selectedRace}
                 endIcon={<NavigateNextIcon />}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
               >
                 Continuar
               </Button>
@@ -422,7 +422,7 @@ const [teamMembers, setTeamMembers] = useState([
                 </Typography>
 
                 {teamMembers.map((member, index) => (
-                  <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: 'action.hover' }}>
+                  <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: '16px' }}>
                     <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: ACCENT }}>
                       Integrante {index + 1} {index === 0 ? '(Capitán)' : ''}
                     </Typography>
@@ -539,7 +539,7 @@ const [teamMembers, setTeamMembers] = useState([
                   !!((raceInfo?.termsAndConditions) && !termsAccepted)
                 }
                 endIcon={<NavigateNextIcon />}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
               >
                 Continuar
               </Button>
@@ -595,7 +595,7 @@ const [teamMembers, setTeamMembers] = useState([
                 variant="contained"
                 onClick={handleSubmit}
                 disabled={loading || !formData.paymentMethod}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
               >
                 {loading ? 'Procesando...' : 'Confirmar Inscripción'}
               </Button>

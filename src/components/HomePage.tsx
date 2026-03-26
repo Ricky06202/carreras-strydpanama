@@ -293,7 +293,14 @@ export default function HomePage() {
       */}
 
       {/* Info Section */}
-      <Box sx={{ py: 8, bgcolor: '#1F2937' }}>
+      <Box sx={{ 
+        py: 6, 
+        bgcolor: 'background.paper',
+        borderRadius: '32px',
+        mx: { xs: 2, md: 4 },
+        mb: { xs: 4, md: 8 },
+        boxShadow: '0 10px 30px rgba(0,0,0,0.3)'
+       }}>
         <Container maxWidth="lg">
           <Grid container spacing={4}>
             <Grid size={{ xs: 12, md: 4 }}>
