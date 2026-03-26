@@ -10,9 +10,9 @@ const racesCollection: CollectionConfig = {
   schema: {
     type: 'object',
     properties: {
-      name: { type: 'string', title: 'Nombre de la Carrera', required: true },
+      name: { type: 'string', title: 'Nombre de la Carrera' },
       description: { type: 'richtext', title: 'Descripción' },
-      date: { type: 'date', title: 'Fecha', required: true },
+      date: { type: 'date', title: 'Fecha' },
       startTime: { type: 'string', title: 'Hora de Inicio' },
       location: { type: 'string', title: 'Ubicación' },
       routeGpxUrl: { type: 'url', title: 'URL del GPX de la Ruta' },
