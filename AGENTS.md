@@ -317,12 +317,14 @@ curl -X POST https://api.carreras2.strydpanama.com/api/content \
 ### Colecciones y sus IDs (Producción)
 
 - **races**: `col-races-fa0146f5`
-- **categories**: `col-categories-xxx`
-- **distances**: `col-distances-xxx`
+- **categories**: `col-categories-26d3d058`
+- **distances**: `col-distances-93815733`
 - **participants**: `col-participants-93d1ac21`
-- **registration_codes**: `col-registration-codes-xxx`
-- **transactions**: `col-transactions-xxx`
-- **running_teams**: `col-running-teams-xxx`
+- **registration_codes**: `col-registration_codes-469bc379`
+- **transactions**: `col-transactions-e06da228`
+- **running_teams**: `col-running_teams-5c6748a6`
+- **pages**: `pages-collection`
+- **news**: `news-collection`
 
 ### Cómo obtener el ID de una colección
 
