@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, Card, CardContent, 
-  Grid, Container, Chip, CircularProgress, Alert 
+  Grid, Container, Chip, CircularProgress, Alert,
+  TextField, List, ListItem, ListItemText 
 } from '@mui/material';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -27,6 +28,49 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para Meta de Llegada
+  const [bibInput, setBibInput] = useState<Record<string, string>>({});
+  const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
+
+  const registerFinish = async (raceId: string, timerStart: number) => {
+    const bib = bibInput[raceId]?.trim();
+    if (!bib) return;
+
+    setLoading(raceId);
+    setError(null);
+    const finishTime = Math.floor(Date.now() / 1000) - timerStart;
+
+    try {
+      const res = await fetch('/api/admin/register-finish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceId, bibNumber: bib, finishTime })
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar llegada');
+      
+      // Limpiar input y agregar a la lista de recientes
+      setBibInput(prev => ({ ...prev, [raceId]: '' }));
+      setRecentFinishes(prev => {
+        const raceFinishes = prev[raceId] || [];
+        return {
+          ...prev,
+          [raceId]: [data.participant, ...raceFinishes].slice(0, 10) // Mantener últimos 10
+        };
+      });
+      
+      // Feedback visual opcional
+      const beep = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+      beep.play().catch(() => {}); // Intentar sonido tipo scanner
+      
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(null);
+    }
+  };
 
   const updateRace = async (id: string, updates: any) => {
     setLoading(id);
@@ -162,16 +206,6 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                   ) : (
                     <>
                       <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={loading === race.id ? <CircularProgress size={20} color="inherit" /> : <StopIcon />}
-                        onClick={() => stopTimer(race.id)}
-                        disabled={!!loading || !!race.data?.timerStop}
-                        sx={{ color: '#ff4444', borderColor: '#ff4444', '&:hover': { borderColor: '#cc0000', bgcolor: 'rgba(255,0,0,0.05)' } }}
-                      >
-                        DETENER
-                      </Button>
-                      <Button
                         variant="outlined"
                         onClick={() => resetTimer(race.id)}
                         disabled={!!loading}
@@ -182,6 +216,69 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                     </>
                   )}
                 </Box>
+
+                {/* --- SECCIÓN META DE LLEGADA --- */}
+                {race.data?.timerStart && !race.data?.timerStop && (
+                  <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
+                      🏁 Meta de Llegadas
+                    </Typography>
+                    <Box component="form" onSubmit={(e) => {
+                      e.preventDefault();
+                      if (bibInput[race.id]?.trim()) {
+                        registerFinish(race.id, race.data!.timerStart!);
+                      }
+                    }} sx={{ display: 'flex', gap: 1 }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Escanear o teclear Dorsal"
+                        value={bibInput[race.id] || ''}
+                        onChange={(e) => setBibInput(prev => ({ ...prev, [race.id]: e.target.value }))}
+                        disabled={!!loading}
+                        autoComplete="off"
+                        InputProps={{
+                          sx: { fontWeight: 'bold', fontSize: '1.2rem' }
+                        }}
+                      />
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        disabled={!!loading || !bibInput[race.id]}
+                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                      >
+                        Registrar
+                      </Button>
+                    </Box>
+                    
+                    {/* Lista de Llegadas Recientes */}
+                    {recentFinishes[race.id]?.length > 0 && (
+                      <Box sx={{ mt: 3, bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                          ÚLTIMOS REGISTROS
+                        </Typography>
+                        <List dense disablePadding>
+                          {recentFinishes[race.id].map((finish: any, i: number) => (
+                            <ListItem key={i} disablePadding sx={{ py: 0.5, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                              <ListItemText 
+                                primary={
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                      #{finish.bibNumber} - {finish.name}
+                                    </Typography>
+                                    <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
+                                      {formatTime(finish.finishTime)}
+                                    </Typography>
+                                  </Box>
+                                }
+                              />
+                            </ListItem>
+                          ))}
+                        </List>
+                      </Box>
+                    )}
+                  </Box>
+                )}
               </CardContent>
             </Card>
           </Grid>

@@ -64,6 +64,10 @@ export default {
         type: 'boolean',
         title: 'Mostrar Temporizador',
       },
+      startingBib: {
+        type: 'number',
+        title: 'Dorsal Inicial (ej: 1 o 100)',
+      },
       showShirtSize: {
         type: 'boolean',
         title: 'Mostrar Talla de Camiseta',
