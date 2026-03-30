@@ -99,8 +99,8 @@ export const api = {
     return apiFetch(`/api/collections/${collection}/content${queryString}`, env);
   },
   
-  getCategories: (env: any, raceId: string) => api.getCollectionContent(env, 'categories', { race: raceId }),
-  getDistances: (env: any, raceId: string) => api.getCollectionContent(env, 'distances', { race: raceId }),
+  getCategories: (env: any, raceId: string) => api.getCollectionContent(env, 'categories', { limit: '500' }).then((r: any) => ({ ...r, _raceId: raceId })),
+  getDistances: (env: any, raceId?: string) => api.getCollectionContent(env, 'distances', { limit: '500' }),
   getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, 'participants', { race: raceId }),
   
   createContent: (env: any, collectionId: string, title: string, data: any) => 
