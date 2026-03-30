@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import { 
   Box, Typography, Button, Card, CardContent, 
   Grid, Container, Chip, CircularProgress, Alert,
-  TextField, List, ListItem, ListItemText 
+  TextField, List, ListItem, ListItemText,
+  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel
 } from '@mui/material';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -28,6 +29,83 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Estados para Tabs y Códigos
+  const [tabIndex, setTabIndex] = useState(0);
+  const [vendorInput, setVendorInput] = useState('');
+  const [codeRaceId, setCodeRaceId] = useState('');
+  const [codeQuantity, setCodeQuantity] = useState<number | ''>('');
+  const [codeStats, setCodeStats] = useState<any[]>([]);
+  const [codesLoading, setCodesLoading] = useState(false);
+
+  const fetchCodeStats = async () => {
+    try {
+      setCodesLoading(true);
+      const res = await fetch('/api/admin/codes-stats');
+      const data = await res.json();
+      if (data.success) setCodeStats(data.stats);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setCodesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tabIndex === 1) fetchCodeStats();
+  }, [tabIndex]);
+
+  const generateCodes = async () => {
+    if (!vendorInput || !codeRaceId || !codeQuantity) {
+      alert("Por favor llena todos los campos de vendedor, carrera y cantidad");
+      return;
+    }
+    try {
+      setCodesLoading(true);
+      const res = await fetch('/api/admin/bulk-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor: vendorInput, raceId: codeRaceId, quantity: Number(codeQuantity) })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVendorInput('');
+        setCodeQuantity('');
+        fetchCodeStats();
+        alert(`Se han generado ${data.codesGenerated} códigos para el lote ${data.batchId}`);
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert("Error al intentar generar los códigos");
+    } finally {
+      setCodesLoading(false);
+    }
+  };
+
+  const markCodesSold = async (batchId: string, vendor: string, qty: string) => {
+    const qtyNum = parseInt(qty || '0', 10);
+    if (qtyNum <= 0) return;
+    try {
+      setCodesLoading(true);
+      const res = await fetch('/api/admin/mark-sold', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ batchId, vendor, qtyToMark: qtyNum })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCodeStats();
+        alert(`Se han marcado ${data.marked} códigos como vendidos de ${vendor}.`);
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert("Error marcando vendidos.");
+    } finally {
+      setCodesLoading(false);
+    }
+  };
   
   // Estados para Meta de Llegada
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
@@ -141,11 +219,19 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         <Typography variant="h3" sx={{ fontWeight: 900, mb: 1 }}>
           PANEL DE <Box component="span" sx={{ color: ACCENT }}>CONTROL</Box>
         </Typography>
-        <Typography color="text.secondary">Gestión de carreras y cronómetros en vivo</Typography>
+        <Typography color="text.secondary">Gestión de carreras y códigos físicos</Typography>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
 
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
+        <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)} centered textColor="primary" indicatorColor="primary">
+          <Tab label="Cronometraje en Vivo" />
+          <Tab label="Gestión de Códigos Físicos" />
+        </Tabs>
+      </Box>
+
+      {tabIndex === 0 && (
       <Grid container spacing={3}>
         {races.map((race) => (
           <Grid key={race.id} sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
@@ -294,6 +380,72 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
           </Grid>
         ))}
       </Grid>
+      )}
+
+      {tabIndex === 1 && (
+        <Box>
+          <Card sx={{ mb: 4, p: 2, borderRadius: 4 }}>
+            <CardContent>
+              <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>Generar Nuevo Lote</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+                <FormControl size="small" sx={{ minWidth: 200, flex: 1 }}>
+                  <InputLabel>Carrera Destino</InputLabel>
+                  <Select value={codeRaceId} label="Carrera Destino" onChange={(e) => setCodeRaceId(e.target.value)}>
+                    {races.map(r => <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title || 'Carrera'}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                
+                <TextField size="small" sx={{ minWidth: 250, flex: 1 }} label="Vendedor Físico (Punto de Venta)" placeholder="Ej. Tienda Running" value={vendorInput} onChange={e => setVendorInput(e.target.value)} />
+                
+                <TextField type="number" size="small" sx={{ width: 120 }} label="Cantidad" placeholder="Ej. 20" value={codeQuantity} onChange={e => setCodeQuantity(e.target.value ? Number(e.target.value) : '')} />
+                
+                <Button variant="contained" onClick={generateCodes} disabled={codesLoading} sx={{ py: 1, px: 3, bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+                  {codesLoading ? 'PROCESANDO...' : 'GENERAR CÓDIGOS'}
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+          
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>Seguimiento por Vendedor y Lote</Typography>
+          <TableContainer component={Paper} sx={{ borderRadius: 4, bgcolor: 'background.paper' }}>
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                  <TableCell><strong>Vendedor</strong></TableCell>
+                  <TableCell><strong>ID de Lote</strong></TableCell>
+                  <TableCell align="center"><strong>Total Impresos</strong></TableCell>
+                  <TableCell align="center"><strong>Faltan x Vender</strong></TableCell>
+                  <TableCell align="center"><strong>Faltan x Canjear</strong></TableCell>
+                  <TableCell align="center"><strong>Canjes Exitosos</strong></TableCell>
+                  <TableCell align="center"><strong>Acciones</strong></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {codeStats.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>No hay códigos registrados</TableCell></TableRow> : codeStats.map((stat, i) => (
+                  <TableRow key={i}>
+                    <TableCell sx={{ fontWeight: 'bold' }}>{stat.vendor}</TableCell>
+                    <TableCell><Chip label={stat.batchId} size="small" /></TableCell>
+                    <TableCell align="center">{stat.total}</TableCell>
+                    <TableCell align="center"><Typography color="success.main" fontWeight="bold">{stat.generated}</Typography></TableCell>
+                    <TableCell align="center">{stat.sold}</TableCell>
+                    <TableCell align="center"><Typography color="info.main">{stat.redeemed}</Typography></TableCell>
+                    <TableCell align="center">
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
+                         <Button size="small" variant="outlined" onClick={() => {
+                            const qty = prompt(`¿Cuántos de los ${stat.generated} códigos generados que tiene ${stat.vendor} fueron concretados/vendidos exitosamente por ellos?`, "1");
+                            if (qty) markCodesSold(stat.batchId, stat.vendor, qty);
+                         }} disabled={stat.generated === 0 || codesLoading}>
+                           Marcar Venta
+                         </Button>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Box>
+      )}
     </Container>
   );
 }

@@ -10,16 +10,23 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Código', required: true },
-      code: { type: 'string', title: 'Código' },
-      race: { type: 'string', title: 'Carrera' },
-      used: { type: 'boolean', title: 'Usado' },
+      title: { type: 'string', title: 'Identificador del Código', required: true },
+      code: { type: 'string', title: 'Código Promocional' },
+      race: { type: 'string', title: 'ID de la Carrera (fk)' },
+      vendor: { type: 'string', title: 'Punto de Venta / Vendedor físico' },
+      batchId: { type: 'string', title: 'Lote de Entrega' },
+      status: {
+        type: 'select',
+        title: 'Estado del Código',
+        enum: ['generated', 'sold', 'redeemed'],
+      },
+      usedDate: { type: 'date', title: 'Fecha de Canje' }
     },
-    required: ['title'],
+    required: ['title', 'code', 'race'],
   },
 
-  listFields: ['title', 'race', 'used'],
-  searchFields: ['title', 'code'],
+  listFields: ['title', 'code', 'vendor', 'status'],
+  searchFields: ['title', 'code', 'vendor', 'batchId'],
 
   managed: true,
   isActive: true,

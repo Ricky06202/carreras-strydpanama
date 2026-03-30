@@ -201,17 +201,21 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   }, [selectedRace]);
 
   const validateCode = async () => {
-    if (!code.trim()) {
-      setCodeValid({ valid: false, message: 'Ingrese un código' });
+    if (!code.trim() || !selectedRace) {
+      setCodeValid({ valid: false, message: 'Seleccione una carrera y escriba un código' });
       return;
     }
     setLoading(true);
     try {
-      // Note: Code validation endpoint would need to be implemented in SonicJS
-      // For now, we'll skip code validation as it's optional
-      setCodeValid({ valid: true, message: 'Código válido (opcional)' });
+      const res = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim().toUpperCase(), raceId: selectedRace })
+      });
+      const data = await res.json();
+      setCodeValid({ valid: data.valid, message: data.message });
     } catch {
-      setCodeValid({ valid: false, message: 'Error al validar código' });
+      setCodeValid({ valid: false, message: 'Error de conexión al validar código.' });
     }
     setLoading(false);
   };
@@ -264,7 +268,7 @@ const handleSubmit = async () => {
         raceId: selectedRace,
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
-        paymentMethod: formData.paymentMethod,
+        paymentMethod: (codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod,
         termsAccepted: termsAccepted,
         discountCode: code,
         registrationType: registrationType
@@ -346,7 +350,7 @@ const handleSubmit = async () => {
             {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">{codeValid.message}</Typography>}
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}>
+              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
@@ -573,17 +577,24 @@ const handleSubmit = async () => {
               <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Button
                 variant="contained"
-                onClick={() => setStep(2)}
+                onClick={() => {
+                   if (codeValid && codeValid.valid) {
+                      handleSubmit();
+                   } else {
+                      setStep(2);
+                   }
+                }}
                 disabled={
                   (registrationType === 'individual' && !isIndividualValid()) ||
                   (registrationType === 'team' && !isTeamMembersValid()) ||
                   (distances.length > 0 && !formData.distance) ||
-                  !!((raceInfo?.data?.termsAndConditions) && !termsAccepted)
+                  !!((raceInfo?.data?.termsAndConditions) && !termsAccepted) ||
+                  loading
                 }
                 endIcon={<NavigateNextIcon />}
-                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
-                Continuar
+                {codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar'}
               </Button>
             </Box>
           </Box>
