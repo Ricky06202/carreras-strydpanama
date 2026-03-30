@@ -37,7 +37,8 @@ export const GET: APIRoute = async ({ request }) => {
           code: d.code,
           vendor: vendor,
           batchId: batchId,
-          status: status
+          status: status,
+          raceId: d.race
         });
     });
 
