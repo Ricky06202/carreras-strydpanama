@@ -62,6 +62,8 @@ interface Race {
     termsAndConditions?: string;
     showTimer?: boolean;
     showShirtSize?: boolean;
+    teamEnabled?: boolean;
+    status?: string;
   };
 }
 
@@ -73,6 +75,8 @@ interface Category {
 interface Distance {
   id: string;
   name: string;
+  price?: number | null;
+  kilometers?: number | null;
 }
 
 const steps = ['Carrera', 'Datos', 'Método de Pago', 'Confirmación'];
@@ -365,9 +369,11 @@ const handleSubmit = async () => {
                 <Button variant={registrationType === 'individual' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('individual')} sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}>
                   Individual
                 </Button>
-                <Button variant={registrationType === 'team' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('team')} sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}>
-                  Equipo (4 personas)
-                </Button>
+                {raceInfo?.data?.teamEnabled && (
+                  <Button variant={registrationType === 'team' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('team')} sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}>
+                    Equipo (4 personas)
+                  </Button>
+                )}
               </Box>
             </Box>
 
@@ -451,10 +457,26 @@ const handleSubmit = async () => {
                 <FormControl fullWidth>
                   <InputLabel>Distancia a correr *</InputLabel>
                   <Select value={formData.distance} label="Distancia a correr *" onChange={(e) => setFormData({...formData, distance: e.target.value})} required>
-                    {distances.map((d) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                    {distances.map((d) => (
+                      <MenuItem key={d.id} value={d.id}>
+                        {d.name}{d.price != null ? ` — $${d.price}` : ''}{d.kilometers ? ` (${d.kilometers}km)` : ''}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               )}
+              {formData.distance && (() => {
+                const selected = distances.find(d => d.id === formData.distance);
+                const price = selected?.price ?? raceInfo?.data?.price ?? null;
+                if (price == null) return null;
+                return (
+                  <Box sx={{ gridColumn: '1 / -1', bgcolor: `${ACCENT}18`, border: `1px solid ${ACCENT}`, borderRadius: 2, p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>Precio de inscripción:</Typography>
+                    <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 900 }}>${price}</Typography>
+                    <Typography variant="body2" color="text.secondary">— {selected?.name}</Typography>
+                  </Box>
+                );
+              })()}
               {registrationType === 'individual' && raceInfo?.data?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>

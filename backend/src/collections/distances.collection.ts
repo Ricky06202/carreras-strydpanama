@@ -11,8 +11,9 @@ export default {
     type: 'object',
     properties: {
       title: { type: 'string', title: 'Nombre', required: true },
-      race: { type: 'string', title: 'Carrera' },
+      race: { type: 'string', title: 'Carrera (ID)' },
       kilometers: { type: 'number', title: 'Kilómetros' },
+      price: { type: 'number', title: 'Precio de esta Distancia ($)' },
       description: { type: 'textarea', title: 'Descripción' },
     },
     required: ['title'],

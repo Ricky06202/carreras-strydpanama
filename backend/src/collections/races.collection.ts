@@ -80,6 +80,10 @@ export default {
         type: 'number',
         title: 'Fin Cronómetro (Timestamp)',
       },
+      teamEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Inscripción por Equipos',
+      },
     },
     required: ['title'],
   },
