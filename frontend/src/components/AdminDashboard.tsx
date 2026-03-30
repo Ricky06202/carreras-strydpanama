@@ -357,23 +357,35 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     if (names.length === 0) return alert('Escribe al menos un nombre antes de importar.');
     setBulkTeamLoading(true);
     setBulkTeamMsg(null);
-    try {
-      const res = await fetch('/api/admin/bulk-teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ names })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBulkTeamInput('');
-        setBulkTeamMsg({ text: `✅ ${data.created} equipos importados. ${data.skipped > 0 ? `${data.skipped} omitidos.` : ''}`, ok: true });
-      } else {
-        setBulkTeamMsg({ text: data.error || 'Error desconocido', ok: false });
+
+    const BATCH_SIZE = 20;
+    let totalCreated = 0;
+    let totalSkipped = 0;
+
+    for (let i = 0; i < names.length; i += BATCH_SIZE) {
+      const chunk = names.slice(i, i + BATCH_SIZE);
+      setBulkTeamMsg({ text: `Procesando... ${Math.min(i + BATCH_SIZE, names.length)} / ${names.length}`, ok: true });
+      try {
+        const res = await fetch('/api/admin/bulk-teams', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ names: chunk })
+        });
+        const data = await res.json();
+        if (data.success) {
+          totalCreated += data.created || 0;
+          totalSkipped += data.skipped || 0;
+        } else {
+          totalSkipped += chunk.length;
+        }
+      } catch {
+        totalSkipped += chunk.length;
       }
-    } catch {
-      setBulkTeamMsg({ text: 'Error de conexión al importar equipos.', ok: false });
     }
+
+    setBulkTeamInput('');
     setBulkTeamLoading(false);
+    setBulkTeamMsg({ text: `${totalCreated} equipos importados exitosamente.${totalSkipped > 0 ? ` ${totalSkipped} omitidos (duplicados o errores).` : ''}`, ok: true });
   };
 
   // Estados para Meta de Llegada
