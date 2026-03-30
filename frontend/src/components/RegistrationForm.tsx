@@ -454,10 +454,10 @@ const handleSubmit = async () => {
                 </FormControl>
               )}
               {distances.length > 0 && (() => {
-                // En modo equipo solo mostrar distancias que empiecen con 'equipo'
+                // Individual: excluir distancias de equipo. Equipo: solo distancias de equipo.
                 const filteredDistances = registrationType === 'team'
                   ? distances.filter(d => d.name.toLowerCase().startsWith('equipo'))
-                  : distances;
+                  : distances.filter(d => !d.name.toLowerCase().startsWith('equipo'));
                 if (filteredDistances.length === 0) return null;
                 return (
                   <FormControl fullWidth>
