@@ -5,7 +5,8 @@ import {
   Box, Typography, Button, Card, CardContent, 
   Grid, Container, Chip, CircularProgress, Alert,
   TextField, List, ListItem, ListItemText,
-  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel
+  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel,
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton
 } from '@mui/material';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -87,20 +88,34 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     }
   };
 
-  const markCodesSold = async (batchId: string, vendor: string, qty: string) => {
-    const qtyNum = parseInt(qty || '0', 10);
-    if (qtyNum <= 0) return;
+  const [openBatchModal, setOpenBatchModal] = useState<string | null>(null);
+  const [selectedForSale, setSelectedForSale] = useState<Record<string, boolean>>({});
+
+  const handleOpenBatchModal = (batchId: string) => {
+    setOpenBatchModal(batchId);
+    setSelectedForSale({});
+  };
+
+  const handleToggleCode = (codeId: string) => {
+    setSelectedForSale(prev => ({ ...prev, [codeId]: !prev[codeId] }));
+  };
+
+  const submitSpecificSales = async () => {
+    const codeIdsToMark = Object.keys(selectedForSale).filter(id => selectedForSale[id]);
+    if (codeIdsToMark.length === 0) return alert("Selecciona al menos un código generado para marcarlo.");
+
     try {
       setCodesLoading(true);
       const res = await fetch('/api/admin/mark-sold', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ batchId, vendor, qtyToMark: qtyNum })
+        body: JSON.stringify({ codeIds: codeIdsToMark })
       });
       const data = await res.json();
       if (data.success) {
         fetchCodeStats();
-        alert(`Se han marcado ${data.marked} códigos como vendidos de ${vendor}.`);
+        setOpenBatchModal(null);
+        alert(`Se han marcado ${data.marked} códigos exitosamente.`);
       } else {
         alert(data.error);
       }
@@ -474,11 +489,8 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                     <TableCell align="center"><Typography color="info.main">{stat.redeemed}</Typography></TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
-                         <Button size="small" variant="outlined" onClick={() => {
-                            const qty = prompt(`¿Cuántos de los ${stat.generated} códigos generados que tiene ${stat.vendor} fueron concretados/vendidos exitosamente por ellos?`, "1");
-                            if (qty) markCodesSold(stat.batchId, stat.vendor, qty);
-                         }} disabled={stat.generated === 0 || codesLoading}>
-                           Marcar Venta
+                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={stat.generated === 0 || codesLoading}>
+                           Administrar Lote
                          </Button>
                          <Button size="small" variant="contained" sx={{ bgcolor: '#333', color: 'white', '&:hover': { bgcolor: '#000' } }} onClick={() => exportCSV(stat.batchId)}>
                            Exportar CSV
@@ -490,6 +502,54 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Dialog open={!!openBatchModal} onClose={() => setOpenBatchModal(null)} maxWidth="md" fullWidth>
+            <DialogTitle sx={{ fontWeight: 'bold' }}>
+               Administrar Códigos del Lote <Chip label={openBatchModal} size="small" sx={{ ml: 1, fontWeight: 'bold' }} />
+            </DialogTitle>
+            <DialogContent dividers sx={{ p: 0 }}>
+                <Box sx={{ p: 2, bgcolor: 'action.hover' }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Selecciona con la casilla de verificación los códigos específicos que el vendedor reportó como vendidos el día de hoy.
+                    </Typography>
+                </Box>
+                <Table size="small">
+                   <TableHead>
+                     <TableRow>
+                       <TableCell>Selección</TableCell>
+                       <TableCell>Código Exacto</TableCell>
+                       <TableCell>Estado de Vida</TableCell>
+                     </TableRow>
+                   </TableHead>
+                   <TableBody>
+                     {allCodes.filter(c => c.batchId === openBatchModal).map(code => (
+                       <TableRow key={code.id} sx={{ opacity: code.status === 'generated' ? 1 : 0.6 }}>
+                         <TableCell padding="checkbox">
+                           <Checkbox 
+                              checked={!!selectedForSale[code.id]} 
+                              onChange={() => handleToggleCode(code.id)}
+                              disabled={code.status !== 'generated'}
+                           />
+                         </TableCell>
+                         <TableCell sx={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.1rem' }}>{code.code}</TableCell>
+                         <TableCell>
+                            {code.status === 'generated' && <Chip size="small" label="Falta x Vender" color="success" />}
+                            {code.status === 'sold' && <Chip size="small" label="Vendido (Falta x Canjear)" color="warning" />}
+                            {code.status === 'redeemed' && <Chip size="small" label="Canjeado Exitoso" color="info" />}
+                         </TableCell>
+                       </TableRow>
+                     ))}
+                   </TableBody>
+                </Table>
+            </DialogContent>
+            <DialogActions sx={{ p: 2 }}>
+               <Button onClick={() => setOpenBatchModal(null)} color="inherit" sx={{ fontWeight: 'bold' }}>Cancelar</Button>
+               <Button onClick={submitSpecificSales} variant="contained" disabled={codesLoading} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontWeight: 'bold', px: 3 }}>
+                 {codesLoading ? 'Guardando...' : 'Marcar Seleccionados como Vendidos'}
+               </Button>
+            </DialogActions>
+          </Dialog>
+
         </Box>
       )}
     </Container>
