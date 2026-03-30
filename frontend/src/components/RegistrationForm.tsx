@@ -337,7 +337,7 @@ const handleSubmit = async () => {
             </FormControl>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField fullWidth label="Código de descuento (opcional)" value={code} onChange={(e) => setCode(e.target.value)} />
+              <TextField fullWidth label="Código de descuento (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" />
               <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' } }}>
                 Validar
               </Button>
@@ -369,17 +369,17 @@ const handleSubmit = async () => {
 
             {registrationType === 'individual' && (
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} required />
-                <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} required />
-                <TextField label="Cédula / Pasaporte *" value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} required />
+                <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required />
+                <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required />
+                <TextField label="Cédula / Pasaporte *" value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} placeholder="Ej: 4-111-1111" required />
                 <Autocomplete
                   options={countriesList}
                   value={formData.country}
                   onChange={(_, newValue) => setFormData({...formData, country: newValue || ''})}
-                  renderInput={(params) => <TextField {...params} label="Nacionalidad *" required />}
+                  renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" required />}
                 />
-                <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} required sx={{ gridColumn: '1 / -1' }}/>
-                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} required sx={{ gridColumn: '1 / -1' }}/>
+                <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }}/>
+                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 6123-4567" required sx={{ gridColumn: '1 / -1' }}/>
                 
                 <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
                   <Typography variant="body2" sx={{ alignSelf: 'center', mr: 2 }}>Nacimiento *</Typography>
@@ -416,13 +416,14 @@ const handleSubmit = async () => {
                     options={getTeamAutocompleteOptions()}
                     value={formData.teamName || null}
                     onChange={(_, newValue) => setFormData({...formData, teamName: newValue || ''})}
-                    renderInput={(params) => <TextField {...params} label="Equipo (Opcional)" />}
+                    renderInput={(params) => <TextField {...params} label="Equipo (Opcional)" placeholder="Selecciona un equipo" />}
                   />
                   {formData.teamName === 'Agregar manualmente' && (
                     <TextField 
                       label="Escribe tu equipo *" 
                       value={manualTeamNameInd} 
                       onChange={(e) => setManualTeamNameInd(e.target.value)} 
+                      placeholder="Ej: Los Runners"
                       fullWidth 
                       sx={{ mt: 2 }}
                       required
@@ -467,13 +468,14 @@ const handleSubmit = async () => {
                     options={getTeamAutocompleteOptions()}
                     value={teamName || null}
                     onChange={(_, newValue) => setTeamName(newValue || '')}
-                    renderInput={(params) => <TextField {...params} label="Nombre del Equipo *" required />}
+                    renderInput={(params) => <TextField {...params} label="Nombre del Equipo *" placeholder="Selecciona un equipo" required />}
                   />
                   {teamName === 'Agregar manualmente' && (
                     <TextField 
                       label="Escribe tu equipo *" 
                       value={manualTeamNameGroup} 
                       onChange={(e) => setManualTeamNameGroup(e.target.value)} 
+                      placeholder="Ej: Los Rápidos"
                       fullWidth 
                       sx={{ mt: 2 }}
                       required
@@ -491,19 +493,19 @@ const handleSubmit = async () => {
                       Integrante {index + 1} {index === 0 ? '(Capitán)' : ''}
                     </Typography>
                     <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
-                      <TextField label="Nombre *" value={member.firstName} onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)} size="small" />
-                      <TextField label="Apellido *" value={member.lastName} onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)} size="small" />
-                      <TextField label="Cédula *" value={member.cedula} onChange={(e) => updateTeamMember(index, 'cedula', e.target.value)} size="small" />
+                      <TextField label="Nombre *" value={member.firstName} onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)} placeholder="Ej: Juan" size="small" />
+                      <TextField label="Apellido *" value={member.lastName} onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)} placeholder="Ej: Pérez" size="small" />
+                      <TextField label="Cédula *" value={member.cedula} onChange={(e) => updateTeamMember(index, 'cedula', e.target.value)} placeholder="Ej: 4-111-1111" size="small" />
                       
                       <Autocomplete
                         options={countriesList}
                         value={member.country}
                         onChange={(_, newValue) => updateTeamMember(index, 'country', newValue || '')}
-                        renderInput={(params) => <TextField {...params} label="Nacionalidad *" size="small" required />}
+                        renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" size="small" required />}
                       />
                       
-                      <TextField label="Email *" type="email" value={member.email} onChange={(e) => updateTeamMember(index, 'email', e.target.value)} size="small" sx={{ gridColumn: '1 / -1' }}/>
-                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} size="small" sx={{ gridColumn: '1 / -1' }}/>
+                      <TextField label="Email *" type="email" value={member.email} onChange={(e) => updateTeamMember(index, 'email', e.target.value)} placeholder="Ej: juan@correo.com" size="small" sx={{ gridColumn: '1 / -1' }}/>
+                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} placeholder="Ej: 6123-4567" size="small" sx={{ gridColumn: '1 / -1' }}/>
 
                       <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
                         <FormControl fullWidth size="small">
