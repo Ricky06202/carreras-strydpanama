@@ -122,9 +122,85 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
-    birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: ''
+    birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: '', photoUrl: ''
   });
   const [manualTeamNameInd, setManualTeamNameInd] = useState('');
+
+  // --- Foto y Lookup de Corredor ---
+  const [photoPreview, setPhotoPreview] = useState<string>('');
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [runnerLookupStatus, setRunnerLookupStatus] = useState<'idle' | 'loading' | 'found' | 'new'>('idle');
+
+  const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) { height = (height / width) * MAX; width = MAX; }
+          else { width = (width / height) * MAX; height = MAX; }
+        }
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.onerror = reject;
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !formData.cedula) return;
+    setPhotoUploading(true);
+    try {
+      const base64 = await resizeImage(file);
+      setPhotoPreview(base64);
+      const res = await fetch('/api/upload-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula })
+      });
+      const data = await res.json();
+      if (data.url) setFormData(prev => ({ ...prev, photoUrl: data.url }));
+    } catch (e) { console.error('Photo upload failed', e); }
+    setPhotoUploading(false);
+  };
+
+  const lookupByCedula = async () => {
+    if (!formData.cedula.trim()) return;
+    setRunnerLookupStatus('loading');
+    try {
+      const res = await fetch(`/api/lookup-runner?cedula=${encodeURIComponent(formData.cedula.trim())}`);
+      const data = await res.json();
+      if (data.found && data.runner) {
+        const r = data.runner;
+        const [birthYear, birthMonth, birthDay] = (r.birthDate || '--').split('-');
+        setFormData(prev => ({
+          ...prev,
+          firstName: r.firstName || prev.firstName,
+          lastName: r.lastName || prev.lastName,
+          email: r.email || prev.email,
+          phone: r.phone || prev.phone,
+          gender: r.gender || prev.gender,
+          country: r.country || prev.country,
+          birthYear: birthYear || prev.birthYear,
+          birthMonth: birthMonth || prev.birthMonth,
+          birthDay: birthDay || prev.birthDay,
+          photoUrl: r.photoUrl || prev.photoUrl,
+        }));
+        if (r.photoUrl) setPhotoPreview(r.photoUrl);
+        setRunnerLookupStatus('found');
+      } else {
+        setRunnerLookupStatus('new');
+      }
+    } catch { setRunnerLookupStatus('new'); }
+  };
 
   // Helper for generating initial blank members
   const createEmptyMember = () => ({
@@ -379,9 +455,39 @@ const handleSubmit = async () => {
 
             {registrationType === 'individual' && (
               <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                {/* Cédula primero + botón de búsqueda */}
+                <Box sx={{ gridColumn: '1 / -1', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                  <TextField
+                    label="Cédula / Pasaporte *"
+                    value={formData.cedula}
+                    onChange={(e) => { setFormData({...formData, cedula: e.target.value}); setRunnerLookupStatus('idle'); }}
+                    placeholder="Ej: 4-111-1111"
+                    required
+                    fullWidth
+                  />
+                  <Button
+                    variant="outlined"
+                    onClick={lookupByCedula}
+                    disabled={!formData.cedula.trim() || runnerLookupStatus === 'loading'}
+                    sx={{ borderColor: ACCENT, color: ACCENT, whiteSpace: 'nowrap', mt: 0.5, px: 2, py: 1.8 }}
+                  >
+                    {runnerLookupStatus === 'loading' ? '...' : 'Buscar Datos'}
+                  </Button>
+                </Box>
+
+                {runnerLookupStatus === 'found' && (
+                  <Alert severity="success" sx={{ gridColumn: '1 / -1' }}>
+                    ✅ ¡Te encontramos! Tus datos fueron pre-rellenados. Verifica que todo esté correcto.
+                  </Alert>
+                )}
+                {runnerLookupStatus === 'new' && (
+                  <Alert severity="info" sx={{ gridColumn: '1 / -1' }}>
+                    👋 Primera vez con nosotros. Completa tus datos — los guardaremos para tu próxima carrera.
+                  </Alert>
+                )}
+
                 <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required />
                 <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required />
-                <TextField label="Cédula / Pasaporte *" value={formData.cedula} onChange={(e) => setFormData({...formData, cedula: e.target.value})} placeholder="Ej: 4-111-1111" required />
                 <Autocomplete
                   options={countriesList}
                   value={formData.country}
@@ -440,10 +546,54 @@ const handleSubmit = async () => {
                     />
                   )}
                 </Box>
+
+                {/* Sección de foto */}
+                <Box sx={{ gridColumn: '1 / -1', border: '1px dashed', borderColor: 'divider', borderRadius: 3, p: 2.5 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>📸 Foto del Corredor <Typography component="span" variant="caption" color="text.secondary">(opcional — para tu certificado y el podio)</Typography></Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{
+                      width: 90, height: 90, borderRadius: '50%', overflow: 'hidden',
+                      border: `3px solid ${ACCENT}`, flexShrink: 0,
+                      bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {photoPreview
+                        ? <img src={photoPreview} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <Typography variant="h4">🏃</Typography>
+                      }
+                    </Box>
+                    <Box>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="photo-upload-input"
+                        style={{ display: 'none' }}
+                        onChange={handlePhotoChange}
+                        disabled={!formData.cedula.trim()}
+                      />
+                      <label htmlFor="photo-upload-input">
+                        <Button
+                          component="span"
+                          variant="outlined"
+                          disabled={!formData.cedula.trim() || photoUploading}
+                          sx={{ borderColor: ACCENT, color: ACCENT }}
+                        >
+                          {photoUploading ? 'Subiendo...' : photoPreview ? 'Cambiar Foto' : 'Subir Foto'}
+                        </Button>
+                      </label>
+                      {!formData.cedula.trim() && (
+                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                          Ingresa tu cédula primero para subir una foto.
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
             )}
 
+
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+
               {categories.length > 0 && (
                 <FormControl fullWidth>
                   <InputLabel>Categoría</InputLabel>

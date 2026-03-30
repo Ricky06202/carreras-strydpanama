@@ -15,6 +15,7 @@ import participantsCollection from './collections/participants.collection'
 import registrationCodesCollection from './collections/registration-codes.collection'
 import transactionsCollection from './collections/transactions.collection'
 import runningTeamsCollection from './collections/running-teams.collection'
+import runnersCollection from './collections/runners.collection'
 
 // Register collections BEFORE creating the app
 registerCollections([
@@ -25,6 +26,7 @@ registerCollections([
   registrationCodesCollection,
   transactionsCollection,
   runningTeamsCollection,
+  runnersCollection,
 ])
 
 // Application configuration
