@@ -16,7 +16,7 @@
   ],
   "r2_buckets": [
     {
-      "binding": "R2",
+      "binding": "MEDIA_BUCKET",
       "bucket_name": "carreras-strydpanama-images",
       "preview_bucket_name": "carreras-strydpanama-images-preview"
     }
