@@ -229,15 +229,20 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
           value={tabIndex} 
           onChange={(e, v) => setTabIndex(v)} 
           centered 
+          textColor="inherit"
           TabIndicatorProps={{ style: { backgroundColor: ACCENT } }}
           sx={{
             mb: 2,
             '& .MuiTab-root': { 
-                color: 'text.secondary', 
                 fontWeight: 'bold',
-                fontSize: { xs: '0.8rem', md: '1rem' }
+                fontSize: { xs: '0.8rem', md: '1rem' },
+                opacity: 0.6,
+                transition: 'opacity 0.2s'
             },
-            '& .Mui-selected': { color: `${ACCENT} !important` }
+            '& .Mui-selected': { 
+                color: `${ACCENT} !important`,
+                opacity: 1
+            }
           }}
         >
           <Tab label="Cronometraje en Vivo" />
