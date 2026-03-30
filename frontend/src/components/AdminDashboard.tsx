@@ -242,11 +242,11 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
          rightBox.style.width = '25%';
          rightBox.style.textAlign = 'right';
          rightBox.innerHTML = `
-            <div style="background:${ACCENT}; color:#fff; padding:12px; border-radius:8px; display:inline-block; margin-bottom:10px; text-align:center;">
-               <div style="font-size:11px; margin-bottom:2px; font-weight:bold;">REGISTRO WEB TICKET</div>
-               <div style="font-size:28px; font-weight:bold; letter-spacing:1px;">${codeObj.code}</div>
+            <div style="background-color:${ACCENT}; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:10px;">
+               <div style="font-size:12px; margin-bottom:5px; font-weight:bold; color:white; font-family:Arial, sans-serif;">REGISTRO WEB</div>
+               <div style="font-size:26px; font-weight:900; color:white; font-family:monospace;">${codeObj.code}</div>
             </div>
-            <div style="font-size:13px; color:#333; font-weight:bold; text-align:center;">www.carreras.strydpanama.com</div>
+            <div style="font-size:13px; color:#333; font-weight:bold; text-align:center; font-family:Arial, sans-serif;">carreras.strydpanama.com</div>
          `;
 
          ticketDiv.appendChild(leftBox);
