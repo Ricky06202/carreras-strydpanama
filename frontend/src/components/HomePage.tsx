@@ -165,12 +165,12 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                     overflow: 'hidden',
                     boxShadow: 3,
                     transition: 'transform 0.3s, box-shadow 0.3s',
-                    '&:hover': { transform: 'translateY(-8px)', boxShadow: '0 8px 30px rgba(250, 204, 21, 0.15)' }
+                    '&:hover': { transform: 'translateY(-8px)', boxShadow: '0 8px 30px rgba(255, 107, 0, 0.15)' }
                   }}>
                     <Box sx={{
-                      height: 160,
+                      height: 220,
                       background: race.data?.imageUrl 
-                        ? `url(${race.data.imageUrl}) center/cover no-repeat`
+                        ? `#0f0f0f url(${race.data.imageUrl}) center/contain no-repeat`
                         : 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
                       display: 'flex',
                       alignItems: 'center',
