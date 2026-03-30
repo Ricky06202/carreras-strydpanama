@@ -453,18 +453,25 @@ const handleSubmit = async () => {
                   </Select>
                 </FormControl>
               )}
-              {distances.length > 0 && (
-                <FormControl fullWidth>
-                  <InputLabel>Distancia a correr *</InputLabel>
-                  <Select value={formData.distance} label="Distancia a correr *" onChange={(e) => setFormData({...formData, distance: e.target.value})} required>
-                    {distances.map((d) => (
-                      <MenuItem key={d.id} value={d.id}>
-                        {d.name}{d.price != null ? ` — $${d.price}` : ''}{d.kilometers ? ` (${d.kilometers}km)` : ''}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              )}
+              {distances.length > 0 && (() => {
+                // En modo equipo solo mostrar distancias que empiecen con 'equipo'
+                const filteredDistances = registrationType === 'team'
+                  ? distances.filter(d => d.name.toLowerCase().startsWith('equipo'))
+                  : distances;
+                if (filteredDistances.length === 0) return null;
+                return (
+                  <FormControl fullWidth>
+                    <InputLabel>Distancia a correr *</InputLabel>
+                    <Select value={formData.distance} label="Distancia a correr *" onChange={(e) => setFormData({...formData, distance: e.target.value})} required>
+                      {filteredDistances.map((d) => (
+                        <MenuItem key={d.id} value={d.id}>
+                          {d.name}{d.price != null ? ` — $${d.price}` : ''}{d.kilometers ? ` (${d.kilometers}km)` : ''}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                );
+              })()}
               {formData.distance && (() => {
                 const selected = distances.find(d => d.id === formData.distance);
                 const price = selected?.price ?? raceInfo?.data?.price ?? null;
@@ -490,23 +497,15 @@ const handleSubmit = async () => {
             {registrationType === 'team' && (
               <Box sx={{ mb: 2 }}>
                 <Box sx={{ mb: 3 }}>
-                  <Autocomplete
-                    options={getTeamAutocompleteOptions()}
-                    value={teamName || null}
-                    onChange={(_, newValue) => setTeamName(newValue || '')}
-                    renderInput={(params) => <TextField {...params} label="Nombre del Equipo *" placeholder="Selecciona un equipo" required />}
+                  <TextField
+                    fullWidth
+                    label="Nombre para este equipo *"
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Ej: Los Velocistas"
+                    required
+                    helperText="Inventa un nombre creativo para tu equipo."
                   />
-                  {teamName === 'Agregar manualmente' && (
-                    <TextField 
-                      label="Escribe tu equipo *" 
-                      value={manualTeamNameGroup} 
-                      onChange={(e) => setManualTeamNameGroup(e.target.value)} 
-                      placeholder="Ej: Los Rápidos"
-                      fullWidth 
-                      sx={{ mt: 2 }}
-                      required
-                    />
-                  )}
                 </Box>
                 
                 <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>

@@ -347,6 +347,35 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     else setDistanceMsg({ text: `⚠️ ${ok} actualizadas, ${fail} fallaron. Intenta de nuevo.`, ok: false });
   };
 
+  // --- Bulk Team Names ---
+  const [bulkTeamInput, setBulkTeamInput] = useState('');
+  const [bulkTeamMsg, setBulkTeamMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [bulkTeamLoading, setBulkTeamLoading] = useState(false);
+
+  const bulkAddTeams = async () => {
+    const names = bulkTeamInput.split(',').map(n => n.trim()).filter(Boolean);
+    if (names.length === 0) return alert('Escribe al menos un nombre antes de importar.');
+    setBulkTeamLoading(true);
+    setBulkTeamMsg(null);
+    try {
+      const res = await fetch('/api/admin/bulk-teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ names })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setBulkTeamInput('');
+        setBulkTeamMsg({ text: `✅ ${data.created} equipos importados. ${data.skipped > 0 ? `${data.skipped} omitidos.` : ''}`, ok: true });
+      } else {
+        setBulkTeamMsg({ text: data.error || 'Error desconocido', ok: false });
+      }
+    } catch {
+      setBulkTeamMsg({ text: 'Error de conexión al importar equipos.', ok: false });
+    }
+    setBulkTeamLoading(false);
+  };
+
   // Estados para Meta de Llegada
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
   const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
@@ -826,6 +855,50 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                   </Button>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Importador masivo de equipos */}
+          <Card sx={{ p: 3, mb: 4, borderRadius: 4 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>Importar Equipos en Masa</Typography>
+              <Typography color="text.secondary" sx={{ mb: 3 }}>Escribe o pega los nombres de equipos separados por coma. Cada nombre se creará automáticamente en la base de datos y aparecerá en el formulario de inscripción individual.</Typography>
+              
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                label="Nombres de Equipos (separados por coma)"
+                value={bulkTeamInput}
+                onChange={e => setBulkTeamInput(e.target.value)}
+                placeholder="Ej: Correcaminos FC, Los Velocistas, Equipo A, Tigres del Sur, ..."
+                sx={{ mb: 2 }}
+              />
+
+              {/* Preview */}
+              {bulkTeamInput.trim() && (
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: 'action.hover', borderRadius: 2 }}>
+                  <Typography variant="caption" color="text.secondary">Vista previa ({bulkTeamInput.split(',').filter(n => n.trim()).length} equipos):</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 1 }}>
+                    {bulkTeamInput.split(',').filter(n => n.trim()).map((n, i) => (
+                      <Chip key={i} label={n.trim()} size="small" />
+                    ))}
+                  </Box>
+                </Box>
+              )}
+
+              {bulkTeamMsg && (
+                <Alert severity={bulkTeamMsg.ok ? 'success' : 'error'} sx={{ mb: 2 }}>{bulkTeamMsg.text}</Alert>
+              )}
+
+              <Button
+                variant="contained"
+                onClick={bulkAddTeams}
+                disabled={bulkTeamLoading || !bulkTeamInput.trim()}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontWeight: 'bold', px: 4, py: 1.5 }}
+              >
+                {bulkTeamLoading ? 'Importando...' : 'IMPORTAR EQUIPOS'}
+              </Button>
             </CardContent>
           </Card>
         </Box>
