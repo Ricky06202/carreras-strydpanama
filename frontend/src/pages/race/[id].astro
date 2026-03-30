@@ -124,10 +124,16 @@ const raceData = race?.data || {};
               </div>
             )}
 
-            {(raceData.status === 'upcoming' || raceData.status === 'accepting') && (
+            {raceData.status === 'accepting' && (
               <a href={`/register?race=${raceId}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-2xl hover:opacity-90 transition-colors">
                 Inscribirse Ahora
               </a>
+            )}
+            
+            {raceData.status === 'upcoming' && (
+              <div class="block w-full text-center px-8 py-4 bg-gray-300 dark:bg-slate-700 text-gray-500 dark:text-gray-400 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
+                Inscripciones Próximamente
+              </div>
             )}
           </div>
         </div>
