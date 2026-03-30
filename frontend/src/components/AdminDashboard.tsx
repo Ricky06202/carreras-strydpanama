@@ -145,6 +145,145 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     link.click();
     document.body.removeChild(link);
   };
+
+  const printLibreta = async (batchId: string) => {
+    const batchCodes = allCodes.filter((c: any) => c.batchId === batchId);
+    if (batchCodes.length === 0) return alert("No hay códigos para esta libreta");
+
+    const raceId = batchCodes[0].raceId;
+    if (!raceId && !codeRaceId) return alert("Estos códigos antiguos no tienen una carrera asociada.");
+    
+    setCodesLoading(true);
+    let raceResponse: any = {};
+    try {
+        const res = await fetch(`/api/race-info?raceId=${raceId || codeRaceId}`);
+        raceResponse = await res.json();
+    } catch(e) {
+        setCodesLoading(false);
+        return alert("Error obteniendo datos de la carrera para armar el PDF.");
+    }
+    
+    const raceTitle = raceResponse.race?.data?.title || raceResponse.race?.title || 'Carrera STRYD';
+    const raceLogo = raceResponse.race?.data?.imageUrl || '';
+    const distances = raceResponse.distances || [];
+
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const printContainer = document.createElement('div');
+      printContainer.style.position = 'absolute';
+      printContainer.style.top = '-9999px';
+      printContainer.style.left = '-9999px';
+      printContainer.style.width = '800px';
+      printContainer.style.backgroundColor = 'white';
+      printContainer.style.fontFamily = 'Arial, sans-serif';
+      document.body.appendChild(printContainer);
+
+      const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' });
+      const pageWidth = 215.9; // Carta en mm
+      const pageHeight = 279.4;
+      const margin = 12;
+      
+      let currentY = margin;
+      let ticketsOnPage = 0;
+
+      for (let i = 0; i < batchCodes.length; i++) {
+         const codeObj = batchCodes[i];
+         
+         const ticketDiv = document.createElement('div');
+         ticketDiv.style.width = '800px';
+         ticketDiv.style.height = '180px'; 
+         ticketDiv.style.border = '2px dashed #999';
+         ticketDiv.style.boxSizing = 'border-box';
+         ticketDiv.style.padding = '15px';
+         ticketDiv.style.display = 'flex';
+         ticketDiv.style.justifyContent = 'space-between';
+         ticketDiv.style.alignItems = 'center';
+         ticketDiv.style.color = '#000';
+         ticketDiv.style.backgroundColor = '#fff';
+
+         const leftBox = document.createElement('div');
+         leftBox.style.width = '20%';
+         leftBox.style.textAlign = 'center';
+         if (raceLogo) {
+             const imgPath = raceLogo.startsWith('http') ? raceLogo : `https://api.carreras2.strydpanama.com${raceLogo}`;
+             leftBox.innerHTML = `<img src="${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />`;
+         } else {
+             leftBox.innerHTML = `<h2 style="color:${ACCENT}; margin:0; line-height:1.2; font-size:20px;">${raceTitle}</h2>`;
+         }
+
+         const centerBox = document.createElement('div');
+         centerBox.style.width = '55%';
+         centerBox.style.padding = '0 15px';
+         centerBox.innerHTML = `
+            <h3 style="margin:0 0 10px 0; font-size:22px; text-transform:uppercase;">${raceTitle}</h3>
+            <div style="display:flex; flex-direction:column; gap:12px; font-size:16px;">
+                <div style="display:flex; align-items:flex-end;">
+                  <span style="font-weight:bold; width:80px;">Nombre:</span> 
+                  <div style="border-bottom:1px solid #000; flex:1; height:20px;"></div>
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                  <span style="font-weight:bold; width:80px;">Cédula:</span> 
+                  <div style="border-bottom:1px solid #000; flex:1; height:20px; margin-right: 15px;"></div>
+                  <span style="font-weight:bold; width:80px;">Telf:</span> 
+                  <div style="border-bottom:1px solid #000; flex:1; height:20px;"></div>
+                </div>
+            </div>
+            <div style="margin-top:20px; font-size:15px; display:flex; gap:15px; align-items:center;">
+               <strong>Modalidad:</strong>
+               ${distances.length > 0 
+                  ? distances.map((d: any) => `<div style="display:flex; align-items:center; gap:5px;"><div style="width:14px; height:14px; border:1px solid #000; border-radius:3px;"></div><span>${d.name}</span></div>`).join('') 
+                  : '<div style="border-bottom:1px solid #000; width:150px; height:20px;"></div>'}
+            </div>
+         `;
+
+         const rightBox = document.createElement('div');
+         rightBox.style.width = '25%';
+         rightBox.style.textAlign = 'right';
+         rightBox.innerHTML = `
+            <div style="background:${ACCENT}; color:#fff; padding:12px; border-radius:8px; display:inline-block; margin-bottom:10px; text-align:center;">
+               <div style="font-size:11px; margin-bottom:2px; font-weight:bold;">REGISTRO WEB TICKET</div>
+               <div style="font-size:28px; font-weight:bold; letter-spacing:1px;">${codeObj.code}</div>
+            </div>
+            <div style="font-size:13px; color:#333; font-weight:bold; text-align:center;">www.carreras.strydpanama.com</div>
+         `;
+
+         ticketDiv.appendChild(leftBox);
+         ticketDiv.appendChild(centerBox);
+         ticketDiv.appendChild(rightBox);
+         printContainer.appendChild(ticketDiv);
+
+         const canvas = await html2canvas(ticketDiv, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+         const imgData = canvas.toDataURL('image/jpeg', 0.95);
+         
+         const ticketWidthMm = pageWidth - (margin * 2);
+         const imgProps = doc.getImageProperties(imgData);
+         const printHeight = (imgProps.height * ticketWidthMm) / imgProps.width;
+
+         if (currentY + printHeight > pageHeight - margin) {
+             doc.addPage();
+             currentY = margin;
+             ticketsOnPage = 0;
+         }
+
+         doc.addImage(imgData, 'JPEG', margin, currentY, ticketWidthMm, printHeight);
+         currentY += printHeight + 3; // 3mm spacing entre tickets para que quepan 5 o 6
+         ticketsOnPage++;
+         
+         printContainer.removeChild(ticketDiv);
+      }
+      
+      document.body.removeChild(printContainer);
+      doc.save(`Libreta_Carrera_${batchId}.pdf`);
+
+    } catch(err) {
+        console.error(err);
+        alert("Ocurrió un error dibujando la libreta PDF.");
+    }
+
+    setCodesLoading(false);
+  };
   
   // Estados para Meta de Llegada
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
@@ -492,7 +631,10 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                          <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={stat.generated === 0 || codesLoading}>
                            Administrar Lote
                          </Button>
-                         <Button size="small" variant="contained" sx={{ bgcolor: '#333', color: 'white', '&:hover': { bgcolor: '#000' } }} onClick={() => exportCSV(stat.batchId)}>
+                         <Button size="small" variant="contained" sx={{ bgcolor: ACCENT, color: 'white', '&:hover': { bgcolor: '#E55A00' } }} onClick={() => printLibreta(stat.batchId)} disabled={codesLoading}>
+                           Crear Libreta PDF
+                         </Button>
+                         <Button size="small" variant="contained" sx={{ bgcolor: '#333', color: 'white', '&:hover': { bgcolor: '#000' } }} onClick={() => exportCSV(stat.batchId)} disabled={codesLoading}>
                            Exportar CSV
                          </Button>
                       </Box>
