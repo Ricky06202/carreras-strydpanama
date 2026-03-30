@@ -36,6 +36,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [codeRaceId, setCodeRaceId] = useState('');
   const [codeQuantity, setCodeQuantity] = useState<number | ''>('');
   const [codeStats, setCodeStats] = useState<any[]>([]);
+  const [allCodes, setAllCodes] = useState<any[]>([]);
   const [codesLoading, setCodesLoading] = useState(false);
 
   const fetchCodeStats = async () => {
@@ -43,7 +44,10 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       setCodesLoading(true);
       const res = await fetch('/api/admin/codes-stats');
       const data = await res.json();
-      if (data.success) setCodeStats(data.stats);
+      if (data.success) {
+         setCodeStats(data.stats);
+         setAllCodes(data.codes || []);
+      }
     } catch (e) {
       console.error(e);
     } finally {
@@ -105,6 +109,26 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     } finally {
       setCodesLoading(false);
     }
+  };
+
+  const exportCSV = (batchId: string) => {
+    const batchCodes = allCodes.filter((c: any) => c.batchId === batchId);
+    if (batchCodes.length === 0) return alert("No hay detalles de códigos cargados para este lote.");
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "ID Lote,Vendedor,Titulo Boleto,Codigo Físico,Web Status\r\n";
+    
+    batchCodes.forEach((c: any) => {
+        csvContent += `${c.batchId},${c.vendor},${c.title},${c.code},${c.status}\r\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `CodigosFisicos_${batchId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
   
   // Estados para Meta de Llegada
@@ -455,6 +479,9 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                             if (qty) markCodesSold(stat.batchId, stat.vendor, qty);
                          }} disabled={stat.generated === 0 || codesLoading}>
                            Marcar Venta
+                         </Button>
+                         <Button size="small" variant="contained" sx={{ bgcolor: '#333', color: 'white', '&:hover': { bgcolor: '#000' } }} onClick={() => exportCSV(stat.batchId)}>
+                           Exportar CSV
                          </Button>
                       </Box>
                     </TableCell>
