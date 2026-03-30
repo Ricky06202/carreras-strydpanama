@@ -1,10 +1,25 @@
 import type { APIRoute } from 'astro';
-import { api } from '../../lib/api';
+import { api, apiFetch } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
+
+    let usedCodeId = null;
+    let usedCodeData = null;
+
+    // 0. Validar Código si existe
+    if (body.discountCode) {
+        const resultCodes = await apiFetch(`/api/collections/registration_codes/content?limit=500`, env, { method: 'GET' });
+        const match = (resultCodes.data || []).find((c: any) => c.data?.code === body.discountCode && c.data?.race === body.raceId);
+
+        if (!match) throw new Error('Código de registro no encontrado o no pertenece a esta carrera');
+        if (match.data?.status === 'redeemed' || match.data?.used === true) throw new Error('El código ingresado ya fue utilizado');
+        
+        usedCodeId = match.id;
+        usedCodeData = match.data;
+    }
     
     // 1. Obtener la carrera para conocer su startingBib
     const raceRes = await api.getRace(env, body.raceId);
@@ -35,6 +50,27 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 3. Registrar al participante
     const result = await api.registerParticipant(env, body);
+
+    // 4. Marcar Código como canjeado si se usó
+    if (usedCodeId && usedCodeData) {
+        const payload = {
+            id: usedCodeId,
+            collectionId: 'col-registration_codes-469bc379',
+            collection_id: 'col-registration_codes-469bc379',
+            title: usedCodeData.title,
+            status: 'published',
+            data: {
+                ...usedCodeData,
+                used: true,
+                status: 'redeemed',
+                usedDate: new Date().toISOString()
+            }
+        };
+        await apiFetch(`/api/content/${usedCodeId}`, env, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+        });
+    }
     
     return new Response(JSON.stringify({ ...result, assignedBib: nextBib }), {
       status: 200,
