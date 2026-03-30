@@ -23,6 +23,8 @@ export default {
       category: { type: 'string', title: 'Categoría' },
       distance: { type: 'string', title: 'Distancia' },
       teamName: { type: 'string', title: 'Equipo' },
+      photoUrl: { type: 'string', title: 'URL de Foto del Corredor' },
+      runnerId: { type: 'string', title: 'ID en Base de Corredores' },
       bibNumber: { type: 'number', title: 'Dorsal' },
       size: { type: 'string', title: 'Talla' },
       paymentStatus: { type: 'string', title: 'Pago' },

@@ -72,6 +72,56 @@ export const POST: APIRoute = async ({ request }) => {
         });
     }
     
+    // 5. Upsert el perfil del corredor en la base de datos permanente
+    if (body.cedula) {
+      try {
+        const RUNNERS_COL = 'col-runners-' + 'strydpanama'; // Se detecta dinámicamente
+        // Buscar si ya existe
+        const allRunners = await apiFetch('/api/collections/runners/content?limit=2000', env, { method: 'GET' });
+        const existing = (allRunners?.data || []).find((r: any) => 
+          (r.data?.cedula || '').toLowerCase().trim() === body.cedula.toLowerCase().trim()
+        );
+
+        const runnerData = {
+          title: `${body.firstName} ${body.lastName}`,
+          firstName: body.firstName,
+          lastName: body.lastName,
+          email: body.email,
+          phone: body.phone,
+          cedula: body.cedula,
+          birthDate: body.birthDate,
+          gender: body.gender,
+          country: body.country,
+          photoUrl: body.photoUrl || (existing?.data?.photoUrl || ''),
+          totalRaces: (existing?.data?.totalRaces || 0) + 1,
+        };
+
+        if (existing) {
+          // Actualizar perfil existente
+          const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
+          const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
+          const colId = runnersCol?.id || existing.collectionId;
+          await apiFetch(`/api/content/${existing.id}`, env, {
+            method: 'PUT',
+            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerData.title, status: 'published', data: runnerData })
+          });
+        } else {
+          // Crear nuevo perfil
+          const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
+          const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
+          if (runnersCol?.id) {
+            await apiFetch('/api/content', env, {
+              method: 'POST',
+              body: JSON.stringify({ collectionId: runnersCol.id, collection_id: runnersCol.id, title: runnerData.title, status: 'published', data: runnerData })
+            });
+          }
+        }
+      } catch (e) {
+        // No fallar el registro si el upsert de corredor falla
+        console.error('Runner upsert failed:', e);
+      }
+    }
+
     return new Response(JSON.stringify({ ...result, assignedBib: nextBib }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
