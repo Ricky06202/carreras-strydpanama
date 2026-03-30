@@ -1,0 +1,26 @@
+import type { APIRoute } from 'astro';
+import { apiFetch } from '../../../lib/api';
+import { env } from 'cloudflare:workers';
+
+export const GET: APIRoute = async () => {
+  try {
+    const result = await apiFetch('/api/collections/distances/content?limit=200', env, { method: 'GET' });
+    const distances = (result.data || []).map((item: any) => ({
+      id: item.id,
+      collectionId: item.collectionId || item.collection_id,
+      title: item.data?.title || item.title || 'Sin nombre',
+      race: item.data?.race || '',
+      kilometers: item.data?.kilometers || '',
+    }));
+
+    return new Response(JSON.stringify({ success: true, distances }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message || 'Error al obtener distancias' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+};

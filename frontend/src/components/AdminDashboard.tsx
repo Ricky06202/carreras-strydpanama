@@ -285,6 +285,68 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     setCodesLoading(false);
   };
   
+  // --- Estados para Configurar Modalidades (Tab 3) ---
+  const [modalRaceId, setModalRaceId] = useState('');
+  const [allDistances, setAllDistances] = useState<any[]>([]);
+  const [distanceSaving, setDistanceSaving] = useState(false);
+  const [distanceMsg, setDistanceMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  // Mapa local: distanceId -> checked
+  const [distanceChecks, setDistanceChecks] = useState<Record<string, boolean>>({});
+
+  const loadAllDistances = async () => {
+    try {
+      const res = await fetch('/api/admin/all-distances');
+      const data = await res.json();
+      if (data.success) setAllDistances(data.distances);
+    } catch(e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    if (tabIndex === 2) loadAllDistances();
+  }, [tabIndex]);
+
+  useEffect(() => {
+    if (!modalRaceId) { setDistanceChecks({}); return; }
+    // Pre-marcar las que ya están asignadas a esta carrera
+    const checks: Record<string, boolean> = {};
+    allDistances.forEach(d => {
+      checks[d.id] = d.race === modalRaceId;
+    });
+    setDistanceChecks(checks);
+  }, [modalRaceId, allDistances]);
+
+  const saveDistanceAssignments = async () => {
+    if (!modalRaceId) return alert('Selecciona una carrera primero');
+    setDistanceSaving(true);
+    setDistanceMsg(null);
+    let ok = 0; let fail = 0;
+    for (const dist of allDistances) {
+      const shouldBelongToRace = !!distanceChecks[dist.id];
+      const currentlyBelongsToRace = dist.race === modalRaceId;
+      // Solo actualizar si cambió el estado
+      if (shouldBelongToRace !== currentlyBelongsToRace) {
+        try {
+          const res = await fetch('/api/admin/update-distance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              distanceId: dist.id,
+              collectionId: dist.collectionId,
+              raceId: shouldBelongToRace ? modalRaceId : ''
+            })
+          });
+          const data = await res.json();
+          if (data.success) ok++; else fail++;
+        } catch(e) { fail++; }
+      }
+    }
+    // Refresh
+    await loadAllDistances();
+    setDistanceSaving(false);
+    if (fail === 0) setDistanceMsg({ text: `✅ Modalidades actualizadas correctamente (${ok} cambios).`, ok: true });
+    else setDistanceMsg({ text: `⚠️ ${ok} actualizadas, ${fail} fallaron. Intenta de nuevo.`, ok: false });
+  };
+
   // Estados para Meta de Llegada
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
   const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
@@ -425,6 +487,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         >
           <Tab label="Cronometraje en Vivo" />
           <Tab label="Gestión de Códigos Físicos" />
+          <Tab label="Configurar Modalidades" />
         </Tabs>
       </Box>
 
@@ -692,6 +755,79 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
             </DialogActions>
           </Dialog>
 
+        </Box>
+      )}
+      {tabIndex === 2 && (
+        <Box>
+          <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>Configurar Modalidades por Carrera</Typography>
+          <Typography color="text.secondary" sx={{ mb: 3 }}>Selecciona una carrera y elige cuáles distancias del sistema estarán disponibles para ella.</Typography>
+          
+          <Card sx={{ p: 3, mb: 4, borderRadius: 4 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>1. Selecciona la Carrera</Typography>
+              <FormControl fullWidth sx={{ mb: 3 }}>
+                <InputLabel>Carrera</InputLabel>
+                <Select value={modalRaceId} label="Carrera" onChange={e => setModalRaceId(e.target.value)}>
+                  {races.map(r => (
+                    <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+
+              {modalRaceId && (
+                <>
+                  <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>2. Tilda las Modalidades Disponibles</Typography>
+                  {allDistances.length === 0 ? (
+                    <Alert severity="info">No hay distancias creadas en el sistema. Créalas primero en el panel de SonicJS (Content → Distancias).</Alert>
+                  ) : (
+                    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 1, mb: 3 }}>
+                      {allDistances.map(dist => (
+                        <Paper key={dist.id} variant="outlined" sx={{
+                          p: 2,
+                          borderRadius: 3,
+                          borderColor: distanceChecks[dist.id] ? ACCENT : 'divider',
+                          borderWidth: distanceChecks[dist.id] ? 2 : 1,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          bgcolor: distanceChecks[dist.id] ? `${ACCENT}15` : 'background.paper'
+                        }}
+                          onClick={() => setDistanceChecks(prev => ({ ...prev, [dist.id]: !prev[dist.id] }))}
+                        >
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Checkbox
+                              checked={!!distanceChecks[dist.id]}
+                              onChange={() => setDistanceChecks(prev => ({ ...prev, [dist.id]: !prev[dist.id] }))}
+                              sx={{ '&.Mui-checked': { color: ACCENT }, p: 0 }}
+                            />
+                            <Box>
+                              <Typography fontWeight="bold">{dist.title}</Typography>
+                              {dist.kilometers && <Typography variant="caption" color="text.secondary">{dist.kilometers} km</Typography>}
+                              {dist.race && dist.race !== modalRaceId && (
+                                <Typography variant="caption" sx={{ display: 'block', color: 'warning.main' }}>⚠️ Asignada a otra carrera</Typography>
+                              )}
+                            </Box>
+                          </Box>
+                        </Paper>
+                      ))}
+                    </Box>
+                  )}
+
+                  {distanceMsg && (
+                    <Alert severity={distanceMsg.ok ? 'success' : 'warning'} sx={{ mb: 2 }}>{distanceMsg.text}</Alert>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    onClick={saveDistanceAssignments}
+                    disabled={distanceSaving}
+                    sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontWeight: 'bold', px: 4, py: 1.5 }}
+                  >
+                    {distanceSaving ? 'Guardando...' : 'GUARDAR CONFIGURACIÓN'}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
         </Box>
       )}
     </Container>
