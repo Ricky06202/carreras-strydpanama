@@ -69,7 +69,24 @@ export async function apiFetch(endpoint: string, env: any, options?: RequestInit
     throw new Error(errorMsg);
   }
 
-  return response.json();
+function absolutizeUrls(obj: any, baseUrl: string) {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    obj.forEach(item => absolutizeUrls(item, baseUrl));
+  } else {
+    for (const key in obj) {
+      if (typeof obj[key] === 'string' && obj[key].startsWith('/files/')) {
+        obj[key] = `${baseUrl}${obj[key]}`;
+      } else if (typeof obj[key] === 'object' && obj[key] !== null) {
+        absolutizeUrls(obj[key], baseUrl);
+      }
+    }
+  }
+  return obj;
+}
+
+  const json = await response.json();
+  return absolutizeUrls(json, baseUrl.replace(/\/$/, ''));
 }
 
 export const api = {
