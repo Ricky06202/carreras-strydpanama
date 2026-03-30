@@ -4,34 +4,27 @@ import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { batchId, vendor, qtyToMark } = await request.json();
+    const { codeIds } = await request.json();
     
-    if (!batchId || !vendor || !qtyToMark || qtyToMark <= 0) {
-      return new Response(JSON.stringify({ error: 'Parámetros inválidos' }), { status: 400 });
+    if (!codeIds || !Array.isArray(codeIds) || codeIds.length === 0) {
+      return new Response(JSON.stringify({ error: 'No se enviaron códigos a actualizar' }), { status: 400 });
     }
 
-    // 1. Fetch available 'generated' codes for this batch
-    const result = await apiFetch(`/api/collections/registration_codes/content?limit=500`, env, { method: 'GET' });
-    
-    const availableCodes = (result.data || []).filter((c: any) => 
-       c.data?.batchId === batchId && 
-       c.data?.vendor === vendor && 
-       (c.data?.status === 'generated' || !c.data?.status)
-    );
+    let marked = 0;
 
-    if (availableCodes.length < qtyToMark) {
-        return new Response(JSON.stringify({ error: `Sólo hay ${availableCodes.length} códigos disponibles sin vender en este lote, pero pides marcar ${qtyToMark}.` }), { status: 400 });
-    }
+    // Actualizamos secuencialmente cada uno de los IDs dados
+    for (const codeId of codeIds) {
+        const res = await apiFetch(`/api/content/${codeId}`, env, { method: 'GET' });
+        const code = res.data;
+        if (!code) continue;
 
-    // 2. Mark the first N codes as "sold"
-    const codesToUpdate = availableCodes.slice(0, qtyToMark);
-    
-    // We update them sequentially using PUT
-    for (const code of codesToUpdate) {
+        // Validar que no estuviese usado ya
+        if (code.data?.status === 'redeemed') continue;
+
         const payload = {
             id: code.id,
-            collectionId: code.collectionId || code.collection_id,
-            collection_id: code.collectionId || code.collection_id,
+            collectionId: code.collectionId || code.collection_id || 'col-registration_codes-469bc379',
+            collection_id: code.collectionId || code.collection_id || 'col-registration_codes-469bc379',
             title: code.title,
             status: 'published',
             data: {
@@ -40,18 +33,20 @@ export const POST: APIRoute = async ({ request }) => {
             }
         };
 
-        await apiFetch(`/api/content/${code.id}`, env, {
+        const updateStatus = await apiFetch(`/api/content/${codeId}`, env, {
           method: 'PUT',
           body: JSON.stringify(payload)
         });
+        
+        if (updateStatus) marked++;
     }
 
-    return new Response(JSON.stringify({ success: true, marked: codesToUpdate.length }), {
+    return new Response(JSON.stringify({ success: true, marked: marked }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Error al actualizar códigos a Vendido' }), {
+    return new Response(JSON.stringify({ error: error.message || 'Error al actualizar código' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     });
