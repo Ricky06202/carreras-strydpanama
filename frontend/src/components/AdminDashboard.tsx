@@ -225,7 +225,21 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
-        <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)} centered textColor="primary" indicatorColor="primary">
+        <Tabs 
+          value={tabIndex} 
+          onChange={(e, v) => setTabIndex(v)} 
+          centered 
+          TabIndicatorProps={{ style: { backgroundColor: ACCENT } }}
+          sx={{
+            mb: 2,
+            '& .MuiTab-root': { 
+                color: 'text.secondary', 
+                fontWeight: 'bold',
+                fontSize: { xs: '0.8rem', md: '1rem' }
+            },
+            '& .Mui-selected': { color: `${ACCENT} !important` }
+          }}
+        >
           <Tab label="Cronometraje en Vivo" />
           <Tab label="Gestión de Códigos Físicos" />
         </Tabs>
