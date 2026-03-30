@@ -34,7 +34,9 @@ export const GET: APIRoute = async ({ request }) => {
     }));
     const distances = (distancesRes?.data || []).map((item: any) => ({
       id: item.id,
-      name: item.data?.title || item.title || 'Sin nombre'
+      name: item.data?.title || item.title || 'Sin nombre',
+      price: item.data?.price ?? null,
+      kilometers: item.data?.kilometers ?? null,
     }));
 
     return new Response(JSON.stringify({ race, categories, distances }), {
