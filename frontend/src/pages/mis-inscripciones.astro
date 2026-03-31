@@ -1,435 +1,392 @@
 ---
-import AstroLayout from '../layouts/Layout.astro';
+import Layout from '../layouts/Layout.astro';
 ---
-<AstroLayout title="Mis Inscripciones — Carreras STRYD Panama">
-  <div id="app-root"></div>
-</AstroLayout>
+
+<Layout title="Mis Inscripciones — Carreras by StrydPanama">
+  <div class="max-w-3xl mx-auto px-4 py-10">
+
+    <!-- Page Header -->
+    <div class="mb-8">
+      <h1 class="text-3xl font-black dark:text-white text-gray-900 mb-2">
+        🔍 Mis Inscripciones
+      </h1>
+      <p class="dark:text-gray-400 text-gray-500 text-base">
+        Ingresa tu cédula o pasaporte para ver el estado de tus inscripciones y actualizar tu foto de perfil.
+      </p>
+    </div>
+
+    <!-- Search Card -->
+    <div class="dark:bg-slate-800 bg-white rounded-2xl shadow-md p-6 mb-6 border dark:border-slate-700 border-gray-100">
+      <div class="flex gap-3">
+        <input
+          id="cedula-input"
+          type="text"
+          placeholder="Ej: 4-111-1111"
+          class="flex-1 dark:bg-slate-700 bg-gray-50 dark:text-white text-gray-900 dark:border-slate-600 border-gray-200 border rounded-xl px-4 py-3 text-base outline-none focus:border-accent transition-colors"
+        />
+        <button
+          id="search-btn"
+          onclick="handleSearch()"
+          class="bg-accent hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition-colors whitespace-nowrap"
+        >
+          Buscar
+        </button>
+      </div>
+      <div id="search-error" class="text-red-500 text-sm mt-3 hidden"></div>
+    </div>
+
+    <!-- Results -->
+    <div id="results-container"></div>
+  </div>
+
+  <!-- Crop Modal -->
+  <div id="crop-modal" class="fixed inset-0 bg-black/80 z-50 hidden items-center justify-center p-4">
+    <div class="dark:bg-slate-800 bg-white rounded-2xl w-full max-w-md overflow-hidden shadow-2xl">
+      <div class="flex items-center justify-between px-6 py-4 border-b dark:border-slate-700 border-gray-100">
+        <span class="font-bold text-lg dark:text-white">📸 Actualizar Foto de Perfil</span>
+        <button onclick="closeCropModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+      </div>
+      <div class="p-6">
+        <p class="text-sm dark:text-gray-400 text-gray-500 text-center mb-4">
+          Sube una foto y arrastra para centrar tu cara en el círculo. Usa la rueda del mouse o los dedos para hacer zoom.
+        </p>
+
+        <!-- Upload area (shown when no image) -->
+        <div id="upload-area"
+          onclick="document.getElementById('file-input').click()"
+          class="border-2 border-dashed dark:border-slate-600 border-gray-200 rounded-2xl p-10 text-center cursor-pointer hover:border-accent transition-colors"
+        >
+          <div class="text-5xl mb-3">🤳</div>
+          <p class="dark:text-gray-400 text-gray-500 text-sm">Haz clic o arrastra tu foto aquí<br/><span class="text-accent font-semibold">Elige una foto de tu cara</span></p>
+          <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFileSelect(this)" />
+        </div>
+
+        <!-- Crop area (hidden by default) -->
+        <div id="crop-area" class="hidden">
+          <div
+            id="crop-container"
+            class="relative w-full bg-black rounded-2xl overflow-hidden cursor-grab active:cursor-grabbing select-none"
+            style="aspect-ratio:1"
+          >
+            <img id="crop-img" class="absolute pointer-events-none" draggable="false" style="transform-origin:center;height:100%;width:auto;" />
+            <!-- Overlay with circle cutout -->
+            <div class="absolute inset-0 pointer-events-none" style="background:radial-gradient(circle 35% at 50% 50%,transparent 99%,rgba(0,0,0,0.65) 100%)"></div>
+            <div class="absolute pointer-events-none" style="top:50%;left:50%;transform:translate(-50%,-50%);width:70%;aspect-ratio:1;border-radius:50%;border:3px solid #FF6B00;box-shadow:0 0 0 9999px rgba(0,0,0,0.55)"></div>
+            <div class="absolute bottom-3 left-0 right-0 text-center text-white/50 text-xs pointer-events-none">Arrastra para centrar tu cara</div>
+          </div>
+          <div class="flex items-center gap-3 mt-4">
+            <span class="text-sm dark:text-gray-400 text-gray-500 whitespace-nowrap">🔍 Zoom</span>
+            <input type="range" id="zoom-slider" min="0.5" max="4" step="0.05" value="1"
+              oninput="handleZoom(this.value)"
+              class="flex-1 accent-orange-500" />
+          </div>
+        </div>
+
+        <div id="modal-error" class="text-red-500 text-sm text-center mt-3 hidden"></div>
+        <div id="modal-success" class="text-green-500 text-sm text-center mt-3 hidden">✅ ¡Foto actualizada exitosamente!</div>
+      </div>
+
+      <div id="modal-footer" class="hidden px-6 pb-6 flex gap-3">
+        <button onclick="resetCrop()" class="flex-1 dark:bg-slate-700 bg-gray-100 dark:text-white text-gray-700 font-semibold py-3 rounded-xl hover:opacity-80 transition-opacity">
+          ↩ Elegir otra
+        </button>
+        <button id="confirm-btn" onclick="confirmCrop()" class="flex-[2] bg-accent hover:bg-orange-600 text-white font-bold py-3 rounded-xl transition-colors">
+          ✓ Guardar Foto
+        </button>
+      </div>
+    </div>
+  </div>
+</Layout>
 
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #0f0f0f; color: #fff; font-family: 'Inter', sans-serif; }
-
-.page { max-width: 700px; margin: 0 auto; padding: 32px 16px; }
-.header { background: #000; border-bottom: 2px solid #FF6B00; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 0; }
-.logo { color: #FF6B00; font-size: 18px; font-weight: 900; letter-spacing: 2px; text-decoration: none; }
-
-.search-card { background: #1a1a1a; border-radius: 20px; padding: 32px; border: 1px solid #2d2d2d; margin-bottom: 24px; }
-.search-title { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
-.search-sub { color: #888; font-size: 14px; margin-bottom: 24px; }
-.search-row { display: flex; gap: 12px; }
-.input-field {
-  flex: 1; background: #2d2d2d; border: 1px solid #3d3d3d; color: #fff;
-  padding: 14px 16px; border-radius: 12px; font-size: 16px; outline: none;
-  transition: border-color 0.2s;
-}
-.input-field:focus { border-color: #FF6B00; }
-.btn-search {
-  background: #FF6B00; color: #fff; border: none; padding: 14px 28px;
-  border-radius: 12px; font-weight: 700; font-size: 15px; cursor: pointer;
-  transition: background 0.2s;
-}
-.btn-search:hover { background: #E55A00; }
-.btn-search:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.reg-card { background: #1a1a1a; border-radius: 20px; border: 1px solid #2d2d2d; overflow: hidden; margin-bottom: 16px; }
-.reg-header { display: flex; align-items: center; gap: 16px; padding: 20px; border-bottom: 1px solid #2d2d2d; }
-.race-img { width: 60px; height: 60px; border-radius: 12px; object-fit: cover; background: #2d2d2d; flex-shrink: 0; }
-.race-name { font-size: 18px; font-weight: 700; }
-.race-date { font-size: 13px; color: #888; margin-top: 2px; }
-.status-badge {
-  margin-left: auto; padding: 6px 14px; border-radius: 20px;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.5px; white-space: nowrap;
-}
-.status-confirmed { background: #0d2e0d; color: #4caf50; border: 1px solid #4caf50; }
-.status-pending { background: #2e1a00; color: #FF8533; border: 1px solid #FF6B00; }
-.status-rejected { background: #2e0000; color: #f44336; border: 1px solid #f44336; }
-
-.reg-body { padding: 20px; display: flex; align-items: center; gap: 20px; }
-.runner-pic { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 3px solid #FF6B00; flex-shrink: 0; }
-.runner-pic-placeholder { width: 80px; height: 80px; border-radius: 50%; background: #2d2d2d; border: 3px solid #333; display: flex; align-items: center; justify-content: center; font-size: 30px; flex-shrink: 0; }
-.reg-info { flex: 1; }
-.reg-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-.reg-detail { font-size: 13px; color: #888; }
-.bib { display: inline-block; background: #FF6B00; color: #fff; padding: 3px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
-.btn-update-photo { background: transparent; border: 1px solid #FF6B00; color: #FF6B00; padding: 8px 16px; border-radius: 10px; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-.btn-update-photo:hover { background: rgba(255,107,0,0.1); }
-
-/* Crop Modal */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.modal { background: #111; border-radius: 24px; border: 1px solid #2d2d2d; width: 100%; max-width: 480px; overflow: hidden; }
-.modal-header { padding: 20px 24px; border-bottom: 1px solid #2d2d2d; display: flex; align-items: center; justify-content: space-between; }
-.modal-title { font-size: 18px; font-weight: 700; }
-.modal-close { background: none; border: none; color: #888; font-size: 22px; cursor: pointer; line-height: 1; }
-.modal-body { padding: 24px; }
-.crop-instructions { color: #888; font-size: 13px; margin-bottom: 16px; text-align: center; }
-
-/* Crop Area */
-.crop-container { position: relative; width: 100%; aspect-ratio: 1; background: #000; border-radius: 16px; overflow: hidden; cursor: crosshair; touch-action: none; }
-.crop-image { position: absolute; transform-origin: center; user-select: none; pointer-events: none; }
-.crop-overlay { position: absolute; inset: 0; }
-.crop-circle { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 70%; aspect-ratio: 1; border-radius: 50%; border: 3px solid #FF6B00; box-shadow: 0 0 0 9999px rgba(0,0,0,0.6); pointer-events: none; }
-.crop-hint { position: absolute; bottom: 12px; left: 0; right: 0; text-align: center; color: rgba(255,255,255,0.5); font-size: 12px; pointer-events: none; }
-
-.crop-controls { display: flex; align-items: center; gap: 12px; margin: 16px 0 0; }
-.zoom-label { color: #888; font-size: 12px; white-space: nowrap; }
-.zoom-slider { flex: 1; accent-color: #FF6B00; }
-
-.upload-area { border: 2px dashed #3d3d3d; border-radius: 16px; padding: 40px; text-align: center; cursor: pointer; transition: border-color 0.2s; }
-.upload-area:hover { border-color: #FF6B00; }
-.upload-icon { font-size: 40px; margin-bottom: 12px; }
-.upload-text { color: #888; font-size: 14px; }
-.upload-text span { color: #FF6B00; font-weight: 600; }
-
-.modal-footer { padding: 16px 24px; border-top: 1px solid #2d2d2d; display: flex; gap: 12px; }
-.btn-cancel { flex: 1; background: #2d2d2d; color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 600; cursor: pointer; }
-.btn-confirm { flex: 2; background: #FF6B00; color: #fff; border: none; padding: 12px; border-radius: 12px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
-.btn-confirm:hover { background: #E55A00; }
-.btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.error-msg { color: #f44336; font-size: 14px; text-align: center; padding: 12px; }
-.success-msg { color: #4caf50; font-size: 14px; text-align: center; padding: 12px; }
-.loading { color: #888; text-align: center; padding: 40px; font-size: 14px; }
-.empty { color: #555; text-align: center; padding: 60px 20px; }
-.empty-icon { font-size: 50px; margin-bottom: 16px; }
+  .text-accent { color: #FF6B00; }
+  .bg-accent { background-color: #FF6B00; }
+  .border-accent { border-color: #FF6B00; }
+  .hover\:border-accent:hover { border-color: #FF6B00; }
+  .focus\:border-accent:focus { border-color: #FF6B00; }
+  .hover\:bg-orange-600:hover { background-color: #E55A00; }
+  .accent-orange-500 { accent-color: #FF6B00; }
 </style>
 
 <script>
-const ACCENT = '#FF6B00';
-let registrations = [];
-let cropModal = { open: false, participantId: null, cedula: null, currentPhotoUrl: null };
-let cropState = { image: null, scale: 1, offsetX: 0, offsetY: 0, isDragging: false, startX: 0, startY: 0, lastTouchDist: 0 };
+  // ── State ──────────────────────────────────────────
+  let registrations = [];
+  let cropCtx = { participantId: null, cedula: null };
+  let cropImg = null;  // base64
+  let cropScale = 1, cropX = 0, cropY = 0;
 
-// ---- RENDER ----
-function render() {
-  const root = document.getElementById('app-root');
-  root.innerHTML = `
-    <header class="header">
-      <a href="/" class="logo">STRYD PANAMA</a>
-      <a href="/registro" style="color:#FF6B00;font-size:13px;text-decoration:none;">+ Nueva Inscripción</a>
-    </header>
-    <div class="page">
-      ${renderSearch()}
-      ${renderRegistrations()}
-    </div>
-    ${cropModal.open ? renderCropModal() : ''}
-  `;
-  attachEvents();
-}
+  const SONIC = 'https://api.carreras.strydpanama.com';
 
-function renderSearch() {
-  return `
-    <div class="search-card">
-      <div class="search-title">🔍 Mis Inscripciones</div>
-      <div class="search-sub">Ingresa tu cédula o pasaporte para ver el estado de tus inscripciones y actualizar tu foto.</div>
-      <div class="search-row">
-        <input class="input-field" id="cedula-input" type="text" placeholder="Ej: 4-111-1111" />
-        <button class="btn-search" id="search-btn" onclick="handleSearch()">Buscar</button>
-      </div>
-      ${window._searchError ? `<div class="error-msg">${window._searchError}</div>` : ''}
-    </div>
-  `;
-}
+  // ── Search ─────────────────────────────────────────
+  window.handleSearch = async function() {
+    const cedula = document.getElementById('cedula-input').value.trim();
+    if (!cedula) return;
+    const btn = document.getElementById('search-btn');
+    const errEl = document.getElementById('search-error');
+    const container = document.getElementById('results-container');
 
-function statusBadge(status) {
-  if (status === 'confirmed' || status === 'paid') return `<span class="status-badge status-confirmed">✅ Confirmado</span>`;
-  if (status === 'rejected') return `<span class="status-badge status-rejected">❌ Rechazado</span>`;
-  return `<span class="status-badge status-pending">⏳ Pendiente</span>`;
-}
+    btn.disabled = true;
+    btn.textContent = 'Buscando...';
+    errEl.classList.add('hidden');
+    container.innerHTML = `<div class="text-center py-12 dark:text-gray-400 text-gray-500">⏳ Buscando tus inscripciones...</div>`;
 
-function renderRegistrations() {
-  if (window._searching) return `<div class="loading">⏳ Buscando inscripciones...</div>`;
-  if (!registrations.length && window._searched) {
-    return `<div class="empty"><div class="empty-icon">🏃</div><p style="color:#666;margin-bottom:8px;">No encontramos inscripciones con esa cédula.</p><p style="color:#444;font-size:13px;">¿Aún no te has inscrito? <a href="/registro" style="color:#FF6B00;">Regístrate aquí</a></p></div>`;
-  }
-  return registrations.map(reg => {
-    const d = reg.race?.date ? new Date(reg.race.date).toLocaleDateString('es-PA', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-    const sonicBase = 'https://api.carreras.strydpanama.com';
-    const imgSrc = reg.race?.imageUrl ? (reg.race.imageUrl.startsWith('http') ? reg.race.imageUrl : sonicBase + reg.race.imageUrl) : '';
-    const photoSrc = reg.photoUrl ? (reg.photoUrl.startsWith('http') ? reg.photoUrl : sonicBase + reg.photoUrl) : '';
-    return `
-      <div class="reg-card">
-        <div class="reg-header">
-          ${imgSrc ? `<img src="${imgSrc}" class="race-img" />` : `<div class="race-img" style="display:flex;align-items:center;justify-content:center;font-size:24px;">🏁</div>`}
-          <div>
-            <div class="race-name">${reg.race?.title || 'Carrera'}</div>
-            ${d ? `<div class="race-date">📅 ${d}</div>` : ''}
-          </div>
-          ${statusBadge(reg.paymentStatus)}
-        </div>
-        <div class="reg-body">
-          ${photoSrc
-            ? `<img src="${photoSrc}" class="runner-pic" />`
-            : `<div class="runner-pic-placeholder">🏃</div>`
+    try {
+      const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(cedula)}`);
+      const data = await res.json();
+      registrations = data.registrations || [];
+      renderResults(registrations);
+    } catch(e) {
+      errEl.textContent = 'Error de conexión. Intenta de nuevo.';
+      errEl.classList.remove('hidden');
+      container.innerHTML = '';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Buscar';
+  };
+
+  // Enter key support
+  document.getElementById('cedula-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') window.handleSearch();
+  });
+
+  // ── Render Results ──────────────────────────────────
+  function renderResults(regs) {
+    const container = document.getElementById('results-container');
+    if (!regs.length) {
+      container.innerHTML = `
+        <div class="text-center py-16 dark:text-gray-500 text-gray-400">
+          <div class="text-5xl mb-4">🏃</div>
+          <p class="font-semibold dark:text-gray-300 text-gray-600 mb-1">No encontramos inscripciones con esa cédula.</p>
+          <p class="text-sm">¿Aún no te has inscrito? <a href="/register" class="text-accent font-semibold hover:underline">Regístrate aquí</a></p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = regs.map(reg => {
+      const d = reg.race?.date ? new Date(reg.race.date).toLocaleDateString('es-PA', { day:'numeric', month:'long', year:'numeric' }) : '';
+      const imgSrc = reg.race?.imageUrl ? (reg.race.imageUrl.startsWith('http') ? reg.race.imageUrl : SONIC + reg.race.imageUrl) : '';
+      const photoSrc = reg.photoUrl ? (reg.photoUrl.startsWith('http') ? reg.photoUrl : SONIC + reg.photoUrl) : '';
+      const { badgeClass, badgeText } = statusBadge(reg.paymentStatus);
+
+      return `
+      <div class="dark:bg-slate-800 bg-white rounded-2xl shadow-md border dark:border-slate-700 border-gray-100 overflow-hidden mb-4">
+        <!-- Race header -->
+        <div class="flex items-center gap-4 px-5 py-4 border-b dark:border-slate-700 border-gray-100">
+          ${imgSrc
+            ? `<img src="${imgSrc}" class="w-14 h-14 rounded-xl object-cover flex-shrink-0" />`
+            : `<div class="w-14 h-14 rounded-xl dark:bg-slate-700 bg-gray-100 flex items-center justify-center text-2xl flex-shrink-0">🏁</div>`
           }
-          <div class="reg-info">
-            <div class="bib">#${reg.bibNumber || '—'}</div>
-            <div class="reg-name">${reg.firstName || ''} ${reg.lastName || ''}</div>
-            ${reg.distance ? `<div class="reg-detail">📏 ${reg.distance}</div>` : ''}
-            <div class="reg-detail" style="margin-top:8px;color:#${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid'?'4caf50':'FF8533'}">
-              ${reg.paymentStatus === 'confirmed' || reg.paymentStatus === 'paid' ? '✅ Inscripción confirmada' : '⏳ En espera de confirmación de pago'}
+          <div class="flex-1 min-w-0">
+            <div class="font-bold dark:text-white text-gray-900 truncate">${reg.race?.title || 'Carrera'}</div>
+            ${d ? `<div class="text-sm dark:text-gray-400 text-gray-500">📅 ${d}</div>` : ''}
+          </div>
+          <span class="${badgeClass} text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">${badgeText}</span>
+        </div>
+        <!-- Runner info -->
+        <div class="flex items-center gap-4 px-5 py-4">
+          <div class="flex-shrink-0">
+            ${photoSrc
+              ? `<img src="${photoSrc}" class="w-20 h-20 rounded-full object-cover border-[3px] border-accent" />`
+              : `<div class="w-20 h-20 rounded-full dark:bg-slate-700 bg-gray-100 border-[3px] dark:border-slate-600 border-gray-200 flex items-center justify-center text-3xl">🏃</div>`
+            }
+          </div>
+          <div class="flex-1 min-w-0">
+            <span class="inline-block bg-accent text-white text-xs font-black px-2.5 py-1 rounded-lg mb-1">#${reg.bibNumber || '—'}</span>
+            <div class="font-bold dark:text-white text-gray-900">${reg.firstName || ''} ${reg.lastName || ''}</div>
+            ${reg.distance ? `<div class="text-sm dark:text-gray-400 text-gray-500">📏 ${reg.distance}</div>` : ''}
+            <div class="text-sm mt-1 ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? 'text-green-500' : 'text-orange-400'}">
+              ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? '✅ Inscripción confirmada' : '⏳ En espera de confirmación de pago'}
             </div>
           </div>
-          <button class="btn-update-photo" onclick="openCropModal('${reg.id}','${reg.cedula || ''}','${photoSrc}')">📸 Cambiar Foto</button>
+          <button
+            onclick="openCropModal('${reg.id}','${reg.cedula||''}')"
+            class="flex-shrink-0 border border-accent text-accent text-sm font-semibold px-4 py-2 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+          >
+            📸 Cambiar Foto
+          </button>
         </div>
-      </div>
-    `;
-  }).join('');
-}
+      </div>`;
+    }).join('');
+  }
 
-function renderCropModal() {
-  return `
-    <div class="modal-overlay" id="modal-overlay">
-      <div class="modal">
-        <div class="modal-header">
-          <span class="modal-title">📸 Actualizar Foto de Perfil</span>
-          <button class="modal-close" onclick="closeCropModal()">×</button>
-        </div>
-        <div class="modal-body">
-          <div class="crop-instructions">Sube una foto y arrastra para centrar tu cara en el círculo. Usa la rueda del mouse o los dedos para ajustar el zoom.</div>
-          ${cropState.image ? renderCropper() : renderUploadArea()}
-          ${window._uploadError ? `<div class="error-msg">${window._uploadError}</div>` : ''}
-          ${window._uploadSuccess ? `<div class="success-msg">✅ ¡Foto actualizada exitosamente!</div>` : ''}
-        </div>
-        ${cropState.image ? `
-          <div class="modal-footer">
-            <button class="btn-cancel" onclick="resetCrop()">↩ Elegir otra</button>
-            <button class="btn-confirm" id="confirm-btn" onclick="confirmCrop()">
-              ${window._uploading ? 'Guardando...' : '✓ Guardar Foto'}
-            </button>
-          </div>
-        ` : ''}
-      </div>
-    </div>
-  `;
-}
+  function statusBadge(status) {
+    if (status === 'confirmed' || status === 'paid')
+      return { badgeClass: 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 border border-green-300 dark:border-green-700', badgeText: '✅ Confirmado' };
+    if (status === 'rejected')
+      return { badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700', badgeText: '❌ Rechazado' };
+    return { badgeClass: 'bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 border border-orange-300 dark:border-orange-700', badgeText: '⏳ Pendiente' };
+  }
 
-function renderCropper() {
-  return `
-    <div class="crop-container" id="crop-container">
-      <img id="crop-img" class="crop-image" src="${cropState.image}" style="
-        transform: scale(${cropState.scale}) translate(${cropState.offsetX / cropState.scale}px, ${cropState.offsetY / cropState.scale}px);
-        max-width: none; max-height: none; width: auto; height: 100%;
-      " draggable="false" />
-      <div class="crop-overlay">
-        <div class="crop-circle"></div>
-        <div class="crop-hint">Arrastra para centrar tu cara</div>
-      </div>
-    </div>
-    <div class="crop-controls">
-      <span class="zoom-label">🔍 Zoom</span>
-      <input type="range" class="zoom-slider" id="zoom-slider" min="0.5" max="4" step="0.05" value="${cropState.scale}" oninput="handleZoomSlider(this.value)" />
-    </div>
-  `;
-}
+  // ── Crop Modal ──────────────────────────────────────
+  window.openCropModal = function(participantId, cedula) {
+    cropCtx = { participantId, cedula };
+    cropImg = null; cropScale = 1; cropX = 0; cropY = 0;
+    document.getElementById('upload-area').classList.remove('hidden');
+    document.getElementById('crop-area').classList.add('hidden');
+    document.getElementById('modal-footer').classList.add('hidden');
+    document.getElementById('modal-error').classList.add('hidden');
+    document.getElementById('modal-success').classList.add('hidden');
+    document.getElementById('confirm-btn').disabled = false;
+    document.getElementById('confirm-btn').textContent = '✓ Guardar Foto';
+    const modal = document.getElementById('crop-modal');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  };
 
-function renderUploadArea() {
-  return `
-    <div class="upload-area" onclick="document.getElementById('file-input').click()" id="upload-area">
-      <div class="upload-icon">🤳</div>
-      <div class="upload-text">Haz clic o arrastra tu foto aquí<br/><span>Elige una foto de tu cara</span></div>
-      <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleFileSelect(this)" />
-    </div>
-  `;
-}
+  window.closeCropModal = function() {
+    const modal = document.getElementById('crop-modal');
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  };
 
-// ---- EVENTS ----
-function attachEvents() {
-  const container = document.getElementById('crop-container');
-  if (!container) return;
+  window.resetCrop = function() {
+    cropImg = null;
+    document.getElementById('upload-area').classList.remove('hidden');
+    document.getElementById('crop-area').classList.add('hidden');
+    document.getElementById('modal-footer').classList.add('hidden');
+    document.getElementById('modal-error').classList.add('hidden');
+  };
 
+  window.handleFileSelect = function(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      cropImg = e.target.result;
+      cropScale = 1; cropX = 0; cropY = 0;
+      document.getElementById('upload-area').classList.add('hidden');
+      document.getElementById('crop-area').classList.remove('hidden');
+      document.getElementById('modal-footer').classList.remove('hidden');
+      document.getElementById('zoom-slider').value = 1;
+      const img = document.getElementById('crop-img');
+      img.src = cropImg;
+      updateCropTransform();
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  };
+
+  window.handleZoom = function(val) {
+    cropScale = parseFloat(val);
+    updateCropTransform();
+  };
+
+  function updateCropTransform() {
+    const img = document.getElementById('crop-img');
+    if (img) img.style.transform = `scale(${cropScale}) translate(${cropX/cropScale}px,${cropY/cropScale}px)`;
+  }
+
+  // Drag events
   let isDragging = false, lastX = 0, lastY = 0;
-
-  container.addEventListener('mousedown', e => {
-    isDragging = true; lastX = e.clientX; lastY = e.clientY; e.preventDefault();
-  });
+  document.getElementById('crop-container').addEventListener('mousedown', e => { isDragging=true; lastX=e.clientX; lastY=e.clientY; e.preventDefault(); });
   window.addEventListener('mousemove', e => {
     if (!isDragging) return;
-    cropState.offsetX += e.clientX - lastX;
-    cropState.offsetY += e.clientY - lastY;
-    lastX = e.clientX; lastY = e.clientY;
-    updateCropImage();
+    cropX += e.clientX-lastX; cropY += e.clientY-lastY;
+    lastX=e.clientX; lastY=e.clientY;
+    updateCropTransform();
   });
-  window.addEventListener('mouseup', () => { isDragging = false; });
+  window.addEventListener('mouseup', () => { isDragging=false; });
 
-  container.addEventListener('wheel', e => {
+  // Wheel zoom
+  document.getElementById('crop-container').addEventListener('wheel', e => {
     e.preventDefault();
-    cropState.scale = Math.max(0.5, Math.min(4, cropState.scale - e.deltaY * 0.001));
-    updateCropImage();
-    const slider = document.getElementById('zoom-slider');
-    if (slider) slider.value = cropState.scale;
+    cropScale = Math.max(0.5, Math.min(4, cropScale - e.deltaY*0.001));
+    document.getElementById('zoom-slider').value = cropScale;
+    updateCropTransform();
   }, { passive: false });
 
-  // Touch events
+  // Touch
   let lastTouchDist = 0;
-  container.addEventListener('touchstart', e => {
-    if (e.touches.length === 1) { lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; }
-    if (e.touches.length === 2) { lastTouchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }
+  const cc = document.getElementById('crop-container');
+  cc.addEventListener('touchstart', e => {
+    if (e.touches.length===1) { lastX=e.touches[0].clientX; lastY=e.touches[0].clientY; }
+    if (e.touches.length===2) lastTouchDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
     e.preventDefault();
-  }, { passive: false });
-  container.addEventListener('touchmove', e => {
-    if (e.touches.length === 1) {
-      cropState.offsetX += e.touches[0].clientX - lastX;
-      cropState.offsetY += e.touches[0].clientY - lastY;
-      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
-      updateCropImage();
+  }, {passive:false});
+  cc.addEventListener('touchmove', e => {
+    if (e.touches.length===1) {
+      cropX+=e.touches[0].clientX-lastX; cropY+=e.touches[0].clientY-lastY;
+      lastX=e.touches[0].clientX; lastY=e.touches[0].clientY;
+      updateCropTransform();
     }
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      cropState.scale = Math.max(0.5, Math.min(4, cropState.scale * (dist / lastTouchDist)));
-      lastTouchDist = dist;
-      updateCropImage();
+    if (e.touches.length===2) {
+      const d=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      cropScale=Math.max(0.5,Math.min(4,cropScale*(d/lastTouchDist)));
+      lastTouchDist=d;
+      document.getElementById('zoom-slider').value=cropScale;
+      updateCropTransform();
     }
     e.preventDefault();
-  }, { passive: false });
-}
+  }, {passive:false});
 
-function updateCropImage() {
-  const img = document.getElementById('crop-img');
-  if (img) {
-    img.style.transform = `scale(${cropState.scale}) translate(${cropState.offsetX / cropState.scale}px, ${cropState.offsetY / cropState.scale}px)`;
-  }
-}
+  // Drag-and-drop onto upload area
+  document.addEventListener('dragover', e=>e.preventDefault());
+  document.addEventListener('drop', e => {
+    e.preventDefault();
+    const file = e.dataTransfer?.files?.[0];
+    if (!file || !document.getElementById('crop-modal').classList.contains('flex')) return;
+    const reader = new FileReader();
+    reader.onload = ev => { window.handleFileSelect({ files:[file] }); };
+    reader.readAsDataURL(file);
+  });
 
-// ---- ACTIONS ----
-window.handleSearch = async function() {
-  const cedula = document.getElementById('cedula-input')?.value?.trim();
-  if (!cedula) return;
-  window._searching = true; window._searched = false; window._searchError = '';
-  render();
-  try {
-    const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(cedula)}`);
-    const data = await res.json();
-    if (data.found) { registrations = data.registrations; }
-    else { registrations = []; }
-    window._searched = true;
-  } catch(e) { window._searchError = 'Error de conexión. Intenta de nuevo.'; }
-  window._searching = false;
-  render();
-  // Restore cedula input
-  const inp = document.getElementById('cedula-input');
-  if (inp) inp.value = cedula;
-};
+  // ── Confirm Crop ────────────────────────────────────
+  window.confirmCrop = async function() {
+    if (!cropImg) return;
+    const btn = document.getElementById('confirm-btn');
+    const errEl = document.getElementById('modal-error');
+    const okEl = document.getElementById('modal-success');
+    btn.disabled = true; btn.textContent = 'Guardando...';
+    errEl.classList.add('hidden'); okEl.classList.add('hidden');
 
-window.handleFileSelect = function(input) {
-  const file = input.files?.[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    cropState.image = e.target.result;
-    cropState.scale = 1; cropState.offsetX = 0; cropState.offsetY = 0;
-    window._uploadError = ''; window._uploadSuccess = false;
-    render();
-  };
-  reader.readAsDataURL(file);
-};
+    try {
+      const container = document.getElementById('crop-container');
+      const imgEl = document.getElementById('crop-img');
+      const containerSize = container.offsetWidth;
+      const cropDiameter = Math.round(containerSize * 0.70);
 
-window.handleZoomSlider = function(val) {
-  cropState.scale = parseFloat(val);
-  updateCropImage();
-};
+      // Draw the circular crop to canvas
+      const canvas = document.createElement('canvas');
+      canvas.width=400; canvas.height=400;
+      const ctx = canvas.getContext('2d');
+      ctx.beginPath(); ctx.arc(200,200,200,0,Math.PI*2); ctx.clip();
 
-window.openCropModal = function(participantId, cedula, photoUrl) {
-  cropModal = { open: true, participantId, cedula, currentPhotoUrl: photoUrl };
-  cropState = { image: null, scale: 1, offsetX: 0, offsetY: 0 };
-  window._uploadError = ''; window._uploadSuccess = false; window._uploading = false;
-  render();
-};
+      const imgRect = imgEl.getBoundingClientRect();
+      const contRect = container.getBoundingClientRect();
+      const cx = contRect.left + contRect.width/2;
+      const cy = contRect.top + contRect.height/2;
+      const r = cropDiameter/2;
+      const scaleX = imgEl.naturalWidth / imgRect.width;
+      const scaleY = imgEl.naturalHeight / imgRect.height;
+      const sx = (cx-r-imgRect.left)*scaleX;
+      const sy = (cy-r-imgRect.top)*scaleY;
+      const tmpImg = new Image();
+      tmpImg.src = cropImg;
+      await new Promise(resolve => tmpImg.onload=resolve);
+      ctx.drawImage(tmpImg, sx, sy, cropDiameter*scaleX, cropDiameter*scaleY, 0, 0, 400, 400);
 
-window.closeCropModal = function() {
-  cropModal.open = false;
-  cropState.image = null;
-  render();
-};
+      const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
 
-window.resetCrop = function() {
-  cropState.image = null;
-  window._uploadError = '';
-  render();
-};
-
-window.confirmCrop = async function() {
-  if (window._uploading) return;
-  const container = document.getElementById('crop-container');
-  if (!container) return;
-
-  window._uploading = true;
-  document.getElementById('confirm-btn').disabled = true;
-  document.getElementById('confirm-btn').textContent = 'Guardando...';
-
-  try {
-    // Build cropped canvas
-    const size = container.offsetWidth;
-    const cropSize = Math.round(size * 0.70);
-    const canvas = document.createElement('canvas');
-    canvas.width = 400; canvas.height = 400;
-    const ctx = canvas.getContext('2d');
-
-    // Clip to circle
-    ctx.beginPath();
-    ctx.arc(200, 200, 200, 0, Math.PI * 2);
-    ctx.clip();
-
-    // Draw the image portion that's inside the circle
-    const img = document.getElementById('crop-img');
-    const imgRect = img.getBoundingClientRect();
-    const contRect = container.getBoundingClientRect();
-    const circleCenter = { x: contRect.left + contRect.width / 2, y: contRect.top + contRect.height / 2 };
-    const circleR = cropSize / 2;
-
-    // Source coordinates (what part of the original image is inside the circle)
-    const scaleX = img.naturalWidth / imgRect.width;
-    const scaleY = img.naturalHeight / imgRect.height;
-    const sx = (circleCenter.x - circleR - imgRect.left) * scaleX;
-    const sy = (circleCenter.y - circleR - imgRect.top) * scaleY;
-    const sw = cropSize * scaleX;
-    const sh = cropSize * scaleY;
-
-    const tmpImg = new Image();
-    tmpImg.src = cropState.image;
-    await new Promise(r => tmpImg.onload = r);
-    ctx.drawImage(tmpImg, sx, sy, sw, sh, 0, 0, 400, 400);
-
-    const croppedBase64 = canvas.toDataURL('image/jpeg', 0.9);
-
-    const res = await fetch('/api/update-participant-photo', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ participantId: cropModal.participantId, cedula: cropModal.cedula, imageBase64: croppedBase64 })
-    });
-    const data = await res.json();
-    if (data.success) {
-      window._uploadSuccess = true;
-      // Update registration photo locally
-      const reg = registrations.find(r => r.id === cropModal.participantId);
-      if (reg) reg.photoUrl = data.photoUrl;
-      setTimeout(() => { closeCropModal(); }, 1800);
-    } else {
-      throw new Error(data.error || 'Error desconocido');
+      const res = await fetch('/api/update-participant-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ participantId: cropCtx.participantId, cedula: cropCtx.cedula, imageBase64: croppedBase64 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        okEl.classList.remove('hidden');
+        // Update the photo locally in the rendered card
+        const reg = registrations.find(r => r.id === cropCtx.participantId);
+        if (reg) reg.photoUrl = data.photoUrl;
+        renderResults(registrations);
+        setTimeout(() => window.closeCropModal(), 1800);
+      } else {
+        throw new Error(data.error || 'Error desconocido');
+      }
+    } catch(e) {
+      errEl.textContent = `Error: ${e.message}`;
+      errEl.classList.remove('hidden');
     }
-  } catch(e) {
-    window._uploadError = `Error: ${e.message}`;
-  }
-  window._uploading = false;
-  render();
-};
-
-// ---- DRAG OVER UPLOAD ----
-document.addEventListener('dragover', e => e.preventDefault());
-document.addEventListener('drop', e => {
-  e.preventDefault();
-  const file = e.dataTransfer?.files?.[0];
-  if (!file || !cropModal.open) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    cropState.image = ev.target.result;
-    cropState.scale = 1; cropState.offsetX = 0; cropState.offsetY = 0;
-    render();
+    btn.disabled=false; btn.textContent='✓ Guardar Foto';
   };
-  reader.readAsDataURL(file);
-});
-
-// Init
-window._searching = false; window._searched = false; window._searchError = '';
-window._uploading = false; window._uploadError = ''; window._uploadSuccess = false;
-render();
 </script>
