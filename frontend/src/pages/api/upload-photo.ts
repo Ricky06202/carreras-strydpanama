@@ -10,7 +10,7 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'imageBase64 y cedula son requeridos' }), { status: 400 });
     }
 
-    const sonicUrl = (env as any).SONICJS_API_URL || 'https://api.carreras2.strydpanama.com';
+    const sonicUrl = (env as any).SONICJS_API_URL || 'https://api.carreras.strydpanama.com';
 
     // Convertir base64 a bytes
     const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
