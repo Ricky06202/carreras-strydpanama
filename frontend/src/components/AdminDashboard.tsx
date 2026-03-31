@@ -207,7 +207,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
          leftBox.style.width = '20%';
          leftBox.style.textAlign = 'center';
          if (raceLogo) {
-             const imgPath = raceLogo.startsWith('http') ? raceLogo : `https://api.carreras2.strydpanama.com${raceLogo}`;
+             const imgPath = raceLogo.startsWith('http') ? raceLogo : `https://api.carreras.strydpanama.com${raceLogo}`;
              leftBox.innerHTML = `<img src="${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />`;
          } else {
              leftBox.innerHTML = `<h2 style="color:${ACCENT}; margin:0; line-height:1.2; font-size:20px;">${raceTitle}</h2>`;

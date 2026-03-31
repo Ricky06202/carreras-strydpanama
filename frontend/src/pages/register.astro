@@ -18,10 +18,10 @@ const raceId = Astro.url.searchParams.get('race') || '';
 let sonicjsApiUrl = env.SONICJS_API_URL;
 // Fix sonicjsApiUrl if it's missing the "api." subdomain
 if (sonicjsApiUrl && typeof sonicjsApiUrl === 'string' && !sonicjsApiUrl.includes('api.')) {
-  // Convert URLs like https://carreras2.strydpanama.com to https://api.carreras2.strydpanama.com
+  // Convert URLs like https://carreras.strydpanama.com to https://api.carreras.strydpanama.com
   sonicjsApiUrl = sonicjsApiUrl.replace(
     /^(https?:\/\/)[^.]+\./,
-    '$1api.carreras2.'
+    '$1api.carreras.'
   );
 }
 ---
