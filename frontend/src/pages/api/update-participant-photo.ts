@@ -24,7 +24,25 @@ export const POST: APIRoute = async ({ request }) => {
     const formData = new FormData();
     formData.append('file', new Blob([bytes], { type: mimeType }), filename);
 
-    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', body: formData });
+    // Authenticate with SonicJS first (media upload requires auth)
+    let authToken = '';
+    try {
+      const loginRes = await fetch(`${sonicUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (env as any).SONICJS_API_EMAIL || 'admin@strydpanama.com',
+          password: (env as any).SONICJS_API_PASSWORD || 'StrydPanama2026!'
+        })
+      });
+      const loginData = await loginRes.json();
+      authToken = loginData?.token || loginData?.data?.token || '';
+    } catch {}
+
+    const uploadHeaders: Record<string, string> = {};
+    if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
+
+    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
     const uploadData = await uploadRes.json();
     const photoUrl = uploadData?.data?.url || uploadData?.url || uploadData?.publicUrl || `${sonicUrl}/media/${filename}`;

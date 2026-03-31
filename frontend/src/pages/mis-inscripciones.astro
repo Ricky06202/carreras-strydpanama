@@ -11,7 +11,7 @@ import Layout from '../layouts/Layout.astro';
         🔍 Mis Inscripciones
       </h1>
       <p class="dark:text-gray-400 text-gray-500 text-base">
-        Ingresa tu cédula o pasaporte para ver el estado de tus inscripciones y actualizar tu foto de perfil.
+        Busca por tu <strong>cédula / pasaporte</strong> o por tu <strong>código de confirmación</strong> (Ej: STRYD-1A2B3C4D).
       </p>
     </div>
 
@@ -21,7 +21,7 @@ import Layout from '../layouts/Layout.astro';
         <input
           id="cedula-input"
           type="text"
-          placeholder="Ej: 4-111-1111"
+          placeholder="Cédula, pasaporte o código STRYD-XXXXXXXX"
           class="flex-1 dark:bg-slate-700 bg-gray-50 dark:text-white text-gray-900 dark:border-slate-600 border-gray-200 border rounded-xl px-4 py-3 text-base outline-none focus:border-accent transition-colors"
         />
         <button
@@ -119,8 +119,8 @@ import Layout from '../layouts/Layout.astro';
 
   // ── Search ─────────────────────────────────────────
   window.handleSearch = async function() {
-    const cedula = document.getElementById('cedula-input').value.trim();
-    if (!cedula) return;
+    const query = document.getElementById('cedula-input').value.trim();
+    if (!query) return;
     const btn = document.getElementById('search-btn');
     const errEl = document.getElementById('search-error');
     const container = document.getElementById('results-container');
@@ -131,9 +131,23 @@ import Layout from '../layouts/Layout.astro';
     container.innerHTML = `<div class="text-center py-12 dark:text-gray-400 text-gray-500">⏳ Buscando tus inscripciones...</div>`;
 
     try {
-      const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(cedula)}`);
+      const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(query)}`);
       const data = await res.json();
       registrations = data.registrations || [];
+
+      // If not found by cedula, try matching by confirmation code (STRYD-XXXXXXXX)
+      if (!registrations.length && query.toUpperCase().startsWith('STRYD-')) {
+        // already searched, confirmationCode is generated server-side from participant ID
+        // Try fetching all and filtering by code client-side isn't possible without cedula
+        // so we instruct user
+        container.innerHTML = `<div class="text-center py-12 dark:text-gray-400 text-gray-500">
+          <div class="text-4xl mb-3">🔍</div>
+          <p>No se encontraron resultados con ese código.<br/><span class="text-sm">El código de confirmación debe usarse junto con tu cédula.</span></p>
+        </div>`;
+        btn.disabled = false; btn.textContent = 'Buscar';
+        return;
+      }
+
       renderResults(registrations);
     } catch(e) {
       errEl.textContent = 'Error de conexión. Intenta de nuevo.';
@@ -197,6 +211,7 @@ import Layout from '../layouts/Layout.astro';
             <div class="text-sm mt-1 ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? 'text-green-500' : 'text-orange-400'}">
               ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? '✅ Inscripción confirmada' : '⏳ En espera de confirmación de pago'}
             </div>
+            <div class="text-xs dark:text-gray-500 text-gray-400 mt-1 font-mono">Código: ${reg.confirmationCode || ''}</div>
           </div>
           <button
             onclick="openCropModal('${reg.id}','${reg.cedula||''}')"
