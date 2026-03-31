@@ -120,21 +120,38 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
             <Typography variant="h5" sx={{ color: 'white', mb: 4, maxWidth: 600 }}>
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá
             </Typography>
-            <Button
-              href="#proximos-eventos"
-              variant="contained"
-              size="large"
-              sx={{
-                bgcolor: ACCENT,
-                color: '#FFFFFF',
-                fontWeight: 'bold',
-                px: 4,
-                py: 1.5,
-                '&:hover': { bgcolor: '#E55A00' }
-              }}
-            >
-              VER CALENDARIO DE EVENTOS
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+              <Button
+                href="#proximos-eventos"
+                variant="contained"
+                size="large"
+                sx={{
+                  bgcolor: ACCENT,
+                  color: '#FFFFFF',
+                  fontWeight: 'bold',
+                  px: 4,
+                  py: 1.5,
+                  '&:hover': { bgcolor: '#E55A00' }
+                }}
+              >
+                VER CALENDARIO DE EVENTOS
+              </Button>
+              <Button
+                href="/mis-inscripciones"
+                variant="outlined"
+                size="large"
+                sx={{
+                  borderColor: '#FFFFFF',
+                  color: '#FFFFFF',
+                  fontWeight: 'bold',
+                  px: 3,
+                  py: 1.5,
+                  '&:hover': { borderColor: ACCENT, color: ACCENT, bgcolor: 'rgba(255,107,0,0.08)' }
+                }}
+              >
+                🔍 MIS INSCRIPCIONES
+              </Button>
+            </Box>
           </Box>
         </Container>
       </Box>
