@@ -28,9 +28,11 @@ export const GET: APIRoute = async ({ request }) => {
       });
     }
 
-    // Fetch race info for each unique raceId
+    // Fetch race info and distances for each unique raceId
     const raceIds = [...new Set(mine.map((p: any) => p.data?.race).filter(Boolean))];
     const raceMap: Record<string, any> = {};
+    const distMap: Record<string, string> = {};
+
     await Promise.allSettled(raceIds.map(async (raceId: any) => {
       try {
         const r = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
@@ -38,22 +40,41 @@ export const GET: APIRoute = async ({ request }) => {
       } catch {}
     }));
 
-    const registrations = mine.map((p: any) => ({
-      id: p.id,
-      bibNumber: p.data?.bibNumber,
-      firstName: p.data?.firstName,
-      lastName: p.data?.lastName,
-      distance: p.data?.distanceName || p.data?.distance || '',
-      paymentStatus: p.data?.paymentStatus || 'pending',
-      photoUrl: p.data?.photoUrl || '',
-      cedula: p.data?.cedula,
-      race: raceMap[p.data?.race] ? {
-        id: p.data?.race,
-        title: raceMap[p.data?.race]?.data?.title || '',
-        date: raceMap[p.data?.race]?.data?.date || '',
-        imageUrl: raceMap[p.data?.race]?.data?.imageUrl || '',
-      } : { id: p.data?.race, title: 'Carrera', date: '', imageUrl: '' },
-    }));
+    // Fetch all distances to map IDs to names
+    try {
+      const distsRes = await apiFetch('/api/collections/distances/content?limit=500', env, { method: 'GET' });
+      for (const d of (distsRes?.data || [])) {
+        distMap[d.id] = d.data?.title || d.title || '';
+      }
+    } catch {}
+
+    const registrations = mine.map((p: any) => {
+      // Generate short confirmation code from participant ID (first 8 hex chars, uppercase)
+      const rawId = (p.id || '').replace(/-/g, '');
+      const confirmationCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
+
+      // Resolve distance name
+      const distanceId = p.data?.distance || '';
+      const distanceName = p.data?.distanceName || distMap[distanceId] || '';
+
+      return {
+        id: p.id,
+        confirmationCode,
+        bibNumber: p.data?.bibNumber,
+        firstName: p.data?.firstName,
+        lastName: p.data?.lastName,
+        distance: distanceName,
+        paymentStatus: p.data?.paymentStatus || 'pending',
+        photoUrl: p.data?.photoUrl || '',
+        cedula: p.data?.cedula,
+        race: raceMap[p.data?.race] ? {
+          id: p.data?.race,
+          title: raceMap[p.data?.race]?.data?.title || '',
+          date: raceMap[p.data?.race]?.data?.date || '',
+          imageUrl: raceMap[p.data?.race]?.data?.imageUrl || '',
+        } : { id: p.data?.race, title: 'Carrera', date: '', imageUrl: '' },
+      };
+    });
 
     return new Response(JSON.stringify({ found: true, registrations }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
