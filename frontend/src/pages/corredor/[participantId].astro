@@ -1,0 +1,375 @@
+---
+import { env } from 'cloudflare:workers';
+import { apiFetch } from '../../lib/api';
+
+const { participantId } = Astro.params;
+
+let participant: any = null;
+let race: any = null;
+let positionGeneral: number | null = null;
+let positionCategory: number | null = null;
+let totalInDistance: number = 0;
+let error = '';
+
+try {
+  const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
+  participant = partRes?.data;
+
+  if (!participant) throw new Error('Participante no encontrado');
+
+  const raceId = participant.data?.race;
+  if (raceId) {
+    const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
+    race = raceRes?.data;
+
+    const allPartsRes = await apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' });
+    const raceParts = (allPartsRes?.data || []).filter((p: any) =>
+      (p.data?.race === raceId || p.data?.raceId === raceId) && p.data?.finishTime
+    );
+
+    // Posición general
+    const sortedGeneral = [...raceParts].sort((a, b) => Number(a.data.finishTime) - Number(b.data.finishTime));
+    const genIdx = sortedGeneral.findIndex(p => p.id === participantId);
+    if (genIdx !== -1) positionGeneral = genIdx + 1;
+
+    // Posición en distancia
+    const myDistance = participant.data?.distance;
+    if (myDistance) {
+      const inDist = raceParts.filter(p => p.data?.distance === myDistance)
+        .sort((a, b) => Number(a.data.finishTime) - Number(b.data.finishTime));
+      totalInDistance = inDist.length;
+      const distIdx = inDist.findIndex(p => p.id === participantId);
+      if (distIdx !== -1) positionCategory = distIdx + 1;
+    }
+  }
+} catch (e: any) {
+  error = e.message;
+}
+
+function formatTime(secs: number | string): string {
+  const s = Number(secs);
+  if (isNaN(s)) return '--:--';
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
+const raceName = race?.data?.title || 'Carrera';
+const photoUrl = participant?.data?.photoUrl || '';
+const finishTime = participant?.data?.finishTime;
+const bibNumber = participant?.data?.bibNumber;
+const raceDate = race?.data?.date ? new Date(race.data.date).toLocaleDateString('es-PA', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+const hasResult = !!finishTime;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{name} — Resultados STRYD Panama</title>
+  <meta name="description" content={`Resultados de ${name} en ${raceName}`} />
+  <meta property="og:title" content={`${name} — ${raceName}`} />
+  <meta property="og:description" content={`Ver tiempo oficial y certificado de participación`} />
+  {photoUrl && <meta property="og:image" content={photoUrl} />}
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0f0f0f; color: #fff; min-height: 100vh; }
+    .header {
+      background: #000; border-bottom: 2px solid #FF6B00;
+      padding: 16px 32px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .logo { color: #FF6B00; font-size: 18px; font-weight: 900; letter-spacing: 2px; text-decoration: none; }
+    .container { max-width: 700px; margin: 0 auto; padding: 40px 24px; }
+
+    .card {
+      background: #1a1a1a; border-radius: 24px; overflow: hidden;
+      border: 1px solid #2d2d2d; margin-bottom: 20px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #000 0%, #1a0800 100%);
+      padding: 40px; text-align: center;
+      border-bottom: 1px solid #2d2d2d;
+    }
+    .runner-photo {
+      width: 120px; height: 120px; border-radius: 50%; object-fit: cover;
+      border: 4px solid #FF6B00; margin-bottom: 20px;
+      display: block; margin-left: auto; margin-right: auto;
+    }
+    .runner-placeholder {
+      width: 120px; height: 120px; border-radius: 50%; background: #2a2a2a;
+      border: 4px solid #333; display: flex; align-items: center;
+      justify-content: center; font-size: 50px;
+      margin: 0 auto 20px;
+    }
+    .runner-name { font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+    .race-name { color: #FF6B00; font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+    .race-date { color: #666; font-size: 13px; }
+    .bib-badge {
+      display: inline-block; background: #FF6B00; color: #fff;
+      padding: 6px 18px; border-radius: 20px; font-weight: 900;
+      font-size: 15px; margin-top: 12px;
+    }
+
+    .stats-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      padding: 8px;
+    }
+    .stat {
+      padding: 24px 16px; text-align: center;
+      border-right: 1px solid #2d2d2d;
+    }
+    .stat:last-child { border-right: none; }
+    .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 900; color: #fff; }
+    .stat-value.orange { color: #FF6B00; }
+    .stat-sub { font-size: 11px; color: #555; margin-top: 4px; }
+
+    .actions { padding: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 28px; border-radius: 12px; font-weight: 700;
+      font-size: 15px; cursor: pointer; text-decoration: none;
+      border: none; transition: all 0.2s;
+    }
+    .btn-primary { background: #FF6B00; color: #fff; flex: 1; justify-content: center; }
+    .btn-primary:hover { background: #E55A00; transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent; color: #FF6B00;
+      border: 2px solid #FF6B00; flex: 1; justify-content: center;
+    }
+    .btn-secondary:hover { background: rgba(255,107,0,0.1); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .pending-banner {
+      background: #1a1000; border: 1px solid #FF6B00; border-radius: 12px;
+      padding: 20px; text-align: center; color: #FF8533; margin-bottom: 20px;
+    }
+    #email-status { font-size: 13px; color: #888; text-align: center; padding: 8px; }
+    .error { color: #f44; text-align: center; padding: 40px; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo">STRYD PANAMA</a>
+    <a href="/podio" style="color:#FF6B00;font-size:14px;font-weight:600;text-decoration:none;">🏆 Ver Podio</a>
+  </header>
+
+  <div class="container">
+    {error ? (
+      <div class="error">
+        <div style="font-size:40px;margin-bottom:16px;">⚠️</div>
+        <p>No se pudo cargar la información del corredor.</p>
+        <p style="font-size:13px;color:#555;margin-top:8px;">{error}</p>
+      </div>
+    ) : participant && (
+      <>
+        {!hasResult && (
+          <div class="pending-banner">
+            ⏱️ Aún no has cruzado la meta. ¡Mucho ánimo!<br />
+            <small>Esta página se actualizará con tu tiempo oficial cuando termines.</small>
+          </div>
+        )}
+
+        <div class="card">
+          <div class="hero">
+            {photoUrl
+              ? <img src={photoUrl} alt={name} class="runner-photo" />
+              : <div class="runner-placeholder">🏃</div>
+            }
+            <div class="runner-name">{name}</div>
+            <div class="race-name">{raceName}</div>
+            {raceDate && <div class="race-date">{raceDate}</div>}
+            <div class="bib-badge">#{bibNumber}</div>
+          </div>
+
+          {hasResult && (
+            <div class="stats-grid">
+              <div class="stat">
+                <div class="stat-label">Tiempo Oficial</div>
+                <div class="stat-value orange" style="font-size:22px;">{formatTime(finishTime)}</div>
+              </div>
+              {positionCategory !== null && (
+                <div class="stat">
+                  <div class="stat-label">Posición</div>
+                  <div class="stat-value orange">#{positionCategory}</div>
+                  {totalInDistance > 0 && <div class="stat-sub">de {totalInDistance}</div>}
+                </div>
+              )}
+              {positionGeneral !== null && (
+                <div class="stat">
+                  <div class="stat-label">General</div>
+                  <div class="stat-value">#{positionGeneral}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div class="card">
+          <div class="actions">
+            <button class="btn btn-primary" id="cert-btn" onclick="generateCertificate()">
+              📄 Descargar Certificado
+            </button>
+            <button class="btn btn-secondary" id="email-btn" onclick="sendByEmail()">
+              📧 Enviar al Email
+            </button>
+          </div>
+          <div id="email-status"></div>
+        </div>
+      </>
+    )}
+  </div>
+
+  <script>
+    const PARTICIPANT_ID = '{participantId}';
+    const PARTICIPANT_NAME = `{name}`;
+    const RACE_NAME = `{raceName}`;
+    const FINISH_TIME = '{finishTime ? formatTime(finishTime) : ""}';
+    const BIB = '{bibNumber}';
+    const PHOTO_URL = '{photoUrl}';
+    const POSITION = '{positionCategory ?? ""}';
+
+    async function generateCertificate() {
+      const btn = document.getElementById('cert-btn');
+      btn.disabled = true;
+      btn.textContent = 'Generando...';
+      
+      try {
+        // Cargar jsPDF dinámicamente
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        document.head.appendChild(script);
+        await new Promise(resolve => script.onload = resolve);
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+
+        // Fondo negro
+        doc.setFillColor(0, 0, 0);
+        doc.rect(0, 0, 280, 216, 'F');
+
+        // Borde naranja
+        doc.setDrawColor(255, 107, 0);
+        doc.setLineWidth(3);
+        doc.rect(8, 8, 264, 200);
+
+        // Título STRYD PANAMA
+        doc.setTextColor(255, 107, 0);
+        doc.setFontSize(28);
+        doc.setFont('helvetica', 'bold');
+        doc.text('STRYD PANAMA', 140, 40, { align: 'center' });
+
+        // Subtítulo certificado
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'normal');
+        doc.text('CERTIFICADO DE PARTICIPACIÓN', 140, 55, { align: 'center' });
+
+        // Línea
+        doc.setDrawColor(255, 107, 0);
+        doc.setLineWidth(0.5);
+        doc.line(40, 62, 240, 62);
+
+        // Nombre del corredor
+        doc.setFontSize(36);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(PARTICIPANT_NAME, 140, 95, { align: 'center' });
+
+        // Nombre de la carrera
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(255, 107, 0);
+        doc.text(RACE_NAME, 140, 112, { align: 'center' });
+
+        // Stats
+        const stats = [
+          ['DORSAL', `#${BIB}`],
+          ...(FINISH_TIME ? [['TIEMPO OFICIAL', FINISH_TIME]] : []),
+          ...(POSITION ? [['POSICIÓN', `#${POSITION}`]] : []),
+        ];
+
+        const statWidth = 60;
+        const totalWidth = stats.length * statWidth + (stats.length - 1) * 20;
+        let startX = 140 - totalWidth / 2 + statWidth / 2;
+
+        stats.forEach(([label, value]) => {
+          doc.setFillColor(30, 30, 30);
+          doc.roundedRect(startX - statWidth/2, 125, statWidth, 40, 4, 4, 'F');
+          doc.setFontSize(8);
+          doc.setTextColor(150, 150, 150);
+          doc.text(label, startX, 137, { align: 'center' });
+          doc.setFontSize(18);
+          doc.setTextColor(255, 107, 0);
+          doc.setFont('helvetica', 'bold');
+          doc.text(value, startX, 155, { align: 'center' });
+          startX += statWidth + 20;
+        });
+
+        // Firma
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100, 100, 100);
+        doc.text('carreras.strydpanama.com', 140, 185, { align: 'center' });
+
+        // Foto si existe
+        if (PHOTO_URL) {
+          try {
+            const response = await fetch(PHOTO_URL);
+            const blob = await response.blob();
+            const reader = new FileReader();
+            const base64 = await new Promise(resolve => {
+              reader.onload = e => resolve(e.target.result);
+              reader.readAsDataURL(blob);
+            });
+            doc.addImage(base64, 'JPEG', 218, 68, 45, 45, '', 'FAST');
+            doc.setDrawColor(255, 107, 0);
+            doc.setLineWidth(1);
+            doc.circle(240.5, 90.5, 22.5);
+          } catch(e) {}
+        }
+
+        doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
+      } catch(e) {
+        alert('Error generando certificado. Intenta de nuevo.');
+        console.error(e);
+      }
+      btn.disabled = false;
+      btn.textContent = '📄 Descargar Certificado';
+    }
+
+    async function sendByEmail() {
+      const btn = document.getElementById('email-btn');
+      const status = document.getElementById('email-status');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      status.textContent = '';
+      try {
+        const res = await fetch('/api/send-results', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ participantId: PARTICIPANT_ID })
+        });
+        const data = await res.json();
+        if (data.success) {
+          status.textContent = '✅ Email enviado exitosamente a tu correo registrado.';
+          status.style.color = '#4caf50';
+        } else {
+          throw new Error(data.error || 'Error desconocido');
+        }
+      } catch (e) {
+        status.textContent = `❌ Error: ${e.message}`;
+        status.style.color = '#f44336';
+      }
+      btn.disabled = false;
+      btn.textContent = '📧 Enviar al Email';
+    }
+  </script>
+</body>
+</html>
