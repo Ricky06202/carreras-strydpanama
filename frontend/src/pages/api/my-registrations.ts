@@ -1,0 +1,64 @@
+import type { APIRoute } from 'astro';
+import { apiFetch } from '../../lib/api';
+import { env } from 'cloudflare:workers';
+
+export const GET: APIRoute = async ({ request }) => {
+  const url = new URL(request.url);
+  const cedula = url.searchParams.get('cedula')?.trim();
+
+  if (!cedula) {
+    return new Response(JSON.stringify({ error: 'cedula requerida' }), { status: 400 });
+  }
+
+  try {
+    // Fetch all participants and filter by cedula
+    const partsRes = await apiFetch(
+      `/api/collections/participants/content?limit=500&_t=${Date.now()}`, env,
+      { method: 'GET', headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
+    );
+
+    const all = partsRes?.data || [];
+    const mine = all.filter((p: any) =>
+      (p.data?.cedula || '').toLowerCase().trim() === cedula.toLowerCase()
+    );
+
+    if (mine.length === 0) {
+      return new Response(JSON.stringify({ found: false, registrations: [] }), {
+        status: 200, headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Fetch race info for each unique raceId
+    const raceIds = [...new Set(mine.map((p: any) => p.data?.race).filter(Boolean))];
+    const raceMap: Record<string, any> = {};
+    await Promise.allSettled(raceIds.map(async (raceId: any) => {
+      try {
+        const r = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
+        if (r?.data) raceMap[raceId] = r.data;
+      } catch {}
+    }));
+
+    const registrations = mine.map((p: any) => ({
+      id: p.id,
+      bibNumber: p.data?.bibNumber,
+      firstName: p.data?.firstName,
+      lastName: p.data?.lastName,
+      distance: p.data?.distanceName || p.data?.distance || '',
+      paymentStatus: p.data?.paymentStatus || 'pending',
+      photoUrl: p.data?.photoUrl || '',
+      cedula: p.data?.cedula,
+      race: raceMap[p.data?.race] ? {
+        id: p.data?.race,
+        title: raceMap[p.data?.race]?.data?.title || '',
+        date: raceMap[p.data?.race]?.data?.date || '',
+        imageUrl: raceMap[p.data?.race]?.data?.imageUrl || '',
+      } : { id: p.data?.race, title: 'Carrera', date: '', imageUrl: '' },
+    }));
+
+    return new Response(JSON.stringify({ found: true, registrations }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  }
+};
