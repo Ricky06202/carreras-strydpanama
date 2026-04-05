@@ -36,7 +36,7 @@ const config: SonicJSConfig = {
   },
   plugins: {
     directory: './src/plugins',
-    autoLoad: false
+    autoLoad: true
   }
 }
 
