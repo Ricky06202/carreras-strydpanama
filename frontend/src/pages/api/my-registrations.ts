@@ -67,6 +67,9 @@ export const GET: APIRoute = async ({ request }) => {
         distance: distanceName,
         paymentStatus: p.data?.paymentStatus || 'pending',
         photoUrl: p.data?.photoUrl || '',
+        studentIdUrl: p.data?.studentIdUrl || '',
+        matriculaUrl: p.data?.matriculaUrl || '',
+        receiptUrl: p.data?.receiptUrl || '',
         cedula: p.data?.cedula,
         race: raceMap[p.data?.race] ? {
           id: p.data?.race,
