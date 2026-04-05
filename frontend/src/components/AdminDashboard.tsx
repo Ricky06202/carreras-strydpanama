@@ -6,12 +6,16 @@ import {
   Grid, Container, Chip, CircularProgress, Alert,
   TextField, List, ListItem, ListItemText,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel,
-  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment
 } from '@mui/material';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const ACCENT = '#FF6B00';
 
@@ -388,6 +392,129 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     setBulkTeamMsg({ text: `${totalCreated} equipos importados exitosamente.${totalSkipped > 0 ? ` ${totalSkipped} omitidos (duplicados o errores).` : ''}`, ok: true });
   };
 
+  // --- Gestión de Participantes (Tab 4) ---
+  const [participants, setParticipants] = useState<any[]>([]);
+  const [participantsLoading, setParticipantsLoading] = useState(false);
+  const [participantSearch, setParticipantSearch] = useState('');
+  const [participantRaceFilter, setParticipantRaceFilter] = useState('');
+
+  const fetchParticipants = async () => {
+    try {
+      setParticipantsLoading(true);
+      const res = await fetch('/api/admin/participants');
+      const data = await res.json();
+      if (data.success) {
+        setParticipants(data.participants);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tabIndex === 3) fetchParticipants();
+  }, [tabIndex]);
+
+  const confirmPayment = async (participantId: string) => {
+    if (!confirm('¿Estás seguro de marcar este pago como confirmado?')) return;
+    
+    try {
+      setParticipantsLoading(true);
+      const res = await fetch('/api/admin/update-participant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: participantId,
+          updates: { paymentStatus: 'Confirmado' }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setParticipants(prev => prev.map(p => 
+          p.id === participantId ? { ...p, paymentStatus: 'Confirmado' } : p
+        ));
+      } else {
+        alert(data.error || 'Error al confirmar pago');
+      }
+    } catch (e) {
+      alert('Error en la conexión');
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
+  const exportParticipantsCSV = () => {
+    const filtered = participants.filter(p => {
+      const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
+      const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
+      return matchesSearch && matchesRace;
+    });
+
+    if (filtered.length === 0) return alert("No hay participantes para exportar");
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Dorsal,Nombre,Email,Cedula,Equipo,Carrera,Distancia,Pago\r\n";
+    
+    filtered.forEach(p => {
+        csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},${p.paymentStatus}\r\n`;
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Participantes_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportParticipantsPDF = async () => {
+    const filtered = participants.filter(p => {
+      const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
+      const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
+      return matchesSearch && matchesRace;
+    });
+
+    if (filtered.length === 0) return alert("No hay participantes para exportar");
+
+    const { jsPDF } = await import('jspdf');
+    // Intentamos importar autotable dinámicamente si está disponible, sino lo hacemos manual
+    const doc = new jsPDF();
+    
+    doc.setFontSize(18);
+    doc.text('Lista de Participantes - STRYD Panama', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
+    
+    let y = 40;
+    doc.setFontSize(12);
+    doc.text('Dorsal', 14, y);
+    doc.text('Nombre', 30, y);
+    doc.text('Equipo', 90, y);
+    doc.text('Estado', 150, y);
+    
+    y += 2;
+    doc.line(14, y, 196, y);
+    y += 7;
+    
+    doc.setFontSize(10);
+    filtered.forEach((p, index) => {
+        if (y > 280) {
+            doc.addPage();
+            y = 20;
+        }
+        doc.text(String(p.bibNumber || '-'), 14, y);
+        doc.text(p.title || '-', 30, y);
+        doc.text(p.teamName || '-', 90, y);
+        doc.text(p.paymentStatus || '-', 150, y);
+        y += 8;
+    });
+    
+    doc.save(`Participantes_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   // Estados para Meta de Llegada
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
   const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
@@ -529,6 +656,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
           <Tab label="Cronometraje en Vivo" />
           <Tab label="Gestión de Códigos Físicos" />
           <Tab label="Configurar Modalidades" />
+          <Tab label="Lista de Inscritos" />
         </Tabs>
       </Box>
 
@@ -913,6 +1041,166 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
               </Button>
             </CardContent>
           </Card>
+        </Box>
+      )}
+
+      {tabIndex === 3 && (
+        <Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+            <Box sx={{ display: 'flex', gap: 2, flex: 1, minWidth: 300 }}>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="Buscar por nombre, dorsal o equipo..."
+                value={participantSearch}
+                onChange={e => setParticipantSearch(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+              <FormControl size="small" sx={{ minWidth: 200 }}>
+                <InputLabel>Filtrar por Carrera</InputLabel>
+                <Select
+                  value={participantRaceFilter}
+                  label="Filtrar por Carrera"
+                  onChange={e => setParticipantRaceFilter(e.target.value)}
+                >
+                  <MenuItem value="">Todas las carreras</MenuItem>
+                  {races.map(r => (
+                    <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button 
+                variant="outlined" 
+                startIcon={<DownloadIcon />} 
+                onClick={exportParticipantsCSV}
+                sx={{ borderColor: '#333', color: '#333', '&:hover': { bgcolor: 'rgba(0,0,0,0.05)', borderColor: '#000' } }}
+              >
+                CSV
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<PictureAsPdfIcon />} 
+                onClick={exportParticipantsPDF}
+                sx={{ borderColor: '#ff4444', color: '#ff4444', '&:hover': { bgcolor: 'rgba(255,0,0,0.05)', borderColor: '#cc0000' } }}
+              >
+                PDF
+              </Button>
+              <IconButton onClick={fetchParticipants} disabled={participantsLoading} color="inherit">
+                {participantsLoading ? <CircularProgress size={24} color="inherit" /> : <RestartAltIcon />}
+              </IconButton>
+            </Box>
+          </Box>
+
+          <TableContainer component={Paper} sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+            <Table stickyHeader>
+              <TableHead>
+                <TableRow sx={{ bgcolor: 'black' }}>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Dorsal</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Participante</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Equipo</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Carrera / Distancia</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Pago</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {participantsLoading ? (
+                  <TableRow>
+                     <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                       <CircularProgress sx={{ color: ACCENT }} />
+                     </TableCell>
+                  </TableRow>
+                ) : participants.filter(p => {
+                  const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
+                  const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
+                  return matchesSearch && matchesRace;
+                }).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                      No se encontraron participantes
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  participants
+                    .filter(p => {
+                      const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
+                      const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
+                      return matchesSearch && matchesRace;
+                    })
+                    .sort((a,b) => (Number(a.bibNumber) || 0) - (Number(b.bibNumber) || 0))
+                    .map((p) => {
+                      const race = races.find(r => r.id === p.race);
+                      const isConfirmed = p.paymentStatus === 'Confirmado';
+                      
+                      return (
+                        <TableRow key={p.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                          <TableCell sx={{ minWidth: 150 }}>
+                            {!isConfirmed ? (
+                              <Button
+                                variant="contained"
+                                size="small"
+                                onClick={() => confirmPayment(p.id)}
+                                sx={{ 
+                                  bgcolor: ACCENT, 
+                                  '&:hover': { bgcolor: '#E55A00' },
+                                  fontSize: '0.7rem',
+                                  fontWeight: 'bold'
+                                }}
+                              >
+                                CONFIRMAR
+                              </Button>
+                            ) : (
+                              <Chip 
+                                icon={<CheckCircleIcon style={{ color: 'white', fontSize: '1rem' }} />}
+                                label="PAGADO" 
+                                size="small"
+                                sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 'bold' }}
+                              />
+                            )}
+                          </TableCell>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: ACCENT }}>
+                            #{p.bibNumber || '---'}
+                          </TableCell>
+                          <TableCell>
+                            <Typography sx={{ fontWeight: 'bold' }}>{p.title}</Typography>
+                            <Typography variant="caption" color="text.secondary">{p.email}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            {p.teamName ? <Chip label={p.teamName} size="small" variant="outlined" /> : '-'}
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
+                              {race?.data?.title || race?.title || 'Carrera ID: ' + p.race}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold' }}>
+                              {p.distance}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={p.paymentStatus} 
+                              size="small"
+                              variant={isConfirmed ? "filled" : "outlined"}
+                              color={isConfirmed ? "success" : "warning"}
+                              sx={{ fontWeight: 'bold' }}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                )}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
       )}
     </Container>
