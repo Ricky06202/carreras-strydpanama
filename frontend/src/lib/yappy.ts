@@ -68,14 +68,16 @@ export class YappyAPI {
     // Formato estricto: string con 2 decimales
     const totalStr = total.toFixed(2);
     
-    // Usar el dominio tal cual viene en la variable (permitiendo http:// o https://)
+    // Usar el dominio tal cual viene en la variable (permitiendo http:// o https://) para auth...
     const rawDomain = env.YAPPY_URL_DOMAIN;
     const baseUrl = rawDomain.includes('://') ? rawDomain : `https://${rawDomain}`;
+    // ...pero la mayoria de los schemas de "domain" en WAFs esperan solo el FQDN.
+    const pureDomain = baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
     const payloadObj = {
       merchantId: merchantId,
       orderId: orderId.replace(/-/g, '').slice(0, 15), // Limitar a 15 caracteres (sin guiones)
-      domain: baseUrl,
+      domain: pureDomain,
       subtotal: totalStr,
       taxes: "0.00",
       discount: "0.00",
@@ -91,7 +93,7 @@ export class YappyAPI {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token.trim()}`
       },
       body: payloadStr
     });
