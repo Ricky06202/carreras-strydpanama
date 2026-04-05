@@ -1290,6 +1290,15 @@ const handleSubmit = async () => {
         <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
           <Box>{notification && <Alert severity={notification.type} sx={{ width: '100%' }}>{notification.message}</Alert>}</Box>
         </Snackbar>
+
+        {croppingImageSrc && (
+          <ImageCropper
+            open={!!croppingImageSrc}
+            imageSrc={croppingImageSrc}
+            onCropCompleteAction={handleCropComplete}
+            onClose={() => setCroppingImageSrc(null)}
+          />
+        )}
       </Paper>
     </ThemeProvider>
   );
