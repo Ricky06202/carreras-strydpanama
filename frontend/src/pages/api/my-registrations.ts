@@ -77,7 +77,12 @@ export const GET: APIRoute = async ({ request }) => {
     });
 
     return new Response(JSON.stringify({ found: true, registrations }), {
-      status: 200, headers: { 'Content-Type': 'application/json' }
+      status: 200, 
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
     });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
