@@ -57,13 +57,15 @@ export class YappyAPI {
 
   static async createYappyPayment(env: any, orderId: string, total: number, aliasYappy: string) {
     const merchantId = env.YAPPY_MERCHANT_ID;
-    const urlDomain = env.YAPPY_URL_DOMAIN;
     const secret = env.YAPPY_SECRET_KEY;
     const token = await this.getMerchantToken(env);
 
     // Formato estricto: string con 2 decimales
     const totalStr = total.toFixed(2);
-    const baseUrl = `https://${urlDomain}`;
+    
+    // Usar el dominio tal cual viene en la variable (permitiendo http:// o https://)
+    const rawDomain = env.YAPPY_URL_DOMAIN;
+    const baseUrl = rawDomain.includes('://') ? rawDomain : `https://${rawDomain}`;
     
     const payloadObj = {
       merchantId: merchantId,
@@ -72,9 +74,9 @@ export class YappyAPI {
       aliasYappy: aliasYappy, 
       subtotal: totalStr,
       total: totalStr,
-      successUrl: `${baseUrl}/registro/exito`,
-      failUrl: `${baseUrl}/registro/error`,
-      ipnUrl: `${baseUrl}/api/yappy/webhook`
+      successUrl: `${baseUrl.replace(/\/$/, '')}/registro/exito`,
+      failUrl: `${baseUrl.replace(/\/$/, '')}/registro/error`,
+      ipnUrl: `${baseUrl.replace(/\/$/, '')}/api/yappy/webhook`
     };
 
     const payloadStr = JSON.stringify(payloadObj);
