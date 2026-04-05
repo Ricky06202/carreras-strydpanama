@@ -242,10 +242,15 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   };
 
   const isStudentCategorySelected = () => {
-    if (!formData.category) return false;
-    // Use loose equality in case of ID type mismatch and more permissive search
-    const cat = categories.find(c => c.id == formData.category);
-    const name = (cat?.name || '').toLowerCase();
+    let name = '';
+    if (formData.category) {
+      const cat = categories.find(c => c.id == formData.category);
+      if (cat) name += ' ' + (cat.name || '').toLowerCase();
+    }
+    if (formData.distance) {
+      const dist = distances.find(d => d.id == formData.distance);
+      if (dist) name += ' ' + (dist.name || '').toLowerCase();
+    }
     return name.includes('estudiant') || name.includes('estud');
   };
 

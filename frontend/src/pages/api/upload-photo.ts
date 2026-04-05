@@ -61,13 +61,16 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadData = await uploadRes.json();
 
     // SonicJS devuelve la URL pública del archivo subido
-    // Puede estar en data.url, url, data.publicUrl, o similar
-    const publicUrl =
-      uploadData?.data?.url ||
-      uploadData?.url ||
-      uploadData?.data?.publicUrl ||
-      uploadData?.publicUrl ||
-      `${sonicUrl}/media/${filename}`;
+    let publicUrl = '';
+    if (uploadData?.url) publicUrl = uploadData.url;
+    else if (uploadData?.data?.url) publicUrl = uploadData.data.url;
+    else if (Array.isArray(uploadData) && uploadData[0]?.url) publicUrl = uploadData[0].url;
+    else if (Array.isArray(uploadData?.data) && uploadData.data[0]?.url) publicUrl = uploadData.data[0].url;
+    else if (uploadData?.data?.publicUrl) publicUrl = uploadData.data.publicUrl;
+    
+    if (!publicUrl) {
+      publicUrl = `${sonicUrl}/files/uploads/${filename}`;
+    }
 
     return new Response(JSON.stringify({ success: true, url: publicUrl }), {
       status: 200,
