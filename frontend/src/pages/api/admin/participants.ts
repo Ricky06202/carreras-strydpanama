@@ -49,6 +49,11 @@ export const GET: APIRoute = async ({ request }) => {
       teamName: item.data?.teamName || '',
       bibNumber: item.data?.bibNumber || '',
       paymentStatus: item.data?.paymentStatus || 'Pendiente',
+      photoUrl: item.data?.photoUrl || '',
+      birthDate: item.data?.birthDate || '',
+      receiptUrl: item.data?.receiptUrl || '',
+      studentIdUrl: item.data?.studentIdUrl || '',
+      matriculaUrl: item.data?.matriculaUrl || '',
     }));
 
     return new Response(JSON.stringify({ success: true, participants }), {
