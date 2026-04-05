@@ -241,10 +241,22 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     ));
   };
 
+  const isStudentCategorySelected = () => {
+    if (!formData.category) return false;
+    const cat = categories.find(c => c.id === formData.category);
+    return cat?.name?.toLowerCase().includes('estudiant');
+  };
+
   const isIndividualValid = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.cedula || !formData.country) return false;
     if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) return false;
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) return false;
+    
+    // Mandatory docs for students in Step 1
+    if (isStudentCategorySelected()) {
+      if (!formData.studentIdUrl || !formData.matriculaUrl) return false;
+    }
+    
     return true;
   };
 
@@ -794,6 +806,67 @@ const handleSubmit = async () => {
                   </Box>
                 );
               })()}
+
+              {/* Documentación Estudiantil (Si aplica) */}
+              {isStudentCategorySelected() && (
+                <Box sx={{ gridColumn: '1 / -1', bgcolor: 'rgba(255, 107, 0, 0.05)', p: 3, borderRadius: 4, border: '1px solid rgba(255, 107, 0, 0.2)', mt: 2 }}>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: ACCENT, mb: 1 }}>🎓 Verificación de Estudiante</Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Has seleccionado una categoría especial. Por favor sube los siguientes documentos para validar tu tarifa.
+                  </Typography>
+
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>1. Foto de Cédula o Pasaporte *</Typography>
+                      <Button variant="outlined" component="label" fullWidth sx={{ color: ACCENT, borderColor: ACCENT }}>
+                        {formData.studentIdUrl ? 'Cambiar Cédula' : 'Subir Cédula'}
+                        <input type="file" hidden accept="image/*" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setPhotoUploading(true);
+                          try {
+                            const base64 = await resizeImage(file);
+                            const res = await fetch('/api/upload-photo', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_cedula' })
+                            });
+                            const data = await res.json();
+                            if (data.url) setFormData(prev => ({ ...prev, studentIdUrl: data.url }));
+                          } catch (e) {}
+                          setPhotoUploading(false);
+                        }} />
+                      </Button>
+                      {formData.studentIdUrl && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Cédula cargada</Typography>}
+                    </Box>
+
+                    <Box>
+                      <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>2. Comprobante de Matrícula *</Typography>
+                      <Button variant="outlined" component="label" fullWidth sx={{ color: ACCENT, borderColor: ACCENT }}>
+                        {formData.matriculaUrl ? 'Cambiar Matrícula' : 'Subir Matrícula'}
+                        <input type="file" hidden accept="image/*" onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setPhotoUploading(true);
+                          try {
+                            const base64 = await resizeImage(file);
+                            const res = await fetch('/api/upload-photo', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_matricula' })
+                            });
+                            const data = await res.json();
+                            if (data.url) setFormData(prev => ({ ...prev, matriculaUrl: data.url }));
+                          } catch (e) {}
+                          setPhotoUploading(false);
+                        }} />
+                      </Button>
+                      {formData.matriculaUrl && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Matrícula cargada</Typography>}
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+
               {registrationType === 'individual' && raceInfo?.data?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>
@@ -1006,6 +1079,11 @@ const handleSubmit = async () => {
     <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
       <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>
       <Typography variant="body2" color="text.secondary">Cargo de plataforma: +$0.50 (para costos de alojamiento y desarrollo de plataforma)</Typography>
+      {isStudentCategorySelected() && (
+        <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
+          ✅ Documentación Estudiantil Cargada
+        </Typography>
+      )}
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
         Total: ${(basePrice + 0.50).toFixed(2)}
       </Typography>
@@ -1050,17 +1128,16 @@ const handleSubmit = async () => {
                   <Button 
                     variant="contained" 
                     onClick={() => {
-                        const isStudent = categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant');
-                        if (formData.paymentMethod === 'transfer' || isStudent) {
-                            setStep(3); // Go to Documentos
+                        if (formData.paymentMethod === 'transfer') {
+                            setStep(3); // Go to Documentos (Receipt only)
                         } else {
-                            handleSubmit(); // Skip Documentos
+                            handleSubmit(); // Skip Documentos (Yappy/Other)
                         }
                     }} 
                     disabled={loading || !formData.paymentMethod} 
                     sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
                   >
-                    {loading ? 'Procesando...' : (formData.paymentMethod === 'transfer' || categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant')) ? 'Continuar a Documentos' : 'Confirmar Inscripción'}
+                    {loading ? 'Procesando...' : (formData.paymentMethod === 'transfer') ? 'Subir Comprobante' : 'Confirmar Inscripción'}
                   </Button>
                 )}
               </Box>
@@ -1105,60 +1182,6 @@ const handleSubmit = async () => {
                 </Button>
                 {formData.receiptUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
               </Box>
-            )}
-
-            {categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant') && (
-              <>
-                <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc' }}>
-                  <Typography variant="subtitle1" fontWeight="bold">2. Foto de Cédula (Estudiante) *</Typography>
-                  <Typography variant="body2" sx={{ mb: 2 }}>Requerido para validar identidad estudiantil.</Typography>
-                  <Button variant="outlined" component="label" sx={{ color: ACCENT, borderColor: ACCENT }}>
-                    Seleccionar Cédula
-                    <input type="file" hidden accept="image/*" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setPhotoUploading(true);
-                      try {
-                        const base64 = await resizeImage(file);
-                        const res = await fetch('/api/upload-photo', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_cedula' })
-                        });
-                        const data = await res.json();
-                        if (data.url) setFormData(prev => ({ ...prev, studentIdUrl: data.url }));
-                      } catch (e) {}
-                      setPhotoUploading(false);
-                    }} />
-                  </Button>
-                  {formData.studentIdUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
-                </Box>
-                
-                <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc' }}>
-                  <Typography variant="subtitle1" fontWeight="bold">3. Foto de Matrícula Vigente *</Typography>
-                  <Typography variant="body2" sx={{ mb: 2 }}>Requerido para aplicar tarifa especial.</Typography>
-                  <Button variant="outlined" component="label" sx={{ color: ACCENT, borderColor: ACCENT }}>
-                    Seleccionar Matrícula
-                    <input type="file" hidden accept="image/*" onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      setPhotoUploading(true);
-                      try {
-                        const base64 = await resizeImage(file);
-                        const res = await fetch('/api/upload-photo', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_matricula' })
-                        });
-                        const data = await res.json();
-                        if (data.url) setFormData(prev => ({ ...prev, matriculaUrl: data.url }));
-                      } catch (e) {}
-                      setPhotoUploading(false);
-                    }} />
-                  </Button>
-                  {formData.matriculaUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
-                </Box>
-              </>
             )}
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
