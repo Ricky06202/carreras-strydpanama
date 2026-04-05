@@ -24,9 +24,12 @@ export const POST: APIRoute = async ({ request }) => {
     
     // 1. Obtener la carrera para conocer su startingBib
     const raceRes = await api.getRace(env, body.raceId);
-    if (!raceRes || !raceRes.data) throw new Error('Carrera no encontrada');
-    const startingBib = raceRes.data.data?.startingBib ? Number(raceRes.data.data.startingBib) : 1;
-    const raceName = raceRes.data.data?.title || raceRes.data.title || 'Carrera';
+    if (!raceRes) throw new Error('Carrera no encontrada en la base de datos');
+    
+    // SonicJS item structure: { id, title, data: { ...fields } }
+    const raceFields = raceRes.data || {};
+    const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
+    const raceName = raceFields.title || raceRes.title || 'Carrera';
     
     // 2. Obtener participantes actuales para calcular el siguiente dorsal
     const participantsRes = await api.getParticipants(env, body.raceId);
@@ -50,8 +53,9 @@ export const POST: APIRoute = async ({ request }) => {
     // Asignar el dorsal calculado
     body.bibNumber = nextBib;
 
-    // 3. Registrar al participante
-    const result = await api.registerParticipant(env, body);
+    // 3. Registrar al participante con un título único para evitar conflictos de slug
+    const participantTitle = `${body.firstName} ${body.lastName} - Dorsal ${nextBib}`;
+    const result = await api.registerParticipant(env, { ...body, title: participantTitle });
 
     // 4. Marcar Código como canjeado si se usó
     if (usedCodeId && usedCodeData) {
@@ -77,15 +81,14 @@ export const POST: APIRoute = async ({ request }) => {
     // 5. Upsert el perfil del corredor en la base de datos permanente
     if (body.cedula) {
       try {
-        const RUNNERS_COL = 'col-runners-' + 'strydpanama'; // Se detecta dinámicamente
-        // Buscar si ya existe
+        const RUNNERS_COL = 'col-runners-' + 'strydpanama';
         const allRunners = await apiFetch('/api/collections/runners/content?limit=2000', env, { method: 'GET' });
         const existing = (allRunners?.data || []).find((r: any) => 
           (r.data?.cedula || '').toLowerCase().trim() === body.cedula.toLowerCase().trim()
         );
 
         const runnerData = {
-          title: `${body.firstName} ${body.lastName}`,
+          title: `${body.firstName} ${body.lastName}`, // Este es el campo dentro de data
           firstName: body.firstName,
           lastName: body.lastName,
           email: body.email,
@@ -98,33 +101,32 @@ export const POST: APIRoute = async ({ request }) => {
           totalRaces: (existing?.data?.totalRaces || 0) + 1,
         };
 
+        const runnerTitle = `${body.firstName} ${body.lastName} (${body.cedula})`; // Título único para el slug
+
         if (existing) {
-          // Actualizar perfil existente
           const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
           const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
           const colId = runnersCol?.id || existing.collectionId;
           await apiFetch(`/api/content/${existing.id}`, env, {
             method: 'PUT',
-            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerData.title, status: 'published', data: runnerData })
+            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerTitle, status: 'published', data: runnerData })
           });
         } else {
-          // Crear nuevo perfil
           const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
           const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
           if (runnersCol?.id) {
             await apiFetch('/api/content', env, {
               method: 'POST',
-              body: JSON.stringify({ collectionId: runnersCol.id, collection_id: runnersCol.id, title: runnerData.title, status: 'published', data: runnerData })
+              body: JSON.stringify({ collectionId: runnersCol.id, collection_id: runnersCol.id, title: runnerTitle, status: 'published', data: runnerData })
             });
           }
         }
       } catch (e) {
-        // No fallar el registro si el upsert de corredor falla
         console.error('Runner upsert failed:', e);
       }
     }
 
-    // 6. Enviar correo de confirmación (Silent failure si falla para no bloquear el registro)
+    // 6. Enviar correo de confirmación
     try {
       await sendRegistrationEmail(env, {
         email: body.email,
@@ -145,8 +147,11 @@ export const POST: APIRoute = async ({ request }) => {
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
+    console.error('Error in /api/register:', error);
     return new Response(JSON.stringify({ 
-      message: error.message || 'Error en el registro',
+      success: false,
+      message: error.message || 'Error interno en el servidor de registro',
+      details: error.stack || 'No stack trace available',
       env_url: env?.SONICJS_API_URL ? 'PRESENT' : 'MISSING'
     }), {
       status: 500,
