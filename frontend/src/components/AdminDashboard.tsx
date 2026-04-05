@@ -18,6 +18,13 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const ACCENT = '#FF6B00';
+const SONIC_URL = 'https://api.carreras.strydpanama.com';
+
+const ensureAbsolute = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `${SONIC_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 interface Race {
   id: string;
@@ -1264,7 +1271,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                     {/* Foto de Perfil */}
                     <Box sx={{ flexShrink: 0, textAlign: 'center' }}>
                         {selectedParticipant.photoUrl ? (
-                            <img src={selectedParticipant.photoUrl} alt="Foto de perfil" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', border: `3px solid ${ACCENT}` }} />
+                            <img src={ensureAbsolute(selectedParticipant.photoUrl)} alt="Foto de perfil" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', border: `3px solid ${ACCENT}` }} />
                         ) : (
                             <Box sx={{ width: 120, height: 120, borderRadius: '50%', bgcolor: 'action.hover', border: `3px dashed #ccc`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 <Typography variant="caption" color="text.secondary">Sin foto</Typography>
@@ -1307,19 +1314,19 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                               {selectedParticipant.receiptUrl && (
                                   <Box>
                                       <Typography variant="caption" fontWeight="bold">Comprobante de Pago:</Typography>
-                                      <img src={selectedParticipant.receiptUrl} alt="Comprobante" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                      <img src={ensureAbsolute(selectedParticipant.receiptUrl)} alt="Comprobante" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
                                   </Box>
                               )}
                               {selectedParticipant.studentIdUrl && (
                                   <Box>
                                       <Typography variant="caption" fontWeight="bold">Foto Cédula (Estudiante):</Typography>
-                                      <img src={selectedParticipant.studentIdUrl} alt="Cédula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                      <img src={ensureAbsolute(selectedParticipant.studentIdUrl)} alt="Cédula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
                                   </Box>
                               )}
                               {selectedParticipant.matriculaUrl && (
                                   <Box>
                                       <Typography variant="caption" fontWeight="bold">Foto Matrícula (Estudiante):</Typography>
-                                      <img src={selectedParticipant.matriculaUrl} alt="Matrícula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                      <img src={ensureAbsolute(selectedParticipant.matriculaUrl)} alt="Matrícula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
                                   </Box>
                               )}
                           </Box>

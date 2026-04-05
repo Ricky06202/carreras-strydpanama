@@ -243,8 +243,10 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const isStudentCategorySelected = () => {
     if (!formData.category) return false;
-    const cat = categories.find(c => c.id === formData.category);
-    return cat?.name?.toLowerCase().includes('estudiant');
+    // Use loose equality in case of ID type mismatch and more permissive search
+    const cat = categories.find(c => c.id == formData.category);
+    const name = (cat?.name || '').toLowerCase();
+    return name.includes('estudiant') || name.includes('estud');
   };
 
   const isIndividualValid = () => {
@@ -545,13 +547,9 @@ const handleSubmit = async () => {
     const handleYappySuccess = (e: any) => {
       // Yappy dice que se hizo exitoso visualmente
       setNotification({ message: '¡Pago Yappy exitoso!', type: 'success' });
-      // Evaluamos si necesita documentos
-      const isStudent = categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant');
-      if (isStudent) {
-        setStep(3); // Ir a Documentos
-      } else {
-        setStep(4); // Ir a Confirmación final
-      }
+      // Si pagó con Yappy, va directo a confirmación (Paso 4).
+      // Los documentos de estudiante ya se subieron en el Paso 1 si aplicaba.
+      setStep(4);
     };
 
     bp.addEventListener('eventClick', handleYappyClick);
@@ -1201,8 +1199,7 @@ const handleSubmit = async () => {
                 }} 
                 disabled={
                     photoUploading || loading ||
-                    (formData.paymentMethod === 'transfer' && !formData.receiptUrl) ||
-                    (categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant') && (!formData.studentIdUrl || !formData.matriculaUrl))
+                    (formData.paymentMethod === 'transfer' && !formData.receiptUrl)
                 } 
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
@@ -1218,9 +1215,9 @@ const handleSubmit = async () => {
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>¡Proceso Completado!</Typography>
               <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
-              {(formData.paymentMethod === 'transfer' || categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant')) && (
+              {(formData.paymentMethod === 'transfer' || isStudentCategorySelected()) && (
                  <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
-                    Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados y aprobará tu registro a la brevedad. Podes verificar tu estado en <b>"Portal del Corredor"</b>.
+                    Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados (pago o estatus de estudiante) y aprobará tu registro a la brevedad. Puedes verificar tu estado en <b>"Portal del Corredor"</b>.
                  </Alert>
               )}
               {formData.paymentMethod === 'yappy' ? (

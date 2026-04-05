@@ -164,6 +164,21 @@ import Layout from '../layouts/Layout.astro';
   });
 
   // ── Render Results ──────────────────────────────────
+  function ensureAbsolute(url) {
+    if (!url) return '';
+    if (url.startsWith('http')) return url;
+    return `${SONIC}${url.startsWith('/') ? '' : '/'}${url}`;
+  }
+
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length !== 3) return dateStr;
+    const [y, m, d] = parts;
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return `${parseInt(d)} de ${months[parseInt(m)-1]} de ${y}`;
+  }
+
   function renderResults(regs) {
     const container = document.getElementById('results-container');
     if (!regs.length) {
@@ -177,9 +192,12 @@ import Layout from '../layouts/Layout.astro';
     }
 
     container.innerHTML = regs.map(reg => {
-      const d = reg.race?.date ? new Date(reg.race.date).toLocaleDateString('es-PA', { day:'numeric', month:'long', year:'numeric' }) : '';
-      const imgSrc = reg.race?.imageUrl ? (reg.race.imageUrl.startsWith('http') ? reg.race.imageUrl : SONIC + reg.race.imageUrl) : '';
-      const photoSrc = reg.photoUrl ? (reg.photoUrl.startsWith('http') ? reg.photoUrl : SONIC + reg.photoUrl) : '';
+      const d = reg.race?.date ? formatDate(reg.race.date) : '';
+      const imgSrc = ensureAbsolute(reg.race?.imageUrl);
+      const photoSrc = ensureAbsolute(reg.photoUrl);
+      const studentIdSrc = ensureAbsolute(reg.studentIdUrl);
+      const matriculaSrc = ensureAbsolute(reg.matriculaUrl);
+      const receiptSrc = ensureAbsolute(reg.receiptUrl);
       const { badgeClass, badgeText } = statusBadge(reg.paymentStatus);
 
       return `
