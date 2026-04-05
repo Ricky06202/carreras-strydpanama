@@ -25,13 +25,16 @@ export const POST: APIRoute = async ({ request }) => {
     // 2. Invocar Cliente de Yappy
     const paymentData = await YappyAPI.createYappyPayment(env, orderId, Number(total), telefonoYappy);
 
+    // Detect if nested body exists from Yappy's response
+    const yappyBody = paymentData.body || paymentData;
+
     // 3. Devolver JSON estricto esperado por Frontend WebComponent
     return new Response(JSON.stringify({ 
       success: true, 
       body: { 
-        transactionId: paymentData.transactionId, 
-        token: paymentData.token, 
-        documentName: paymentData.documentName 
+        transactionId: yappyBody.transactionId, 
+        token: yappyBody.token, 
+        documentName: yappyBody.documentName 
       }
     }), {
       status: 200,
