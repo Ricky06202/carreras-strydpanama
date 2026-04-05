@@ -26,6 +26,9 @@ export const GET: APIRoute = async ({ request }) => {
 
     let participantsData = result.data || [];
 
+    // Filtramos por status published para evitar borradores o registros ocultos
+    participantsData = participantsData.filter((p: any) => p.status === 'published');
+
     // Filtramos localmente si SonicJS omitió el filtro de query
     if (raceId) {
        participantsData = participantsData.filter((p: any) => p.data?.race === raceId || p.data?.raceId === raceId);

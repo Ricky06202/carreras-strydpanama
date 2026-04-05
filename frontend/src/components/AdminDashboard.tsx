@@ -1065,20 +1065,47 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 placeholder="Buscar por nombre, dorsal o equipo..."
                 value={participantSearch}
                 onChange={e => setParticipantSearch(e.target.value)}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    color: 'white',
+                    '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                    '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                    '&.Mui-focused fieldset': { borderColor: ACCENT },
+                  },
+                  '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
-                      <SearchIcon sx={{ color: 'text.secondary' }} />
+                      <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
                     </InputAdornment>
                   ),
                 }}
               />
               <FormControl size="small" sx={{ minWidth: 200 }}>
-                <InputLabel>Filtrar por Carrera</InputLabel>
+                <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-focused': { color: ACCENT } }}>
+                  Filtrar por Carrera
+                </InputLabel>
                 <Select
                   value={participantRaceFilter}
                   label="Filtrar por Carrera"
                   onChange={e => setParticipantRaceFilter(e.target.value)}
+                  sx={{
+                    color: 'white',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: ACCENT },
+                    '.MuiSvgIcon-root': { color: 'white' },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1a1a1a',
+                        color: 'white',
+                        '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255, 107, 0, 0.1)' },
+                      }
+                    }
+                  }}
                 >
                   <MenuItem value="">Todas las carreras</MenuItem>
                   {races.map(r => (
