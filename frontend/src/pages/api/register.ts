@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { api, apiFetch } from '../../lib/api';
 import { env } from 'cloudflare:workers';
+import { sendRegistrationEmail } from '../../lib/mailer';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
@@ -25,6 +26,7 @@ export const POST: APIRoute = async ({ request }) => {
     const raceRes = await api.getRace(env, body.raceId);
     if (!raceRes || !raceRes.data) throw new Error('Carrera no encontrada');
     const startingBib = raceRes.data.data?.startingBib ? Number(raceRes.data.data.startingBib) : 1;
+    const raceName = raceRes.data.data?.title || raceRes.data.title || 'Carrera';
     
     // 2. Obtener participantes actuales para calcular el siguiente dorsal
     const participantsRes = await api.getParticipants(env, body.raceId);
@@ -120,6 +122,22 @@ export const POST: APIRoute = async ({ request }) => {
         // No fallar el registro si el upsert de corredor falla
         console.error('Runner upsert failed:', e);
       }
+    }
+
+    // 6. Enviar correo de confirmación (Silent failure si falla para no bloquear el registro)
+    try {
+      await sendRegistrationEmail(env, {
+        email: body.email,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        raceName: raceName,
+        bibNumber: nextBib,
+        distance: body.distance || 'General',
+        paymentMethod: body.paymentMethod || 'Por definir'
+      });
+      console.log(`Email sent successfully to ${body.email}`);
+    } catch (mailError) {
+      console.error('Failed to send confirmation email:', mailError);
     }
 
     return new Response(JSON.stringify({ ...result, assignedBib: nextBib }), {
