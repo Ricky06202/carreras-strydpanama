@@ -85,7 +85,16 @@ function absolutizeUrls(obj: any, baseUrl: string) {
   return obj;
 }
 
-  const json = await response.json();
+  let json = await response.json();
+
+  // FILTRO UNIVERSAL: Eliminar cualquier registro con status 'deleted'
+  if (json && json.data && Array.isArray(json.data)) {
+    json.data = json.data.filter((item: any) => item.status !== 'deleted');
+  } else if (json && json.data && json.data.status === 'deleted') {
+    // Si es una petición de un solo objeto y está borrado, devolvemos null
+    return null;
+  }
+
   return absolutizeUrls(json, baseUrl.replace(/\/$/, ''));
 }
 
