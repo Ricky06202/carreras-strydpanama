@@ -398,24 +398,35 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [participantSearch, setParticipantSearch] = useState('');
   const [participantRaceFilter, setParticipantRaceFilter] = useState('');
 
-  const fetchParticipants = async () => {
+  const fetchParticipants = async (raceId: string) => {
+    if (!raceId) {
+       setParticipants([]);
+       return;
+    }
+    
     try {
       setParticipantsLoading(true);
-      const res = await fetch('/api/admin/participants');
+      const res = await fetch(`/api/admin/participants?raceId=${encodeURIComponent(raceId)}`);
       const data = await res.json();
       if (data.success) {
         setParticipants(data.participants);
+      } else {
+        console.error("Error API:", data.error);
+        alert(`Error al buscar inscritos: ${data.error}`);
       }
     } catch (e) {
       console.error(e);
+      alert('Error de conexión al cargar inscripciones.');
     } finally {
       setParticipantsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (tabIndex === 3) fetchParticipants();
-  }, [tabIndex]);
+    if (tabIndex === 3) {
+      fetchParticipants(participantRaceFilter);
+    }
+  }, [tabIndex, participantRaceFilter]);
 
   const confirmPayment = async (participantId: string) => {
     if (!confirm('¿Estás seguro de marcar este pago como confirmado?')) return;
@@ -1094,7 +1105,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
               >
                 PDF
               </Button>
-              <IconButton onClick={fetchParticipants} disabled={participantsLoading} color="inherit">
+              <IconButton onClick={() => fetchParticipants(participantRaceFilter)} disabled={participantsLoading || !participantRaceFilter} color="inherit">
                 {participantsLoading ? <CircularProgress size={24} color="inherit" /> : <RestartAltIcon />}
               </IconButton>
             </Box>
@@ -1113,7 +1124,15 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 </TableRow>
               </TableHead>
               <TableBody>
-                {participantsLoading ? (
+                {!participantRaceFilter ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                      <Alert severity="info" sx={{ display: 'inline-flex', justifyContent: 'center' }}>
+                        Por favor selecciona una carrera en el filtro de arriba para ver la lista de sus inscritos.
+                      </Alert>
+                    </TableCell>
+                  </TableRow>
+                ) : participantsLoading ? (
                   <TableRow>
                      <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                        <CircularProgress sx={{ color: ACCENT }} />
@@ -1121,20 +1140,18 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                   </TableRow>
                 ) : participants.filter(p => {
                   const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
-                  const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
-                  return matchesSearch && matchesRace;
+                  return matchesSearch;
                 }).length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
-                      No se encontraron participantes
+                      No se encontraron participantes para esta carrera
                     </TableCell>
                   </TableRow>
                 ) : (
                   participants
                     .filter(p => {
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
-                      const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
-                      return matchesSearch && matchesRace;
+                      return matchesSearch;
                     })
                     .sort((a,b) => (Number(a.bibNumber) || 0) - (Number(b.bibNumber) || 0))
                     .map((p) => {
