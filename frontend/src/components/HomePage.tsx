@@ -42,13 +42,16 @@ interface Race {
 
 function formatDateLong(dateStr: string) {
   if (!dateStr) return 'Por definir';
-  const date = new Date(dateStr);
+  // Evitar error de un día menos al parsear YYYY-MM-DD como UTC
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
   return date.toLocaleDateString('es-PA', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 function formatDate(dateStr: string) {
   if (!dateStr) return '';
-  const date = new Date(dateStr);
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
   return date.toLocaleDateString('es-PA');
 }
 
