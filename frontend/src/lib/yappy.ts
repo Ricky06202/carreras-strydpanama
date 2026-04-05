@@ -85,21 +85,22 @@ export class YappyAPI {
     };
 
     const payloadStr = JSON.stringify(payloadObj);
-    const signature = await this.sign(payloadStr, secret);
 
     const response = await fetch(`${this.BASE_URL}/payments/payment-wc`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Yappy-Signature': signature
+        'Authorization': `Bearer ${token}`
       },
       body: payloadStr
     });
 
     const data = await response.json();
+    
+    // Mostramos la data completa en el log si Yappy nos bloquea
     if (!response.ok || !data.transactionId) {
-      throw new Error(`Yappy Payment Error: ${data.message || data.code || 'Error en validación'}`);
+      const errorDetails = JSON.stringify(data);
+      throw new Error(`Yappy Payment Error. Status: ${response.status}. Response: ${errorDetails}. Token sent: Bearer ${token.substring(0, 10)}... Payload: ${payloadStr}`);
     }
 
     return data;
