@@ -9,56 +9,31 @@ export const createImage = (url: string): Promise<HTMLImageElement> =>
 
 export async function getCroppedImg(
   imageSrc: string,
-  pixelCrop: { x: number; y: number; width: number; height: number },
-  flip = { horizontal: false, vertical: false }
+  pixelCrop: { x: number; y: number; width: number; height: number }
 ): Promise<string | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
 
-  if (!ctx) {
-    return null;
-  }
+  if (!ctx) return null;
 
-  // set canvas size to match the bounding box
-  canvas.width = image.width;
-  canvas.height = image.height;
+  // Set canvas size to the desired crop size
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
 
-  // translate canvas context to a central location to allow rotating and flipping around the center
-  ctx.translate(image.width / 2, image.height / 2);
-  ctx.scale(flip.horizontal ? -1 : 1, flip.vertical ? -1 : 1);
-  ctx.translate(-image.width / 2, -image.height / 2);
-
-  // draw rotated image
-  ctx.drawImage(image, 0, 0);
-
-  // extracted cropped image
-  const data = ctx.getImageData(
+  // Draw ONLY the section of the image we want onto the canvas
+  ctx.drawImage(
+    image,
     pixelCrop.x,
     pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
     pixelCrop.width,
     pixelCrop.height
   );
 
-  // set canvas width to final desired crop size - this will clear existing context
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
-
-  // paste generated rotate image at the top left corner
-  ctx.putImageData(data, 0, 0);
-
-  // As a blob
-  return new Promise((resolve) => {
-    canvas.toBlob((file) => {
-      if (file) {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        }
-      } else {
-        resolve(null);
-      }
-    }, 'image/jpeg');
-  });
+  // Return the resulting Base64 (this is the real cropped image)
+  return canvas.toDataURL('image/jpeg', 0.9);
 }
