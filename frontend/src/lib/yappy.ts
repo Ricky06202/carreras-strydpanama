@@ -78,6 +78,8 @@ export class YappyAPI {
       domain: baseUrl,
       aliasYappy: aliasYappy, 
       subtotal: totalStr,
+      taxes: "0.00",
+      discount: "0.00",
       total: totalStr,
       successUrl: `${baseUrl.replace(/\/$/, '')}/registro/exito`,
       failUrl: `${baseUrl.replace(/\/$/, '')}/registro/error`,
@@ -85,12 +87,14 @@ export class YappyAPI {
     };
 
     const payloadStr = JSON.stringify(payloadObj);
+    const signature = await this.sign(payloadStr, secret);
 
     const response = await fetch(`${this.BASE_URL}/payments/payment-wc`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'X-Yappy-Signature': signature
       },
       body: payloadStr
     });
