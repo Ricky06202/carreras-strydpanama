@@ -1,6 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'btn-yappy': any;
+    }
+  }
+}
+
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
   Box, Typography, Stepper, Step, StepLabel, Alert, Paper, Snackbar,
@@ -386,6 +395,106 @@ const handleSubmit = async () => {
   };
 
   const getTeamAutocompleteOptions = () => ['Ninguno', 'Agregar manualmente', ...teamOptions];
+
+  const yappyBtnRef = useRef<any>(null);
+
+  // Yappy Event Listeners setup
+  useEffect(() => {
+    const bp = yappyBtnRef.current;
+    if (!bp) return;
+
+    const handleYappyClick = async () => {
+      if (codeValid && codeValid.valid) {
+         handleSubmit();
+         return;
+      }
+
+      setLoading(true);
+      try {
+        // 1. Guardar la orden inicial llamando al backend (queda en status 'Pendiente')
+        const participantData: ParticipantData = {
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            cedula: formData.cedula,
+            country: formData.country,
+            birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
+            gender: formData.gender,
+            size: raceInfo?.data?.showShirtSize !== false ? formData.size : '',
+            raceId: selectedRace,
+            categoryId: formData.category || null,
+            distanceId: formData.distance || null,
+            paymentMethod: 'Yappy (Pendiente)', // Marcador inicial temporal
+            termsAccepted: termsAccepted,
+            discountCode: code,
+            registrationType: registrationType
+        };
+
+        if (registrationType === 'team') {
+            participantData.teamName = teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? '' : teamName);
+            participantData.teamMembers = teamMembers.map(m => ({
+            ...m,
+            size: raceInfo?.data?.showShirtSize !== false ? m.size : '',
+            birthDate: `${m.birthYear}-${m.birthMonth}-${m.birthDay}`
+            }));
+        } else {
+            participantData.teamName = formData.teamName === 'Agregar manualmente' ? manualTeamNameInd : (formData.teamName === 'Ninguno' ? '' : formData.teamName);
+        }
+
+        const resReg = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(participantData)
+        });
+        const dataReg = await resReg.json();
+        
+        if (!resReg.ok) throw new Error(dataReg.message || 'Error guardando registro previo');
+
+        // SonicJS returns the item inside dataReg.data[0].id usually. Let's find it.
+        // Also result spreads inside dataReg directly if it's merged.
+        let orderId = '';
+        if (dataReg.data && Array.isArray(dataReg.data) && dataReg.data[0]) orderId = dataReg.data[0].id;
+        else if (dataReg.data?.id) orderId = dataReg.data.id;
+        else orderId = dataReg.id || `TMP_${Date.now()}`;
+
+        const totalAmount = races.find(r => r.id === selectedRace)?.data?.price || 0;
+        const telYappy = formData.phone; // Usamos el num del form temporalmente
+
+        // 2. Llamar al endpoint de checkout backend
+        const resCheck = await fetch('/api/yappy/checkout', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId, total: totalAmount, telefono: telYappy })
+        });
+        const paymentData = await resCheck.json();
+
+        if (paymentData.success) {
+            // 3. Invocar pasarela gráfica
+            bp.eventPayment({ ...paymentData.body });
+        } else {
+            setNotification({ message: 'Error de Yappy: ' + paymentData.error, type: 'error' });
+        }
+      } catch (e: any) {
+        setNotification({ message: e.message || 'Error iniciando Yappy', type: 'error' });
+      }
+      setLoading(false);
+    };
+
+    const handleYappySuccess = (e: any) => {
+      // Yappy dice que se hizo exitoso visualmente
+      setNotification({ message: '¡Pago Yappy exitoso!', type: 'success' });
+      setStep(3); // Ir a confirmación
+    };
+
+    bp.addEventListener('eventClick', handleYappyClick);
+    bp.addEventListener('eventSuccess', handleYappySuccess);
+
+    return () => {
+      bp.removeEventListener('eventClick', handleYappyClick);
+      bp.removeEventListener('eventSuccess', handleYappySuccess);
+    };
+  }, [formData, selectedRace, races, raceInfo, teamName, manualTeamNameGroup, manualTeamNameInd, teamMembers, code, codeValid, registrationType, termsAccepted]);
 
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
@@ -799,11 +908,21 @@ const handleSubmit = async () => {
 <Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>Total: ${races.find(r => r.id === selectedRace)?.data?.price || 0}</Typography>
             </Box>
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, alignItems: 'center' }}>
               <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>Atrás</Button>
-              <Button variant="contained" onClick={handleSubmit} disabled={loading || !formData.paymentMethod} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#eab308' } }}>
-                {loading ? 'Procesando...' : 'Confirmar Inscripción'}
-              </Button>
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {formData.paymentMethod === 'yappy' ? (
+                  <Box>
+                    {/* @ts-ignore */}
+                    <btn-yappy ref={yappyBtnRef} theme="orange" rounded="true" disabled={loading ? "true" : "false"}></btn-yappy>
+                    {loading && <Typography variant="caption" sx={{ ml: 2, color: 'text.secondary' }}>Procesando...</Typography>}
+                  </Box>
+                ) : (
+                  <Button variant="contained" onClick={handleSubmit} disabled={loading || !formData.paymentMethod} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+                    {loading ? 'Procesando...' : 'Confirmar Inscripción'}
+                  </Button>
+                )}
+              </Box>
             </Box>
           </Box>
         )}
