@@ -30,14 +30,14 @@ export const GET: APIRoute = async ({ request }) => {
     const race = raceRes?.data || null;
     const categories = (categoriesRes?.data || [])
       // SonicJS no filtra por campos personalizados vía query params — filtrar manualmente
-      .filter((item: any) => item.data?.race === raceId || item.data?.race === undefined)
+      .filter((item: any) => item.status === 'published' && (item.data?.race === raceId || item.data?.race === undefined))
       .map((item: any) => ({
         id: item.id,
         name: item.data?.title || item.title || 'Sin nombre'
       }));
     const distances = (distancesRes?.data || [])
       // Solo incluir distancias cuyo campo 'race' apunte a esta carrera exacta
-      .filter((item: any) => item.data?.race === raceId)
+      .filter((item: any) => item.status === 'published' && item.data?.race === raceId)
       .map((item: any) => ({
         id: item.id,
         name: item.data?.title || item.title || 'Sin nombre',

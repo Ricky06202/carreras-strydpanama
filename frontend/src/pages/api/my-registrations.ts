@@ -19,6 +19,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     const all = partsRes?.data || [];
     const mine = all.filter((p: any) =>
+      p.status === 'published' &&
       (p.data?.cedula || '').toLowerCase().trim() === cedula.toLowerCase()
     );
 

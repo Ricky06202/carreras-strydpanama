@@ -16,6 +16,7 @@ export const GET: APIRoute = async ({ request }) => {
     const all = result?.data || [];
     
     const match = all.find((item: any) => 
+      item.status === 'published' &&
       (item.data?.cedula || '').toLowerCase().trim() === cedula.toLowerCase()
     );
 

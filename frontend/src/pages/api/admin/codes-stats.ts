@@ -9,7 +9,7 @@ export const GET: APIRoute = async ({ request }) => {
 
     const result = await apiFetch(`/api/collections/registration_codes/content?limit=1000${raceId ? `&filters[race]=${raceId}` : ''}`, env, { method: 'GET' });
     
-    const codes = result.data || [];
+    const codes = (result.data || []).filter((c: any) => c.status === 'published');
     const stats: any = {};
     const rawCodes: any = [];
     
