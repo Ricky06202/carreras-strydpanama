@@ -128,14 +128,41 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 6. Enviar correo de confirmación
     try {
+      // 6a. Obtener el nombre de la distancia para el correo
+      let resolvedDistance = 'General';
+      if (body.distanceId) {
+        try {
+          const distancesRes = await api.getDistances(env);
+          const distObj = (distancesRes?.data || []).find((d: any) => d.id === body.distanceId);
+          resolvedDistance = distObj?.data?.name || distObj?.name || 'General';
+        } catch (e) {
+          console.error('Failed to resolve distance name for email:', e);
+        }
+      }
+
+      // 6b. Obtener el nombre de la categoría si existe
+      let resolvedCategory = '';
+      if (body.categoryId) {
+        try {
+          const categoriesRes = await api.getCategories(env, body.raceId);
+          const catObj = (categoriesRes?.data || []).find((c: any) => c.id === body.categoryId);
+          resolvedCategory = catObj?.data?.name || catObj?.name || '';
+        } catch (e) {
+          console.error('Failed to resolve category name for email:', e);
+        }
+      }
+
       await sendRegistrationEmail(env, {
         email: body.email,
         firstName: body.firstName,
         lastName: body.lastName,
         raceName: raceName,
         bibNumber: nextBib,
-        distance: body.distance || 'General',
-        paymentMethod: body.paymentMethod || 'Por definir'
+        distance: resolvedDistance,
+        category: resolvedCategory,
+        cedula: body.cedula,
+        size: body.size,
+        paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy'
       });
       console.log(`Email sent successfully to ${body.email}`);
     } catch (mailError) {
