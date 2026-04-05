@@ -8,6 +8,9 @@ export const sendRegistrationEmail = async (env: any, data: {
   bibNumber: number | string;
   distance: string;
   paymentMethod: string;
+  category?: string;
+  cedula?: string;
+  size?: string;
 }) => {
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -17,7 +20,7 @@ export const sendRegistrationEmail = async (env: any, data: {
 
   const resend = new Resend(resendApiKey);
 
-  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod } = data;
+  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size } = data;
 
   try {
     const response = await resend.emails.send({
@@ -46,9 +49,25 @@ export const sendRegistrationEmail = async (env: any, data: {
                   <td style="padding: 8px 0; color: #FF6B00; font-weight: bold; font-size: 18px;">#${bibNumber}</td>
                 </tr>
                 <tr>
+                  <td style="padding: 8px 0; color: #777777;">Cédula:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${cedula || '-'}</td>
+                </tr>
+                <tr>
                   <td style="padding: 8px 0; color: #777777;">Distancia:</td>
                   <td style="padding: 8px 0; color: #333333; font-weight: bold;">${distance}</td>
                 </tr>
+                ${category ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Categoría:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${category}</td>
+                </tr>
+                ` : ''}
+                ${size ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Talla de Camiseta:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${size}</td>
+                </tr>
+                ` : ''}
                 <tr>
                   <td style="padding: 8px 0; color: #777777;">Método de Pago:</td>
                   <td style="padding: 8px 0; color: #333333; font-weight: bold;">${paymentMethod}</td>
