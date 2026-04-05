@@ -930,7 +930,7 @@ const handleSubmit = async () => {
                     {/* @ts-ignore */}
                     <btn-yappy 
                       ref={yappyBtnRef} 
-                      theme="orange" 
+                      theme="dark" 
                       rounded="true" 
                       disabled={loading ? "true" : "false"}
                     ></btn-yappy>
