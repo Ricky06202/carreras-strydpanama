@@ -2,27 +2,38 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch } from '../../../lib/api';
 
-export const POST: APIRoute = async ({ request }) => {
+export const GET: APIRoute = async ({ request }) => handleRequest(request);
+export const POST: APIRoute = async ({ request }) => handleRequest(request);
+
+async function handleRequest(request: Request) {
   try {
-    const bodyText = await request.text();
-    let yappyData;
+    const url = new URL(request.url);
+    const searchParams = url.searchParams;
     
-    try {
-      yappyData = JSON.parse(bodyText);
-    } catch(e) {
-      return new Response("error", { status: 400 });
+    let orderId = searchParams.get('orderId');
+    let status = searchParams.get('status');
+    let transactionId = searchParams.get('transactionId');
+
+    // Si es POST, intentar sacar del body si no están en URL
+    if (request.method === 'POST' && (!orderId || !status)) {
+        try {
+            const body = await request.json() as any;
+            orderId = orderId || body.orderId;
+            status = status || body.status;
+            transactionId = transactionId || body.transactionId;
+        } catch (e) {}
     }
 
-    const { status, orderId, transactionId } = yappyData;
+    console.log(`[Yappy Webhook] Recibido: orderId=${orderId}, status=${status}`);
 
-    if (status === 'SUCCESS' && orderId) {
+    // "E" significa Ejecutado (Éxito) en la V2 de Yappy
+    if ((status === 'E' || status === 'SUCCESS') && orderId) {
       const updatePayload = {
         paymentStatus: 'Pagado',
-        transactionId: transactionId
+        transactionId: transactionId || 'YAPPY_CONFIRMED'
       };
 
-      // Realizamos PUT hacia BD de Sonic JS:
-      // In this specific flow, orderId represents the participant ID
+      // Nota: orderId para nosotros es el ID del participante en SonicJS
       await apiFetch(`/api/content/${orderId}`, env, {
          method: 'PUT',
          headers: { 'Content-Type': 'application/json' },
@@ -31,14 +42,14 @@ export const POST: APIRoute = async ({ request }) => {
          })
       });
 
-      console.log(`[Yappy Webhook] Pago exitoso marcado en DB para orden: ${orderId}`);
+      console.log(`[Yappy Webhook] Pago exitoso (E) procesado para: ${orderId}`);
     }
 
-    // REGLA DE ORO: Responder un literal "success" en HTTP 200 independientemente del flujo
+    // Yappy espera un literal "success"
     return new Response("success", { status: 200 });
 
   } catch (error: any) {
     console.error("Yappy IPN Error:", error);
     return new Response("error", { status: 500 });
   }
-};
+}
