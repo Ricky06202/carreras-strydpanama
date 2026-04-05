@@ -476,9 +476,13 @@ const handleSubmit = async () => {
             setNotification({ message: 'Error de Yappy: ' + paymentData.error, type: 'error' });
         }
       } catch (e: any) {
-        setNotification({ message: e.message || 'Error iniciando Yappy', type: 'error' });
+        console.error('Yappy initiation error:', e);
+        setNotification({ 
+          message: e.message || 'Error iniciando el proceso de Yappy. Por favor, revisa tu conexión e intenta de nuevo.', 
+          type: 'error' 
+        });
+        setLoading(false); // Ensure spinner stops
       }
-      setLoading(false);
     };
 
     const handleYappySuccess = (e: any) => {
