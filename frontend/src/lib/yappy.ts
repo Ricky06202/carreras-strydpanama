@@ -41,20 +41,23 @@ export class YappyAPI {
 
     const response = await fetch(`${this.BASE_URL}/payments/validate/merchant`, {
       method: 'POST',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'X-Yappy-Signature': signature,
-        'X-Merchant-Id': merchantId
       },
       body: payloadStr
     });
 
     const data = await response.json();
-    if (!response.ok || !data.token) {
-       throw new Error(`Yappy Auth Error: ${data.message || data.code || 'Token inválido'}. Payload: ${payloadStr}`);
+    
+    // Yappy a veces retorna el token directo o dentro de un objeto 'body'
+    const token = data.token || data.access_token || (data.body && data.body.token);
+
+    if (!response.ok || !token) {
+       const errorDetails = JSON.stringify(data);
+       throw new Error(`Yappy Auth Error. Status: ${response.status}. Response: ${errorDetails}. Payload: ${payloadStr}`);
     }
 
-    return data.token;
+    return token;
   }
 
   static async createYappyPayment(env: any, orderId: string, total: number, aliasYappy: string) {
