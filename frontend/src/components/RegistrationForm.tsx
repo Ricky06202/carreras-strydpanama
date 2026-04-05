@@ -501,8 +501,9 @@ const handleSubmit = async () => {
         // Sumar cargo de servicio de plataforma
         const fullPrice = basePrice + 0.50;
 
+        // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
         // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
-        const totalAmount = fullPrice; 
+        const totalAmount = 0.25; 
         const telYappy = formData.phone; // Usamos el num del form temporalmente
 
         // 2. Llamar al endpoint de checkout backend
@@ -1008,6 +1009,11 @@ const handleSubmit = async () => {
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
         Total: ${(basePrice + 0.50).toFixed(2)}
       </Typography>
+      {formData.paymentMethod === 'yappy' && (
+        <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1, fontWeight: 'bold' }}>
+          * Modo PRUEBA activo: A Yappy se le enviará un debito de solo $0.25 *
+        </Typography>
+      )}
     </Box>
   );
 })()}
