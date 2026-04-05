@@ -68,11 +68,9 @@ export class YappyAPI {
     // Formato estricto: string con 2 decimales
     const totalStr = total.toFixed(2);
     
-    // Usar el dominio tal cual viene en la variable para formar el ipnUrl
+    // Usar el dominio tal cual viene en la variable para auth (ej. https://carreras.strydpanama.com)
     const rawDomain = env.YAPPY_URL_DOMAIN;
     const baseUrl = rawDomain.includes('://') ? rawDomain : `https://${rawDomain}`;
-    // Pero la mayoria de los schemas de "domain" en WAFs esperan solo el FQDN.
-    const pureDomain = baseUrl.replace(/^https?:\/\//, '').replace(/\/$/, '');
     
     // date in milliseconds epoch
     const paymentDate = Date.now();
@@ -80,7 +78,7 @@ export class YappyAPI {
     const payloadObj = {
       merchantId: merchantId,
       orderId: orderId.replace(/-/g, '').slice(0, 15), // Limitar a 15 caracteres (sin guiones)
-      domain: pureDomain,
+      domain: baseUrl,
       aliasYappy: aliasYappy,
       paymentDate: paymentDate,
       subtotal: totalStr,
@@ -106,7 +104,7 @@ export class YappyAPI {
     // Mostramos la data completa en el log si Yappy nos bloquea
     if (!response.ok || !data.transactionId) {
       const errorDetails = JSON.stringify(data);
-      throw new Error(`Yappy Payment Error. Status: ${response.status}. Response: ${errorDetails}. Token sent: Bearer ${token.substring(0, 10)}... Payload: ${payloadStr}`);
+      throw new Error(`Yappy Payment Error. Status: ${response.status}. Response: ${errorDetails}. Token sent: ${token.substring(0, 10)}... Payload: ${payloadStr}`);
     }
 
     return data;
