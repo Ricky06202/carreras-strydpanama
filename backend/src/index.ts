@@ -6,6 +6,7 @@
 
 import { createSonicJSApp, registerCollections } from '@sonicjs-cms/core'
 import type { SonicJSConfig } from '@sonicjs-cms/core'
+import { cors } from 'hono/cors'
 
 // Import collection configurations
 import racesCollection from './collections/races.collection'
@@ -40,5 +41,20 @@ const config: SonicJSConfig = {
   }
 }
 
-// Create and export the application
-export default createSonicJSApp(config)
+// Create the application
+const app = createSonicJSApp(config)
+
+// Fix CORS: Ensure DELETE and OPTIONS are explicitly handled
+app.use('*', cors({
+  origin: (origin) => {
+    // Permite cualquier origen por ahora, o puedes filtrar por tudominio.com
+    return origin;
+  },
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
+  maxAge: 600,
+  credentials: true,
+}))
+
+export default app
