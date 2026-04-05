@@ -16,7 +16,11 @@ export const GET: APIRoute = async () => {
 
     return new Response(JSON.stringify({ teams }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
     });
   } catch (error: any) {
     console.error('Error in /api/teams:', error);

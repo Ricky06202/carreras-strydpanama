@@ -227,8 +227,8 @@ export default {
 - **running_teams** - Equipos
 
 ### URLs de Producción
-- **Backend (SonicJS)**: `https://api.carreras2.strydpanama.com`
-- **Admin Panel**: `https://carreras2.strydpanama.com/admin`
+- **Backend (SonicJS)**: `https://api.carreras.strydpanama.com`
+- **Admin Panel**: `https://carreras.strydpanama.com/admin`
 - **Frontend (Astro)**: `https://carreras.strydpanama.com`
 
 ---
@@ -276,7 +276,7 @@ export default {
 
 1. **Login** - Obtener token:
 ```bash
-curl -X POST https://api.carreras2.strydpanama.com/auth/login \
+curl -X POST https://api.carreras.strydpanama.com/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"correo@ejemplo.com","password":"contraseña"}'
 ```
@@ -289,7 +289,7 @@ Authorization: Bearer {token}
 ### Variables de Entorno para el Frontend
 
 En **Cloudflare Pages** agregar:
-- `SONICJS_API_URL` = `https://api.carreras2.strydpanama.com`
+- `SONICJS_API_URL` = `https://api.carreras.strydpanama.com`
 - `SONICJS_API_EMAIL` = `admin@strydpanama.com` (usuario con permisos)
 - `SONICJS_API_PASSWORD` = `contraseña`
 
@@ -298,7 +298,7 @@ En **Cloudflare Pages** agregar:
 ```bash
 TOKEN="eyJhbGci..."
 
-curl -X POST https://api.carreras2.strydpanama.com/api/content \
+curl -X POST https://api.carreras.strydpanama.com/api/content \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
   -d '{
@@ -329,7 +329,7 @@ curl -X POST https://api.carreras2.strydpanama.com/api/content \
 ### Cómo obtener el ID de una colección
 
 ```bash
-curl -s https://api.carreras2.strydpanama.com/api/collections | jq '.data[] | select(.name == "races") | .id'
+curl -s https://api.carreras.strydpanama.com/api/collections | jq '.data[] | select(.name == "races") | .id'
 ```
 
 ---

@@ -46,7 +46,11 @@ export const GET: APIRoute = async ({ request }) => {
 
     return new Response(JSON.stringify({ success: true, stats: statsArray, rawCount: codes.length, codes: rawCodes }), {
       status: 200,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
     });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Error al obtener estadísticas del monitor' }), {
