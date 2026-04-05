@@ -74,9 +74,8 @@ export class YappyAPI {
     
     const payloadObj = {
       merchantId: merchantId,
-      orderId: orderId,
+      orderId: orderId.replace(/-/g, '').slice(0, 15), // Limitar a 15 caracteres (sin guiones)
       domain: baseUrl,
-      aliasYappy: aliasYappy, 
       subtotal: totalStr,
       taxes: "0.00",
       discount: "0.00",
@@ -87,14 +86,12 @@ export class YappyAPI {
     };
 
     const payloadStr = JSON.stringify(payloadObj);
-    const signature = await this.sign(payloadStr, secret);
 
     const response = await fetch(`${this.BASE_URL}/payments/payment-wc`, {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-        'X-Yappy-Signature': signature
+        'Authorization': `Bearer ${token}`
       },
       body: payloadStr
     });
