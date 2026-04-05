@@ -27,14 +27,18 @@ export class YappyAPI {
 
   static async getMerchantToken(env: any): Promise<string> {
     const merchantId = env.YAPPY_MERCHANT_ID;
-    const urlDomain = env.YAPPY_URL_DOMAIN;
     const secret = env.YAPPY_SECRET_KEY;
+    const rawDomain = env.YAPPY_URL_DOMAIN;
 
-    if (!merchantId || !urlDomain || !secret) {
+    if (!merchantId || !rawDomain || !secret) {
       throw new Error('Faltan variables de entorno de Yappy (MERCHANT_ID, URL_DOMAIN, SECRET_KEY)');
     }
 
-    const payloadObj = { merchantId, urlDomain };
+    // Limpiar el dominio para la validación (quitar protocolos)
+    const cleanDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    
+    // Enviamos urlDomain (y domain por si acaso) con el host limpio
+    const payloadObj = { merchantId, urlDomain: cleanDomain, domain: cleanDomain };
     const payloadStr = JSON.stringify(payloadObj);
     const signature = await this.sign(payloadStr, secret);
 
