@@ -977,10 +977,95 @@ const handleSubmit = async () => {
         )}
 
         {step === 3 && (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-            <Typography variant="h4" sx={{ mb: 2, color: 'success.main' }}>¡Inscripción Exitosa!</Typography>
-            <Typography color="text.secondary">Te hemos enviado un correo de confirmación.</Typography>
+          <Box sx={{ py: 4 }}>
+            <Box sx={{ textAlign: 'center', mb: 4 }}>
+              <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
+              <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>¡Proceso Completado!</Typography>
+              <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
+              {formData.paymentMethod === 'yappy' ? (
+                <Typography color="text.secondary">Te hemos enviado un correo a <b>{formData.email}</b> con los detalles de tu compra.</Typography>
+              ) : (
+                <Typography color="text.secondary">Revisa tu correo <b>{formData.email}</b> para recibir tus instrucciones finales.</Typography>
+              )}
+            </Box>
+
+            <Paper variant="outlined" sx={{ p: { xs: 2, md: 4 }, borderRadius: 3, bgcolor: 'background.paper', maxWidth: 600, mx: 'auto', border: `1px solid ${ACCENT}80` }}>
+              <Typography variant="h6" sx={{ mb: 3, borderBottom: 1, borderColor: 'divider', pb: 1, color: ACCENT, textAlign: 'center', fontWeight: 'bold' }}>
+                Resumen de tu Inscripción
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Corredor Principal:</Typography>
+                  <Typography variant="body1" fontWeight="bold">{formData.firstName} {formData.lastName}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Cédula/Pasaporte:</Typography>
+                  <Typography variant="body1">{formData.cedula}</Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Carrera:</Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {races.find(r => r.id === selectedRace)?.data?.title || races.find(r => r.id === selectedRace)?.title || '-'}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Distancia:</Typography>
+                  <Typography variant="body1" fontWeight="bold">
+                    {distances.find(d => d.id === formData.distance)?.name || '-'}
+                  </Typography>
+                </Box>
+                {formData.category && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Categoría:</Typography>
+                    <Typography variant="body1" fontWeight="bold">
+                      {categories.find(c => c.id === formData.category)?.name || '-'}
+                    </Typography>
+                  </Box>
+                )}
+                {raceInfo?.data?.showShirtSize !== false && formData.size && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Talla de Camiseta:</Typography>
+                    <Typography variant="body1" fontWeight="bold">{formData.size}</Typography>
+                  </Box>
+                )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
+                  <Typography variant="body1" fontWeight="bold" sx={{ color: formData.paymentMethod === 'yappy' ? ACCENT : 'inherit' }}>
+                    {paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod}
+                  </Typography>
+                </Box>
+                
+                {registrationType === 'team' && (
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: ACCENT }}>Equipo Registrado:</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ mb: 1 }}>
+                      {teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? 'Sin equipo' : teamName)}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">Resto de integrantes:</Typography>
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      {teamMembers.slice(1).map((m, idx) => (
+                        m.firstName ? (
+                          <Typography key={idx} variant="body2">
+                            • {m.firstName} {m.lastName} <span style={{opacity: 0.7}}>({m.cedula})</span>
+                          </Typography>
+                        ) : null
+                      ))}
+                    </Box>
+                  </Box>
+                )}
+                
+                <Box sx={{ textAlign: 'center', mt: 4 }}>
+                  <Button 
+                    variant="contained" 
+                    onClick={() => window.location.href = '/'}
+                    sx={{ bgcolor: ACCENT, borderRadius: 8, px: 4, '&:hover': { bgcolor: '#E55A00' } }}
+                  >
+                    Volver al Inicio
+                  </Button>
+                </Box>
+              </Box>
+            </Paper>
           </Box>
         )}
 
