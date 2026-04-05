@@ -821,11 +821,12 @@ const handleSubmit = async () => {
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
                     <Box>
                       <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>1. Foto de Cédula o Pasaporte *</Typography>
-                      <Button variant="outlined" component="label" fullWidth sx={{ color: ACCENT, borderColor: ACCENT }}>
-                        {formData.studentIdUrl ? 'Cambiar Cédula' : 'Subir Cédula'}
+                      <Button variant="outlined" component="label" fullWidth disabled={photoUploading} sx={{ color: ACCENT, borderColor: ACCENT }}>
+                        {photoUploading ? 'Subiendo...' : (formData.studentIdUrl ? 'Cambiar Cédula' : 'Subir Cédula')}
                         <input type="file" hidden accept="image/*" onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          e.target.value = ''; // REGLA DE ORO REACT
                           setPhotoUploading(true);
                           try {
                             const base64 = await resizeImage(file);
@@ -840,16 +841,17 @@ const handleSubmit = async () => {
                           setPhotoUploading(false);
                         }} />
                       </Button>
-                      {formData.studentIdUrl && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Cédula cargada</Typography>}
+                      {formData.studentIdUrl && !photoUploading && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Cédula cargada</Typography>}
                     </Box>
 
                     <Box>
                       <Typography variant="body2" fontWeight="bold" sx={{ mb: 1 }}>2. Comprobante de Matrícula *</Typography>
-                      <Button variant="outlined" component="label" fullWidth sx={{ color: ACCENT, borderColor: ACCENT }}>
-                        {formData.matriculaUrl ? 'Cambiar Matrícula' : 'Subir Matrícula'}
+                      <Button variant="outlined" component="label" fullWidth disabled={photoUploading} sx={{ color: ACCENT, borderColor: ACCENT }}>
+                        {photoUploading ? 'Subiendo...' : (formData.matriculaUrl ? 'Cambiar Matrícula' : 'Subir Matrícula')}
                         <input type="file" hidden accept="image/*" onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
+                          e.target.value = ''; // REGLA DE ORO REACT
                           setPhotoUploading(true);
                           try {
                             const base64 = await resizeImage(file);
@@ -864,7 +866,7 @@ const handleSubmit = async () => {
                           setPhotoUploading(false);
                         }} />
                       </Button>
-                      {formData.matriculaUrl && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Matrícula cargada</Typography>}
+                      {formData.matriculaUrl && !photoUploading && <Typography variant="caption" sx={{ color: 'success.main', mt: 1, display: 'block' }}>✅ Matrícula cargada</Typography>}
                     </Box>
                   </Box>
                 </Box>
