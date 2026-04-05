@@ -458,7 +458,16 @@ const handleSubmit = async () => {
         else if (dataReg.data?.id) orderId = dataReg.data.id;
         else orderId = dataReg.id || `TMP_${Date.now()}`;
 
-        const totalAmount = races.find(r => r.id === selectedRace)?.data?.price || 0;
+        // Precio base determinado por distancia (si aplica) o carrera
+        const selectedDistanceObj = distances.find(d => d.id === formData.distance);
+        const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
+        
+        // Sumar cargo de servicio de plataforma
+        const fullPrice = basePrice + 0.35;
+
+        // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
+        // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
+        const totalAmount = 0.25; 
         const telYappy = formData.phone; // Usamos el num del form temporalmente
 
         // 2. Llamar al endpoint de checkout backend
@@ -909,7 +918,25 @@ const handleSubmit = async () => {
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
 <Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.data?.title || races.find(r => r.id === selectedRace)?.title || '-'}</Typography>
 <Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
-<Typography variant="body2" fontWeight="bold" sx={{ mt: 1 }}>Total: ${races.find(r => r.id === selectedRace)?.data?.price || 0}</Typography>
+
+{(() => {
+  const selectedDistanceObj = distances.find(d => d.id === formData.distance);
+  const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
+  return (
+    <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
+      <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>
+      <Typography variant="body2" color="text.secondary">Cargo de plataforma: +$0.35 (para costos de sistema de registro)</Typography>
+      <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
+        Total: ${(basePrice + 0.35).toFixed(2)}
+      </Typography>
+      {formData.paymentMethod === 'yappy' && (
+        <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1, fontWeight: 'bold' }}>
+          * Modo PRUEBA activo: A Yappy se le enviará un debito de solo $0.25 *
+        </Typography>
+      )}
+    </Box>
+  );
+})()}
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2, alignItems: 'center' }}>
