@@ -912,10 +912,28 @@ const handleSubmit = async () => {
               <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {formData.paymentMethod === 'yappy' ? (
-                  <Box>
+                  <Box sx={{ 
+                    minWidth: '200px', 
+                    minHeight: '44px', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    bgcolor: 'action.hover',
+                    borderRadius: 2,
+                    p: 1
+                  }}>
                     {/* @ts-ignore */}
-                    <btn-yappy ref={yappyBtnRef} theme="orange" rounded="true" disabled={loading ? "true" : "false"}></btn-yappy>
-                    {loading && <Typography variant="caption" sx={{ ml: 2, color: 'text.secondary' }}>Procesando...</Typography>}
+                    <btn-yappy 
+                      ref={yappyBtnRef} 
+                      theme="orange" 
+                      rounded="true" 
+                      disabled={loading ? "true" : "false"}
+                    ></btn-yappy>
+                    {loading && <Typography variant="caption" sx={{ mt: 1, color: ACCENT }}>Generando pedido...</Typography>}
+                    <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '10px' }}>
+                      (Haz clic arriba para pagar con Yappy)
+                    </Typography>
                   </Box>
                 ) : (
                   <Button variant="contained" onClick={handleSubmit} disabled={loading || !formData.paymentMethod} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
