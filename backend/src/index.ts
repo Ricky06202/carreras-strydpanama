@@ -44,41 +44,62 @@ const config: SonicJSConfig = {
 const app = createSonicJSApp(config)
 
 /**
- * MANUAL OVERRIDE: SonicJS D1 DELETE Bugfix
- * Interceptamos las peticiones de borrado para ejecutarlas manualmente en D1
+ * FORCED INTERCEPTOR: SonicJS D1 DELETE Bugfix
+ * Usamos un middleware global (app.use) para interceptar ANTES que SonicJS.
  */
-const manualDelete = async (c: any) => {
-  const id = c.req.param('id');
-  const collection = c.req.param('collection');
-  
-  console.log(`[Manual Delete] ID: ${id}, Collection: ${collection || 'any'}`);
-  
+app.use('*', async (c, next) => {
+  const isDelete = c.req.method === 'DELETE';
+  const isContentPath = c.req.path.includes('/content/') || c.req.path.includes('/api/content');
+
+  // Si no es un borrado de contenido, seguimos normal
+  if (!isDelete || !isContentPath) {
+    return next();
+  }
+
+  // Si llegamos aquí, ES un borrado. Vamos a forzarlo.
+  const urlParts = c.req.path.split('/');
+  const id = urlParts[urlParts.length - 1]; // El último segmento suele ser el ID
+
+  console.log(`[Forced Interceptor] Path: ${c.req.path}, Extracted ID: ${id}`);
+
   try {
-    // Intentamos borrar de la tabla 'content' (como reportó el usuario)
-    // También se puede probar con 'entries' o 'content_history'
-    const result = await c.env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();
+    // 1. Intentamos borrar de 'content'
+    const query1 = await c.env.DB.prepare('DELETE FROM content WHERE id = ?').bind(id).run();
     
-    // Si existe una tabla de historial, también la limpiamos
+    // 2. Intentamos borrar de 'entries' (por si acaso)
+    let query2 = null;
+    try {
+      query2 = await c.env.DB.prepare('DELETE FROM entries WHERE id = ?').bind(id).run();
+    } catch(e) {}
+
+    // 3. Intentamos borrar historial
     try {
       await c.env.DB.prepare('DELETE FROM content_history WHERE content_id = ?').bind(id).run();
-    } catch(e) { /* ignore if history table doesn't exist */ }
+      await c.env.DB.prepare('DELETE FROM content_history WHERE id = ?').bind(id).run();
+    } catch(e) {}
 
-    console.log(`[Manual Delete Success] ID: ${id}`);
-    
-    return c.json({ 
-      success: true, 
-      id, 
-      message: 'Deleted manually to bypass SonicJS D1 bug',
-      result 
+    return c.json({
+      success: true,
+      debug: 'FORCED_BYPASS_BY_ANTIGRAVITY',
+      targetId: id,
+      path: c.req.path,
+      results: { 
+        contentTable: query1, 
+        entriesTable: query2 
+      }
     });
-  } catch (error: any) {
-    console.error(`[Manual Delete Error] ${error.message}`);
-    return c.json({ success: false, error: error.message }, 500);
-  }
-};
 
-// Registramos los overrides para los endpoints comunes de borrado
-app.delete('/api/content/:id', manualDelete);
-app.delete('/api/collections/:collection/content/:id', manualDelete);
+  } catch (err: any) {
+    console.error(`[Forced Interceptor Error] ${err.message}`);
+    return c.json({
+      success: false,
+      debug: 'FORCED_BYPASS_FAILED',
+      error: err.message,
+      stack: err.stack,
+      idAttempted: id,
+      path: c.req.path
+    }, 500);
+  }
+});
 
 export default app
