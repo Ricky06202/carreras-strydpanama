@@ -9,10 +9,12 @@ export const GET: APIRoute = async () => {
     const response = await api.getCollectionContent(env, 'running_teams', { limit: '500' });
     
     // Transformamos la respuesta para que el frontend reciba un array de nombres
-    const teams = (response?.data || []).map((item: any) => ({
-      id: item.id,
-      name: item.data?.title || item.title || 'Equipo sin nombre'
-    }));
+    const teams = (response?.data || [])
+      .filter((item: any) => item.status === 'published')
+      .map((item: any) => ({
+        id: item.id,
+        name: item.data?.title || item.title || 'Equipo sin nombre'
+      }));
 
     return new Response(JSON.stringify({ teams }), {
       status: 200,
