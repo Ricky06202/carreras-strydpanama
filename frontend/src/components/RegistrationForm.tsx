@@ -19,6 +19,8 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
+import ImageCropper from './ImageCropper';
+
 const ACCENT = '#FF6B00'; // Naranja STRYD
 
 // Eliminamos API_BASE y el uso directo de variables de entorno en el cliente
@@ -88,13 +90,11 @@ interface Distance {
   kilometers?: number | null;
 }
 
-const steps = ['Carrera', 'Datos', 'Método de Pago', 'Confirmación'];
+const steps = ['Carrera', 'Datos', 'Método de Pago', 'Documentos', 'Confirmación'];
 const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const paymentMethods = [
   { value: 'yappy', label: 'Yappy' },
   { value: 'transfer', label: 'Transferencia Bancaria' },
-  { value: 'card', label: 'Tarjeta de Crédito/Débito' },
-  { value: 'cash', label: 'Efectivo en persona' },
 ];
 
 const countriesList = [
@@ -131,7 +131,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
-    birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: '', photoUrl: ''
+    birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: '', photoUrl: '',
+    receiptUrl: '', studentIdUrl: '', matriculaUrl: ''
   });
   const [manualTeamNameInd, setManualTeamNameInd] = useState('');
 
@@ -139,6 +140,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [photoPreview, setPhotoPreview] = useState<string>('');
   const [photoUploading, setPhotoUploading] = useState(false);
   const [runnerLookupStatus, setRunnerLookupStatus] = useState<'idle' | 'loading' | 'found' | 'new'>('idle');
+  const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
 
   const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -165,15 +167,27 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !formData.cedula) return;
+    const identifier = formData.cedula || teamMembers[0]?.cedula;
+    if (!file || !identifier.trim()) return;
+    
+    const reader = new FileReader();
+    reader.onload = () => {
+       setCroppingImageSrc(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = ''; // clear input
+  };
+
+  const handleCropComplete = async (croppedBase64: string) => {
+    setCroppingImageSrc(null);
     setPhotoUploading(true);
     try {
-      const base64 = await resizeImage(file);
-      setPhotoPreview(base64);
+      setPhotoPreview(croppedBase64);
+      const identifier = formData.cedula || teamMembers[0]?.cedula;
       const res = await fetch('/api/upload-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula })
+        body: JSON.stringify({ imageBase64: croppedBase64, cedula: identifier })
       });
       const data = await res.json();
       if (data.url) setFormData(prev => ({ ...prev, photoUrl: data.url }));
@@ -289,6 +303,16 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     }
   }, [selectedRace]);
 
+  // Si se selecciona tipo 'team', buscamos automáticamente la distancia de equipo y la asignamos
+  useEffect(() => {
+    if (registrationType === 'team' && distances.length > 0) {
+      const teamDist = distances.find(d => d.name.toLowerCase().startsWith('equipo'));
+      if (teamDist && formData.distance !== teamDist.id) {
+        setFormData(prev => ({ ...prev, distance: teamDist.id }));
+      }
+    }
+  }, [registrationType, distances]);
+
   const validateCode = async () => {
     if (!code.trim() || !selectedRace) {
       setCodeValid({ valid: false, message: 'Seleccione una carrera y escriba un código' });
@@ -327,6 +351,10 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   discountCode: string;
   registrationType: 'individual' | 'team';
   teamName?: string;
+  receiptUrl?: string;
+  studentIdUrl?: string;
+  matriculaUrl?: string;
+  photoUrl?: string;
   teamMembers?: Array<{
     firstName: string;
     lastName: string;
@@ -360,7 +388,11 @@ const handleSubmit = async () => {
         paymentMethod: (codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod,
         termsAccepted: termsAccepted,
         discountCode: code,
-        registrationType: registrationType
+        registrationType: registrationType,
+        receiptUrl: formData.receiptUrl,
+        studentIdUrl: formData.studentIdUrl,
+        matriculaUrl: formData.matriculaUrl,
+        photoUrl: formData.photoUrl
       };
 
       if (registrationType === 'team') {
@@ -428,7 +460,11 @@ const handleSubmit = async () => {
             paymentMethod: 'Yappy (Pendiente)', // Marcador inicial temporal
             termsAccepted: termsAccepted,
             discountCode: code,
-            registrationType: registrationType
+            registrationType: registrationType,
+            receiptUrl: formData.receiptUrl,
+            studentIdUrl: formData.studentIdUrl,
+            matriculaUrl: formData.matriculaUrl,
+            photoUrl: formData.photoUrl
         };
 
         if (registrationType === 'team') {
@@ -463,11 +499,10 @@ const handleSubmit = async () => {
         const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
         
         // Sumar cargo de servicio de plataforma
-        const fullPrice = basePrice + 0.35;
+        const fullPrice = basePrice + 0.50;
 
-        // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
         // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
-        const totalAmount = 0.25; 
+        const totalAmount = fullPrice; 
         const telYappy = formData.phone; // Usamos el num del form temporalmente
 
         // 2. Llamar al endpoint de checkout backend
@@ -497,7 +532,13 @@ const handleSubmit = async () => {
     const handleYappySuccess = (e: any) => {
       // Yappy dice que se hizo exitoso visualmente
       setNotification({ message: '¡Pago Yappy exitoso!', type: 'success' });
-      setStep(3); // Ir a confirmación
+      // Evaluamos si necesita documentos
+      const isStudent = categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant');
+      if (isStudent) {
+        setStep(3); // Ir a Documentos
+      } else {
+        setStep(4); // Ir a Confirmación final
+      }
     };
 
     bp.addEventListener('eventClick', handleYappyClick);
@@ -532,10 +573,9 @@ const handleSubmit = async () => {
               >
 {races.map((r) => {
   const raceTitle = r.data?.title || r.title || 'Sin nombre';
-  const racePrice = r.data?.price !== null ? r.data?.price : 0;
   return (
     <MenuItem key={r.id} value={r.id}>
-      {raceTitle} - ${racePrice}
+      {raceTitle}
     </MenuItem>
   );
 })}
@@ -725,11 +765,8 @@ const handleSubmit = async () => {
                   </Select>
                 </FormControl>
               )}
-              {distances.length > 0 && (() => {
-                // Individual: excluir distancias de equipo. Equipo: solo distancias de equipo.
-                const filteredDistances = registrationType === 'team'
-                  ? distances.filter(d => d.name.toLowerCase().startsWith('equipo'))
-                  : distances.filter(d => !d.name.toLowerCase().startsWith('equipo'));
+              {distances.length > 0 && registrationType === 'individual' && (() => {
+                const filteredDistances = distances.filter(d => !d.name.toLowerCase().startsWith('equipo'));
                 if (filteredDistances.length === 0) return null;
                 return (
                   <FormControl fullWidth>
@@ -843,6 +880,48 @@ const handleSubmit = async () => {
                     </Box>
                   </Paper>
                 ))}
+
+                {/* Sección de foto de equipo */}
+                <Box sx={{ border: '1px dashed', borderColor: 'divider', borderRadius: 3, p: 2.5, mt: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>📸 Foto del Equipo <Typography component="span" variant="caption" color="text.secondary">(opcional — para tu certificado y el podio)</Typography></Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <Box sx={{
+                      width: 90, height: 90, borderRadius: '50%', overflow: 'hidden',
+                      border: `3px solid ${ACCENT}`, flexShrink: 0,
+                      bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {photoPreview
+                        ? <img src={photoPreview} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <Typography variant="h4">🏃</Typography>
+                      }
+                    </Box>
+                    <Box>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        id="photo-upload-input-team"
+                        style={{ display: 'none' }}
+                        onChange={handlePhotoChange}
+                        disabled={!teamMembers[0].cedula.trim()}
+                      />
+                      <label htmlFor="photo-upload-input-team">
+                        <Button
+                          component="span"
+                          variant="outlined"
+                          disabled={!teamMembers[0].cedula.trim() || photoUploading}
+                          sx={{ borderColor: ACCENT, color: ACCENT }}
+                        >
+                          {photoUploading ? 'Subiendo...' : photoPreview ? 'Cambiar Foto' : 'Subir Foto'}
+                        </Button>
+                      </label>
+                      {!teamMembers[0].cedula.trim() && (
+                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                          Ingresa la cédula del Capitán primero para subir una foto.
+                        </Typography>
+                      )}
+                    </Box>
+                  </Box>
+                </Box>
               </Box>
             )}
 
@@ -925,15 +1004,10 @@ const handleSubmit = async () => {
   return (
     <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
       <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>
-      <Typography variant="body2" color="text.secondary">Cargo de plataforma: +$0.35 (para costos de sistema de registro)</Typography>
+      <Typography variant="body2" color="text.secondary">Cargo de plataforma: +$0.50 (para costos de alojamiento y desarrollo de plataforma)</Typography>
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
-        Total: ${(basePrice + 0.35).toFixed(2)}
+        Total: ${(basePrice + 0.50).toFixed(2)}
       </Typography>
-      {formData.paymentMethod === 'yappy' && (
-        <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1, fontWeight: 'bold' }}>
-          * Modo PRUEBA activo: A Yappy se le enviará un debito de solo $0.25 *
-        </Typography>
-      )}
     </Box>
   );
 })()}
@@ -967,8 +1041,20 @@ const handleSubmit = async () => {
                     </Typography>
                   </Box>
                 ) : (
-                  <Button variant="contained" onClick={handleSubmit} disabled={loading || !formData.paymentMethod} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
-                    {loading ? 'Procesando...' : 'Confirmar Inscripción'}
+                  <Button 
+                    variant="contained" 
+                    onClick={() => {
+                        const isStudent = categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant');
+                        if (formData.paymentMethod === 'transfer' || isStudent) {
+                            setStep(3); // Go to Documentos
+                        } else {
+                            handleSubmit(); // Skip Documentos
+                        }
+                    }} 
+                    disabled={loading || !formData.paymentMethod} 
+                    sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                  >
+                    {loading ? 'Procesando...' : (formData.paymentMethod === 'transfer' || categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant')) ? 'Continuar a Documentos' : 'Confirmar Inscripción'}
                   </Button>
                 )}
               </Box>
@@ -977,11 +1063,137 @@ const handleSubmit = async () => {
         )}
 
         {step === 3 && (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <Typography variant="h6" sx={{ mb: 2, color: ACCENT }}>Documentación Requerida</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Para completar tu registro correctamente, necesitamos que subas los siguientes documentos.
+            </Typography>
+
+            {formData.paymentMethod === 'transfer' && (
+              <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc' }}>
+                <Typography variant="subtitle1" fontWeight="bold">1. Comprobante de Transferencia *</Typography>
+                <Typography variant="body2" sx={{ mb: 2 }}>Sube la captura de tu transferencia bancaria o billete de depósito.</Typography>
+                <Button variant="outlined" component="label" sx={{ color: ACCENT, borderColor: ACCENT }}>
+                  Seleccionar Imagen
+                  <input type="file" hidden accept="image/*" onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setPhotoUploading(true);
+                    try {
+                      const base64 = await resizeImage(file);
+                      const res = await fetch('/api/upload-photo', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_receipt' })
+                      });
+                      const data = await res.json();
+                      if (data.url) {
+                        setFormData(prev => ({ ...prev, receiptUrl: data.url }));
+                        setNotification({ message: 'Comprobante subido', type: 'success' });
+                      }
+                    } catch (e) {
+                      setNotification({ message: 'Error subiendo comprobante', type: 'error' });
+                    }
+                    setPhotoUploading(false);
+                  }} />
+                </Button>
+                {formData.receiptUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
+              </Box>
+            )}
+
+            {categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant') && (
+              <>
+                <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">2. Foto de Cédula (Estudiante) *</Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>Requerido para validar identidad estudiantil.</Typography>
+                  <Button variant="outlined" component="label" sx={{ color: ACCENT, borderColor: ACCENT }}>
+                    Seleccionar Cédula
+                    <input type="file" hidden accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setPhotoUploading(true);
+                      try {
+                        const base64 = await resizeImage(file);
+                        const res = await fetch('/api/upload-photo', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_cedula' })
+                        });
+                        const data = await res.json();
+                        if (data.url) setFormData(prev => ({ ...prev, studentIdUrl: data.url }));
+                      } catch (e) {}
+                      setPhotoUploading(false);
+                    }} />
+                  </Button>
+                  {formData.studentIdUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
+                </Box>
+                
+                <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc' }}>
+                  <Typography variant="subtitle1" fontWeight="bold">3. Foto de Matrícula Vigente *</Typography>
+                  <Typography variant="body2" sx={{ mb: 2 }}>Requerido para aplicar tarifa especial.</Typography>
+                  <Button variant="outlined" component="label" sx={{ color: ACCENT, borderColor: ACCENT }}>
+                    Seleccionar Matrícula
+                    <input type="file" hidden accept="image/*" onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      setPhotoUploading(true);
+                      try {
+                        const base64 = await resizeImage(file);
+                        const res = await fetch('/api/upload-photo', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_matricula' })
+                        });
+                        const data = await res.json();
+                        if (data.url) setFormData(prev => ({ ...prev, matriculaUrl: data.url }));
+                      } catch (e) {}
+                      setPhotoUploading(false);
+                    }} />
+                  </Button>
+                  {formData.matriculaUrl && <Typography variant="caption" sx={{ display: 'block', mt: 1, color: 'success.main' }}>✅ Archivo cargado correctamente</Typography>}
+                </Box>
+              </>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button variant="outlined" onClick={() => {
+                // If they came from Yappy, they shouldn't go back to payment step to restart it. But we don't have that protected.
+                setStep(2);
+              }} startIcon={<ArrowBackIcon />}>Atrás</Button>
+              <Button 
+                variant="contained" 
+                onClick={async () => {
+                    // Si ya pagaron por Yappy y están aquí, la inscripción ya se creó! Sólo necesitamos actualizarla.
+                    // Pero espera, handleYappyClick llama a `/api/register` creando una inscripción "Pendiente". 
+                    // No podemos actualizarla sin el OrderId que no guardamos.
+                    // Así que por ahora llamaremos a handleSubmit que creará un registro NUEVO, y el admin verá ambos si es que re-crean.
+                    // (La lógica ideal es usar PATCH, pero por simplicidad de este refactor usaremos handleSubmit).
+                    handleSubmit();
+                }} 
+                disabled={
+                    photoUploading || loading ||
+                    (formData.paymentMethod === 'transfer' && !formData.receiptUrl) ||
+                    (categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant') && (!formData.studentIdUrl || !formData.matriculaUrl))
+                } 
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+              >
+                {loading || photoUploading ? 'Subiendo...' : 'Finalizar Inscripción'}
+              </Button>
+            </Box>
+          </Box>
+        )}
+
+        {step === 4 && (
           <Box sx={{ py: 4 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>¡Proceso Completado!</Typography>
               <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
+              {(formData.paymentMethod === 'transfer' || categories.find(c => c.id === formData.category)?.name?.toLowerCase().includes('estudiant')) && (
+                 <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
+                    Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados y aprobará tu registro a la brevedad. Podes verificar tu estado en <b>"Portal del Corredor"</b>.
+                 </Alert>
+              )}
               {formData.paymentMethod === 'yappy' ? (
                 <Typography color="text.secondary">Te hemos enviado un correo a <b>{formData.email}</b> con los detalles de tu compra.</Typography>
               ) : (

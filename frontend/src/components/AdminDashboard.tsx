@@ -306,7 +306,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   useEffect(() => {
-    if (tabIndex === 2) loadAllDistances();
+    if (tabIndex === 2 || tabIndex === 3) loadAllDistances();
   }, [tabIndex]);
 
   useEffect(() => {
@@ -424,9 +424,12 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
 
   useEffect(() => {
     if (tabIndex === 3) {
+      if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
   }, [tabIndex, participantRaceFilter]);
+
+  const [selectedParticipant, setSelectedParticipant] = useState<any>(null);
 
   const confirmPayment = async (participantId: string) => {
     if (!confirm('¿Estás seguro de marcar este pago como confirmado?')) return;
@@ -1186,7 +1189,10 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                       const isConfirmed = p.paymentStatus === 'Confirmado';
                       
                       return (
-                        <TableRow key={p.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                        <TableRow key={p.id} hover sx={{ cursor: 'pointer', '&:last-child td, &:last-child th': { border: 0 } }} onClick={(e) => {
+                            if ((e.target as HTMLElement).closest('button')) return; // Avoid opening if clicking confirm button
+                            setSelectedParticipant(p);
+                        }}>
                           <TableCell sx={{ minWidth: 150 }}>
                             {!isConfirmed ? (
                               <Button
@@ -1226,7 +1232,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                               {race?.data?.title || race?.title || 'Carrera ID: ' + p.race}
                             </Typography>
                             <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-                              {p.distance}
+                              {allDistances.find(d => d.id === p.distance)?.name || p.distance || '---'}
                             </Typography>
                           </TableCell>
                           <TableCell>
@@ -1245,6 +1251,93 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
               </TableBody>
             </Table>
           </TableContainer>
+
+          <Dialog open={!!selectedParticipant} onClose={() => setSelectedParticipant(null)} maxWidth="sm" fullWidth>
+            {selectedParticipant && (
+              <>
+                <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  Ficha de Corredor
+                  <Chip size="small" label={`Dorsal #${selectedParticipant.bibNumber || '---'}`} sx={{ bgcolor: ACCENT, color: 'white', fontWeight: 'bold' }} />
+                </DialogTitle>
+                <DialogContent dividers>
+                  <Box sx={{ display: 'flex', gap: 3, alignItems: 'flex-start' }}>
+                    {/* Foto de Perfil */}
+                    <Box sx={{ flexShrink: 0, textAlign: 'center' }}>
+                        {selectedParticipant.photoUrl ? (
+                            <img src={selectedParticipant.photoUrl} alt="Foto de perfil" style={{ width: 120, height: 120, objectFit: 'cover', borderRadius: '50%', border: `3px solid ${ACCENT}` }} />
+                        ) : (
+                            <Box sx={{ width: 120, height: 120, borderRadius: '50%', bgcolor: 'action.hover', border: `3px dashed #ccc`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Typography variant="caption" color="text.secondary">Sin foto</Typography>
+                            </Box>
+                        )}
+                    </Box>
+                    
+                    {/* Datos Principales */}
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <Typography variant="h6" sx={{ lineHeight: 1 }}>{selectedParticipant.title}</Typography>
+                        <Typography variant="body2" color="text.secondary">{selectedParticipant.email} | {selectedParticipant.phone}</Typography>
+                        <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Cédula</Typography>
+                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.cedula}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Nacimiento</Typography>
+                                <Typography variant="body2">{selectedParticipant.birthDate}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Distancia</Typography>
+                                <Typography variant="body2" color={ACCENT} fontWeight="bold">{allDistances.find(d => d.id === selectedParticipant.distance)?.name || selectedParticipant.distance}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Talla</Typography>
+                                <Typography variant="body2">{selectedParticipant.size || 'N/A'}</Typography>
+                            </Box>
+                        </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Documentos */}
+                  <Box sx={{ mt: 4 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 2, borderBottom: 1, borderColor: 'divider', pb: 1 }}>Documentos Adjuntos</Typography>
+                      {(!selectedParticipant.receiptUrl && !selectedParticipant.studentIdUrl && !selectedParticipant.matriculaUrl) ? (
+                          <Typography variant="body2" color="text.secondary">No hay documentos adjuntos a esta inscripción.</Typography>
+                      ) : (
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {selectedParticipant.receiptUrl && (
+                                  <Box>
+                                      <Typography variant="caption" fontWeight="bold">Comprobante de Pago:</Typography>
+                                      <img src={selectedParticipant.receiptUrl} alt="Comprobante" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                  </Box>
+                              )}
+                              {selectedParticipant.studentIdUrl && (
+                                  <Box>
+                                      <Typography variant="caption" fontWeight="bold">Foto Cédula (Estudiante):</Typography>
+                                      <img src={selectedParticipant.studentIdUrl} alt="Cédula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                  </Box>
+                              )}
+                              {selectedParticipant.matriculaUrl && (
+                                  <Box>
+                                      <Typography variant="caption" fontWeight="bold">Foto Matrícula (Estudiante):</Typography>
+                                      <img src={selectedParticipant.matriculaUrl} alt="Matrícula" style={{ maxWidth: '100%', borderRadius: 8, marginTop: 4, border: '1px solid #ccc' }} />
+                                  </Box>
+                              )}
+                          </Box>
+                      )}
+                  </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                  <Button onClick={() => setSelectedParticipant(null)} color="inherit">Cerrar Ficha</Button>
+                  {selectedParticipant.paymentStatus !== 'Confirmado' && (
+                      <Button variant="contained" onClick={() => {
+                          confirmPayment(selectedParticipant.id);
+                          setSelectedParticipant(null);
+                      }} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>Aprobar Inscripción</Button>
+                  )}
+                </DialogActions>
+              </>
+            )}
+          </Dialog>
         </Box>
       )}
     </Container>
