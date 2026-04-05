@@ -102,7 +102,9 @@ export class YappyAPI {
     const data = await response.json();
     
     // Mostramos la data completa en el log si Yappy nos bloquea
-    if (!response.ok || !data.transactionId) {
+    const hasTransaction = data.transactionId || (data.body && data.body.transactionId);
+
+    if (!response.ok || !hasTransaction) {
       const errorDetails = JSON.stringify(data);
       throw new Error(`Yappy Payment Error. Status: ${response.status}. Response: ${errorDetails}. Token sent: ${token.substring(0, 10)}... Payload: ${payloadStr}`);
     }
