@@ -28,17 +28,14 @@ export class YappyAPI {
   static async getMerchantToken(env: any): Promise<string> {
     const merchantId = env.YAPPY_MERCHANT_ID;
     const secret = env.YAPPY_SECRET_KEY;
-    const rawDomain = env.YAPPY_URL_DOMAIN;
+    const urlDomain = env.YAPPY_URL_DOMAIN; // Usar exacto como viene (ej: https://...)
 
-    if (!merchantId || !rawDomain || !secret) {
+    if (!merchantId || !urlDomain || !secret) {
       throw new Error('Faltan variables de entorno de Yappy (MERCHANT_ID, URL_DOMAIN, SECRET_KEY)');
     }
 
-    // Limpiar el dominio para la validación (quitar protocolos)
-    const cleanDomain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    
-    // Enviamos urlDomain (y domain por si acaso) con el host limpio
-    const payloadObj = { merchantId, urlDomain: cleanDomain, domain: cleanDomain };
+    // El manual indica que el dominio debe coincidir con lo registrado
+    const payloadObj = { merchantId, urlDomain };
     const payloadStr = JSON.stringify(payloadObj);
     const signature = await this.sign(payloadStr, secret);
 
@@ -46,7 +43,8 @@ export class YappyAPI {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json',
-        'X-Yappy-Signature': signature
+        'X-Yappy-Signature': signature,
+        'X-Merchant-Id': merchantId
       },
       body: payloadStr
     });
