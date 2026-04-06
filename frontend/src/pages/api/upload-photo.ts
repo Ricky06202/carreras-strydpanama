@@ -58,8 +58,15 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error(`SonicJS media upload failed: ${uploadRes.status} — ${errText}`);
     }
 
-    // Now simply return the relative path as recommended
-    const relativePath = `/uploads/${filename}`;
+    const uploadData = await uploadRes.json();
+    // SonicJS devuelve la ruta final en data.file (ej: "uploads/hash.jpg")
+    const serverPath = uploadData?.data?.file;
+    
+    // Si el servidor devolvió una ruta, la usamos (asegurando el slash inicial)
+    // De lo contrario, cae al fallback del nombre original
+    const relativePath = serverPath 
+      ? (serverPath.startsWith('/') ? serverPath : `/${serverPath}`)
+      : `/uploads/${filename}`;
 
     return new Response(JSON.stringify({ success: true, url: relativePath }), {
       status: 200,
