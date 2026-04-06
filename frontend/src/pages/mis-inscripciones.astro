@@ -166,7 +166,7 @@ import Layout from '../layouts/Layout.astro';
   // ── Render Results ──────────────────────────────────
   function ensureAbsolute(url) {
     if (!url) return '';
-    if (url.startsWith('http')) return url;
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
     return `${SONIC}${url.startsWith('/') ? '' : '/'}${url}`;
   }
 

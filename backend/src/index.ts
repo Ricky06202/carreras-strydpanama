@@ -40,5 +40,32 @@ const config: SonicJSConfig = {
   }
 }
 
-// Create and export the application
-export default createSonicJSApp(config)
+// Create the application
+const app = createSonicJSApp(config)
+
+// Implementar una ruta proxy para servir imágenes desde R2 bajo el prefijo /uploads/
+// Esto permite que tanto el Admin Panel como el frontend carguen fotos vía la API
+app.get('/uploads/:filename', async (c) => {
+  const filename = c.req.param('filename');
+  
+  // Usamos el binding MEDIA_BUCKET definido en wrangler.jsonc
+  // @ts-ignore
+  const object = await c.env.MEDIA_BUCKET.get(`uploads/${filename}`);
+
+  if (object === null) {
+    return c.notFound();
+  }
+
+  const headers = new Headers();
+  object.writeHttpMetadata(headers);
+  headers.set('etag', object.httpEtag);
+  // Cachear agresivamente en el borde de Cloudflare
+  headers.set('Cache-Control', 'public, max-age=31536000');
+
+  return new Response(object.body, {
+    headers,
+  });
+});
+
+// Export the application
+export default app

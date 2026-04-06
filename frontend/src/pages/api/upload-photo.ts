@@ -58,11 +58,10 @@ export const POST: APIRoute = async ({ request }) => {
       throw new Error(`SonicJS media upload failed: ${uploadRes.status} — ${errText}`);
     }
 
-    const uploadData = await uploadRes.json();
+    // Now simply return the relative path as recommended
+    const relativePath = `/uploads/${filename}`;
 
-    const publicUrl = uploadData?.file?.publicUrl || uploadData?.data?.url || uploadData?.url || `${sonicUrl}/files/uploads/${filename}`;
-
-    return new Response(JSON.stringify({ success: true, url: publicUrl }), {
+    return new Response(JSON.stringify({ success: true, url: relativePath }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });

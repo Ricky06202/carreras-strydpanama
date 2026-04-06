@@ -22,6 +22,13 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ImageCropper from './ImageCropper';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD
+const SONIC_URL = 'https://api.carreras.strydpanama.com';
+
+const ensureAbsolute = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `${SONIC_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 // Eliminamos API_BASE y el uso directo de variables de entorno en el cliente
 // Las peticiones se harán a las rutas de API locales de Astro
@@ -740,7 +747,7 @@ const handleSubmit = async () => {
                       bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'
                     }}>
                       {photoPreview
-                        ? <img src={photoPreview} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ? <img src={ensureAbsolute(photoPreview)} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         : <Typography variant="h4">🏃</Typography>
                       }
                     </Box>
