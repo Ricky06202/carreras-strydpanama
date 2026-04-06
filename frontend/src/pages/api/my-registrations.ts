@@ -40,6 +40,7 @@ export const GET: APIRoute = async ({ request }) => {
     const raceIds = [...new Set(mine.map((p: any) => p.data?.race).filter(Boolean))];
     const raceMap: Record<string, any> = {};
     const distMap: Record<string, string> = {};
+    const catMap: Record<string, string> = {};
 
     await Promise.allSettled(raceIds.map(async (raceId: any) => {
       try {
@@ -56,6 +57,14 @@ export const GET: APIRoute = async ({ request }) => {
       }
     } catch {}
 
+    // Fetch all categories to map IDs to names
+    try {
+      const catsRes = await apiFetch('/api/collections/categories/content?limit=500', env, { method: 'GET' });
+      for (const c of (catsRes?.data || [])) {
+        catMap[c.id] = c.data?.title || c.title || '';
+      }
+    } catch {}
+
     const registrations = mine.map((p: any) => {
       // Generate short confirmation code from participant ID (first 8 hex chars, uppercase)
       const rawId = (p.id || '').replace(/-/g, '');
@@ -65,6 +74,10 @@ export const GET: APIRoute = async ({ request }) => {
       const distanceId = p.data?.distance || '';
       const distanceName = p.data?.distanceName || distMap[distanceId] || '';
 
+      // Resolve category name
+      const categoryId = p.data?.categoryId || p.data?.category || '';
+      const categoryName = p.data?.categoryName || catMap[categoryId] || '';
+
       return {
         id: p.id,
         confirmationCode,
@@ -72,6 +85,7 @@ export const GET: APIRoute = async ({ request }) => {
         firstName: p.data?.firstName,
         lastName: p.data?.lastName,
         distance: distanceName,
+        categoryName,
         paymentStatus: p.data?.paymentStatus || 'pending',
         photoUrl: p.data?.photoUrl || '',
         studentIdUrl: p.data?.studentIdUrl || '',

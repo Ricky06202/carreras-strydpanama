@@ -1339,7 +1339,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 <TableRow sx={{ bgcolor: 'black' }}>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Dorsal</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Participante</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Participante / Categoría</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Equipo</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Carrera / Distancia</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Pago</TableCell>
@@ -1414,6 +1414,9 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                           </TableCell>
                           <TableCell>
                             <Typography sx={{ fontWeight: 'bold' }}>{p.title}</Typography>
+                            <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold', display: 'block' }}>
+                              🏷️ {allCategories.find(c => c.id === p.categoryId || c.id === p.category)?.name || allCategories.find(c => c.id === p.categoryId || c.id === p.category)?.title || 'Sin categoría'}
+                            </Typography>
                             <Typography variant="caption" color="text.secondary">{p.email}</Typography>
                           </TableCell>
                           <TableCell>
@@ -1477,9 +1480,13 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Nacimiento</Typography>
                                 <Typography variant="body2">{selectedParticipant.birthDate}</Typography>
                             </Box>
-                            <Box>
+                              <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Distancia</Typography>
                                 <Typography variant="body2" color={ACCENT} fontWeight="bold">{allDistances.find(d => d.id === selectedParticipant.distance)?.name || selectedParticipant.distance}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Categoría</Typography>
+                                <Typography variant="body2" color={ACCENT} fontWeight="bold">{allCategories.find(c => c.id === selectedParticipant.categoryId || c.id === selectedParticipant.category)?.name || allCategories.find(c => c.id === selectedParticipant.categoryId || c.id === selectedParticipant.category)?.title || 'General'}</Typography>
                             </Box>
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Talla</Typography>
