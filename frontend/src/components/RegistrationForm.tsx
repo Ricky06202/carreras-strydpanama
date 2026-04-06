@@ -13,7 +13,7 @@ declare global {
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
   Box, Typography, Stepper, Step, StepLabel, Alert, Paper, Snackbar,
-  ThemeProvider, createTheme, CssBaseline, Autocomplete
+  ThemeProvider, createTheme, CssBaseline, Autocomplete, Grid
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -1199,6 +1199,8 @@ const handleSubmit = async () => {
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
 <Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.data?.title || races.find(r => r.id === selectedRace)?.title || '-'}</Typography>
 <Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
+<Typography variant="body2">Distancia: {distances.find(d => d.id === formData.distance)?.name || formData.distance || '-'}</Typography>
+<Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>Categoría: {categories.find(c => c.id === formData.category)?.name || 'Asignando...'}</Typography>
 
 {(() => {
   const selectedDistanceObj = distances.find(d => d.id === formData.distance);
@@ -1346,10 +1348,37 @@ const handleSubmit = async () => {
               <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>¡Proceso Completado!</Typography>
               <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
               {(formData.paymentMethod === 'transfer' || isStudentCategorySelected()) && (
-                 <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
+                 <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
                     Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados (pago o estatus de estudiante) y aprobará tu registro a la brevedad. Puedes verificar tu estado en <b>"Portal del Corredor"</b>.
                  </Alert>
               )}
+
+              {/* Resumen Final para el Usuario */}
+              <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 3, textAlign: 'left', border: '1px solid', borderColor: 'divider' }}>
+                <Typography variant="subtitle2" sx={{ color: ACCENT, fontWeight: 'bold', mb: 2, textTransform: 'uppercase', letterSpacing: 1 }}>Detalles de tu Registro:</Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary">Participante</Typography>
+                    <Typography variant="body2" fontWeight="bold">{formData.firstName} {formData.lastName}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary">Dorsal Reservado</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>Pendiente de asignación</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary">Distancia</Typography>
+                    <Typography variant="body2" fontWeight="bold">{distances.find(d => d.id === formData.distance)?.name || '-'}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 6 }}>
+                    <Typography variant="caption" color="text.secondary">Categoría</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{categories.find(c => c.id === formData.category)?.name || 'General'}</Typography>
+                  </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <Typography variant="caption" color="text.secondary">Código de Seguimiento</Typography>
+                    <Typography variant="body2" fontWeight="bold" sx={{ fontFamily: 'monospace' }}>{finalConfirmationCode || 'STRYD-XXXXXXXX'}</Typography>
+                  </Grid>
+                </Grid>
+              </Box>
               {formData.paymentMethod === 'yappy' ? (
                 <Typography color="text.secondary">Te hemos enviado un correo a <b>{formData.email}</b> con los detalles de tu compra.</Typography>
               ) : (
