@@ -11,6 +11,7 @@ export const sendRegistrationEmail = async (env: any, data: {
   category?: string;
   cedula?: string;
   size?: string;
+  confirmationCode?: string;
 }) => {
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -20,7 +21,7 @@ export const sendRegistrationEmail = async (env: any, data: {
 
   const resend = new Resend(resendApiKey);
 
-  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size } = data;
+  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode } = data;
 
   try {
     const response = await resend.emails.send({
@@ -55,6 +56,10 @@ export const sendRegistrationEmail = async (env: any, data: {
                 <tr>
                   <td style="padding: 8px 0; color: #777777;">Distancia:</td>
                   <td style="padding: 8px 0; color: #333333; font-weight: bold;">${distance}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Código de Confirmación:</td>
+                  <td style="padding: 8px 0; color: #FF6B00; font-weight: bold;">${confirmationCode || '-'}</td>
                 </tr>
                 ${category ? `
                 <tr>

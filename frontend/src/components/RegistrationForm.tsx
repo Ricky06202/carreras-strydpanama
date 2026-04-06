@@ -141,6 +141,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [photoUploading, setPhotoUploading] = useState(false);
   const [runnerLookupStatus, setRunnerLookupStatus] = useState<'idle' | 'loading' | 'found' | 'new'>('idle');
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
+  const [finalConfirmationCode, setFinalConfirmationCode] = useState('');
 
   const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -436,6 +437,7 @@ const handleSubmit = async () => {
       
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
+      setFinalConfirmationCode(data.confirmationCode || '');
       setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(3);
     } catch (e: any) {
@@ -505,13 +507,16 @@ const handleSubmit = async () => {
         const dataReg = await resReg.json();
         
         if (!resReg.ok) throw new Error(dataReg.message || 'Error guardando registro previo');
+        setFinalConfirmationCode(dataReg.confirmationCode || '');
 
         // SonicJS returns the item inside dataReg.data[0].id usually. Let's find it.
         // Also result spreads inside dataReg directly if it's merged.
-        let orderId = '';
-        if (dataReg.data && Array.isArray(dataReg.data) && dataReg.data[0]) orderId = dataReg.data[0].id;
-        else if (dataReg.data?.id) orderId = dataReg.data.id;
-        else orderId = dataReg.id || `TMP_${Date.now()}`;
+        let orderId = dataReg.confirmationCode;
+        if (!orderId) {
+            if (dataReg.data && Array.isArray(dataReg.data) && dataReg.data[0]) orderId = dataReg.data[0].id;
+            else if (dataReg.data?.id) orderId = dataReg.data.id;
+            else orderId = dataReg.id || `TMP_${Date.now()}`;
+        }
 
         // Precio base determinado por distancia (si aplica) o carrera
         const selectedDistanceObj = distances.find(d => d.id === formData.distance);
@@ -1274,6 +1279,10 @@ const handleSubmit = async () => {
                     <Typography variant="body1" fontWeight="bold">{formData.size}</Typography>
                   </Box>
                 )}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1, bgcolor: 'rgba(255, 107, 0, 0.05)', px: 1, my: 1, borderRadius: 1 }}>
+                  <Typography variant="body2" color="text.secondary">Código de Confirmación:</Typography>
+                  <Typography variant="body1" fontWeight="bold" sx={{ color: ACCENT }}>{finalConfirmationCode || 'STRYD-********'}</Typography>
+                </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
                   <Typography variant="body1" fontWeight="bold" sx={{ color: formData.paymentMethod === 'yappy' ? ACCENT : 'inherit' }}>

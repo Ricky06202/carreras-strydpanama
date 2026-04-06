@@ -53,6 +53,11 @@ export const POST: APIRoute = async ({ request }) => {
     // Asignar el dorsal calculado
     body.bibNumber = nextBib;
 
+    // Generar código de confirmación único: STRYD-8chars
+    const rawId = crypto.randomUUID().replace(/-/g, '');
+    const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
+    body.confirmationCode = confCode;
+
     // 3. Registrar al participante con un título único para evitar conflictos de slug
     const participantTitle = `${body.firstName} ${body.lastName} - Dorsal ${nextBib}`;
     const result = await api.registerParticipant(env, { ...body, title: participantTitle });
@@ -162,14 +167,15 @@ export const POST: APIRoute = async ({ request }) => {
         category: resolvedCategory,
         cedula: body.cedula,
         size: body.size,
-        paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy'
+        paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
+        confirmationCode: confCode
       });
       console.log(`Email sent successfully to ${body.email}`);
     } catch (mailError) {
       console.error('Failed to send confirmation email:', mailError);
     }
 
-    return new Response(JSON.stringify({ ...result, assignedBib: nextBib }), {
+    return new Response(JSON.stringify({ ...result, assignedBib: nextBib, confirmationCode: confCode }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
