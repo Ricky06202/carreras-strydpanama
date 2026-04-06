@@ -62,8 +62,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (pType !== 'general') {
         const typeMatch = allCategories.find((cat: any) => {
+            const isSameRace = cat.data?.race === body.raceId;
             const title = (cat.data?.title || cat.title || '').toLowerCase();
-            return title.includes(pType.trim());
+            return isSameRace && title.includes(pType.trim());
         });
         if (typeMatch) {
             assignedCategoryId = typeMatch.id;
@@ -86,6 +87,9 @@ export const POST: APIRoute = async ({ request }) => {
         
         const match = allCategories.find((cat: any) => {
             const c = cat.data || {};
+            // IMPORTANTE: Filtrar por carrera primero
+            if (c.race !== body.raceId) return false;
+
             const min = Number(c.minAge || 0);
             const max = Number(c.maxAge || 999);
             const catGender = (c.gender || 'ambos').toLowerCase();
