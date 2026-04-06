@@ -9,6 +9,7 @@ export const GET: APIRoute = async () => {
       .filter((item: any) => item.status === 'published')
       .map((item: any) => ({
         id: item.id,
+        name: item.data?.title || item.title || 'Sin nombre',
         title: item.data?.title || item.title || 'Sin nombre',
         race: item.data?.race || '',
         minAge: item.data?.minAge,

@@ -220,7 +220,7 @@ export const POST: APIRoute = async ({ request }) => {
         try {
           const categoriesRes = await api.getCategories(env, body.raceId);
           const catObj = (categoriesRes?.data || []).find((c: any) => c.id === body.categoryId);
-          resolvedCategory = catObj?.data?.name || catObj?.name || '';
+          resolvedCategory = catObj?.data?.title || catObj?.title || catObj?.data?.name || catObj?.name || '';
         } catch (e) {
           console.error('Failed to resolve category name for email:', e);
         }

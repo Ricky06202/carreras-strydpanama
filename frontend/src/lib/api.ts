@@ -129,8 +129,10 @@ export const api = {
     const mappedData = {
       ...data,
       race: data.raceId,
-      category: data.categoryId,
-      distance: data.distanceId,
+      category: data.categoryId || data.category,
+      categoryName: data.categoryName,
+      distance: data.distanceId || data.distance,
+      distanceName: data.distanceName,
       paymentStatus: data.paymentMethod,
     };
     return api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, mappedData);

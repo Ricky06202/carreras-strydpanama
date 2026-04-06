@@ -1415,7 +1415,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                           <TableCell>
                             <Typography sx={{ fontWeight: 'bold' }}>{p.title}</Typography>
                             <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold', display: 'block' }}>
-                              🏷️ {allCategories.find(c => c.id === p.categoryId || c.id === p.category)?.name || allCategories.find(c => c.id === p.categoryId || c.id === p.category)?.title || 'Sin categoría'}
+                              🏷️ {allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'Sin categoría'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">{p.email}</Typography>
                           </TableCell>
@@ -1484,9 +1484,13 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Distancia</Typography>
                                 <Typography variant="body2" color={ACCENT} fontWeight="bold">{allDistances.find(d => d.id === selectedParticipant.distance)?.name || selectedParticipant.distance}</Typography>
                             </Box>
-                            <Box>
+                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Categoría</Typography>
-                                <Typography variant="body2" color={ACCENT} fontWeight="bold">{allCategories.find(c => c.id === selectedParticipant.categoryId || c.id === selectedParticipant.category)?.name || allCategories.find(c => c.id === selectedParticipant.categoryId || c.id === selectedParticipant.category)?.title || 'General'}</Typography>
+                                <Typography variant="body2" color={ACCENT} fontWeight="bold">
+                                    {allCategories.find(c => c.id === (selectedParticipant.category || selectedParticipant.categoryId))?.name || 
+                                     allCategories.find(c => c.id === (selectedParticipant.category || selectedParticipant.categoryId))?.title || 
+                                     'General'}
+                                </Typography>
                             </Box>
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Talla</Typography>
