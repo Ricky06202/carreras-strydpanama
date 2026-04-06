@@ -1300,6 +1300,10 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Talla</Typography>
                                 <Typography variant="body2">{selectedParticipant.size || 'N/A'}</Typography>
                             </Box>
+                            <Box sx={{ gridColumn: '1 / -1' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Código de Confirmación</Typography>
+                                <Typography variant="body2" color={ACCENT} fontWeight="bold">{selectedParticipant.confirmationCode || 'N/A'}</Typography>
+                            </Box>
                         </Box>
                     </Box>
                   </Box>

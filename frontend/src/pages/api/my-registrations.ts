@@ -18,9 +18,16 @@ export const GET: APIRoute = async ({ request }) => {
     );
 
     const all = partsRes?.data || [];
+    const query = cedula.toLowerCase().trim();
+
     const mine = all.filter((p: any) =>
       p.status === 'published' &&
-      (p.data?.cedula || '').toLowerCase().trim() === cedula.toLowerCase()
+      (
+        (p.data?.cedula || '').toLowerCase().trim() === query ||
+        (p.data?.confirmationCode || '').toLowerCase().trim() === query ||
+        // Fallback for legacy
+        ('STRYD-' + (p.id || '').replace(/-/g, '').slice(0, 8).toUpperCase()).toLowerCase() === query
+      )
     );
 
     if (mine.length === 0) {

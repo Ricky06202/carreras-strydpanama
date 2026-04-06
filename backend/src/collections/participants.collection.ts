@@ -32,6 +32,7 @@ export default {
       receiptUrl: { type: 'string', title: 'URL Comprobante de Pago' },
       studentIdUrl: { type: 'string', title: 'URL Foto Cédula' },
       matriculaUrl: { type: 'string', title: 'URL Foto Matrícula' },
+      confirmationCode: { type: 'string', title: 'Código de Confirmación (STRYD-XXXX)' },
     },
     required: ['title', 'firstName', 'lastName', 'email'],
   },
