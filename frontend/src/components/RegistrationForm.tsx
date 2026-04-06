@@ -460,7 +460,11 @@ const handleSubmit = async () => {
       
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
-      setFinalConfirmationCode(data.confirmationCode || '');
+      
+      // Capturar el código de confirmación devuelto por el backend
+      const code = data.confirmationCode || '';
+      setFinalConfirmationCode(code);
+      
       setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(4);
     } catch (e: any) {
