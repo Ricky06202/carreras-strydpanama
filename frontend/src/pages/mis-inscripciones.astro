@@ -226,8 +226,8 @@ import Layout from '../layouts/Layout.astro';
             <span class="inline-block bg-accent text-white text-xs font-black px-2.5 py-1 rounded-lg mb-1">#${reg.bibNumber || '—'}</span>
             <div class="font-bold dark:text-white text-gray-900">${reg.firstName || ''} ${reg.lastName || ''}</div>
             ${reg.distance ? `<div class="text-sm dark:text-gray-400 text-gray-500">📏 ${reg.distance}</div>` : ''}
-            <div class="text-sm mt-1 ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? 'text-green-500' : 'text-orange-400'}">
-              ${reg.paymentStatus==='confirmed'||reg.paymentStatus==='paid' ? '✅ Inscripción confirmada' : '⏳ En espera de confirmación de pago'}
+            <div class="text-sm mt-1 ${(reg.paymentStatus||'').toLowerCase()==='confirmed'||(reg.paymentStatus||'').toLowerCase()==='paid'||(reg.paymentStatus||'').toLowerCase()==='confirmado' ? 'text-green-500' : 'text-orange-400'}">
+              ${(reg.paymentStatus||'').toLowerCase()==='confirmed'||(reg.paymentStatus||'').toLowerCase()==='paid'||(reg.paymentStatus||'').toLowerCase()==='confirmado' ? '✅ Inscripción confirmada' : '⏳ En espera de confirmación de pago'}
             </div>
             <div class="text-xs dark:text-gray-500 text-gray-400 mt-1 font-mono">Código: ${reg.confirmationCode || ''}</div>
           </div>

@@ -45,7 +45,7 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
     const uploadData = await uploadRes.json();
-    const photoUrl = uploadData?.data?.url || uploadData?.url || uploadData?.publicUrl || `${sonicUrl}/media/${filename}`;
+    const photoUrl = uploadData?.file?.publicUrl || uploadData?.data?.url || uploadData?.url || uploadData?.publicUrl || `${sonicUrl}/media/${filename}`;
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
