@@ -158,7 +158,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
     birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: '', photoUrl: '',
-    receiptUrl: '', studentIdUrl: '', matriculaUrl: ''
+    receiptUrl: '', studentIdUrl: '', matriculaUrl: '', participantType: 'general'
   });
   const [manualTeamNameInd, setManualTeamNameInd] = useState('');
 
@@ -269,6 +269,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   };
 
   const isStudentCategorySelected = () => {
+    if (formData.participantType === 'estudiante') return true;
     let name = '';
     if (formData.category) {
       const cat = categories.find(c => c.id == formData.category);
@@ -361,36 +362,50 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   // ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA (INDIVIDUAL)
   useEffect(() => {
-    if (registrationType === 'individual' && formData.birthDay && formData.birthMonth && formData.birthYear && formData.gender && categories.length > 0 && raceInfo?.data?.date) {
-      const raceDate = new Date(raceInfo.data.date);
-      const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
-      
-      let age = raceDate.getFullYear() - birthDate.getFullYear();
-      const m = raceDate.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
-        age--;
+    if (registrationType === 'individual' && categories.length > 0) {
+      // 1. PRIORIDAD: Match por Participant Type (Bypass Edad)
+      if (formData.participantType !== 'general') {
+        const typeMatch = categories.find(cat => 
+          (cat.name || '').toLowerCase().trim() === formData.participantType.toLowerCase().trim()
+        );
+        if (typeMatch && formData.category !== typeMatch.id) {
+          setFormData(prev => ({ ...prev, category: typeMatch.id }));
+          return; // Saltamos edad si hay match por tipo
+        }
       }
 
-      const runnerGender = formData.gender.toLowerCase(); // 'm' o 'f'
-      
-      const match = categories.find(cat => {
-        const min = Number(cat.minAge || 0);
-        const max = Number(cat.maxAge || 999);
-        const catGender = (cat.gender || 'ambos').toLowerCase();
-
-        const ageMatch = age >= min && age <= max;
-        const genderMatch = catGender === 'ambos' || 
-                           (catGender === 'masculino' && runnerGender === 'm') || 
-                           (catGender === 'femenino' && runnerGender === 'f');
+      // 2. FALLBACK: Match por Edad y Género
+      if (formData.birthDay && formData.birthMonth && formData.birthYear && formData.gender && raceInfo?.data?.date) {
+        const raceDate = new Date(raceInfo.data.date);
+        const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
         
-        return ageMatch && genderMatch;
-      });
+        let age = raceDate.getFullYear() - birthDate.getFullYear();
+        const m = raceDate.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
+          age--;
+        }
 
-      if (match && formData.category !== match.id) {
-        setFormData(prev => ({ ...prev, category: match.id }));
+        const runnerGender = formData.gender.toLowerCase(); 
+        
+        const match = categories.find(cat => {
+          const min = Number(cat.minAge || 0);
+          const max = Number(cat.maxAge || 999);
+          const catGender = (cat.gender || 'ambos').toLowerCase();
+
+          const ageMatch = age >= min && age <= max;
+          const genderMatch = catGender === 'ambos' || 
+                             (catGender === 'masculino' && runnerGender === 'm') || 
+                             (catGender === 'femenino' && runnerGender === 'f');
+          
+          return ageMatch && genderMatch;
+        });
+
+        if (match && formData.category !== match.id) {
+          setFormData(prev => ({ ...prev, category: match.id }));
+        }
       }
     }
-  }, [registrationType, formData.birthDay, formData.birthMonth, formData.birthYear, formData.gender, categories, raceInfo]);
+  }, [registrationType, formData.birthDay, formData.birthMonth, formData.birthYear, formData.gender, formData.participantType, categories, raceInfo]);
 
   const validateCode = async () => {
     if (!code.trim() || !selectedRace) {
@@ -731,6 +746,36 @@ const handleSubmit = async () => {
                     👋 Primera vez con nosotros. Completa tus datos — los guardaremos para tu próxima carrera.
                   </Alert>
                 )}
+
+                <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, gridColumn: '1 / -1' }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: ACCENT }}>TIPO DE PARTICIPANTE</Typography>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    {[
+                      { value: 'general', label: 'Público General' },
+                      { value: 'estudiante', label: 'Estudiante (UP/IUA)' },
+                      { value: 'docente', label: 'Docente (UP/IUA)' },
+                      { value: 'administrativo', label: 'Administrativo (UP/IUA)' }
+                    ].map((t) => (
+                      <Button
+                        key={t.value}
+                        variant={formData.participantType === t.value ? "contained" : "outlined"}
+                        onClick={() => setFormData({...formData, participantType: t.value})}
+                        size="small"
+                        sx={{ 
+                          borderRadius: 5,
+                          fontSize: '0.75rem',
+                          py: 0.5,
+                          borderColor: formData.participantType === t.value ? ACCENT : 'divider',
+                          bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
+                          color: formData.participantType === t.value ? 'white' : 'text.secondary',
+                          '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' }
+                        }}
+                      >
+                        {t.label}
+                      </Button>
+                    ))}
+                  </Box>
+                </Box>
 
                 <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required />
                 <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required />

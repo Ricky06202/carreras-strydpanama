@@ -55,7 +55,24 @@ export const POST: APIRoute = async ({ request }) => {
     let assignedCategoryId = body.categoryId;
     let resolvedCategoryName = 'General';
 
-    if (body.birthDate && raceFields.date) {
+    // PRIORIDAD: Tipo de Participante (Estudiante, Docente, Administrativo)
+    const pType = (body.participantType || 'general').toLowerCase();
+    const categoriesRes = await api.getCategories(env, body.raceId);
+    const allCategories = categoriesRes?.data || [];
+
+    if (pType !== 'general') {
+        const typeMatch = allCategories.find((cat: any) => 
+            (cat.data?.title || cat.title || '').toLowerCase().trim() === pType.trim()
+        );
+        if (typeMatch) {
+            assignedCategoryId = typeMatch.id;
+            resolvedCategoryName = typeMatch.data?.title || typeMatch.title;
+            console.log(`Category Assigned by Type (${pType}): ${resolvedCategoryName}`);
+        }
+    }
+
+    // Si no se asignó por tipo, procedemos por EDAD
+    if (!assignedCategoryId && body.birthDate && raceFields.date) {
         const raceDate = new Date(raceFields.date);
         const birthDate = new Date(body.birthDate);
         let age = raceDate.getFullYear() - birthDate.getFullYear();
@@ -66,10 +83,6 @@ export const POST: APIRoute = async ({ request }) => {
 
         console.log(`Calculated Age: ${age} for runner born ${body.birthDate} on race date ${raceFields.date}`);
 
-        // Obtener todas las categorías de esta carrera
-        const categoriesRes = await api.getCategories(env, body.raceId);
-        const allCategories = categoriesRes?.data || [];
-        
         // Mapear género del corredor (M/F) a los términos de la categoría
         const runnerGender = (body.gender || 'M').toLowerCase();
         
@@ -90,7 +103,7 @@ export const POST: APIRoute = async ({ request }) => {
         if (match) {
             assignedCategoryId = match.id;
             resolvedCategoryName = match.data?.title || match.title;
-            console.log(`Category Auto-Assigned: ${resolvedCategoryName} (${match.id})`);
+            console.log(`Category Auto-Assigned by Age: ${resolvedCategoryName} (${match.id})`);
         } else {
             console.warn(`No category match found for age ${age} and gender ${runnerGender}`);
         }
