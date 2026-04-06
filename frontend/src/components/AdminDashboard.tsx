@@ -18,12 +18,28 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 const ACCENT = '#FF6B00';
-const SONIC_URL = 'https://api.carreras.strydpanama.com';
+const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 
 const ensureAbsolute = (url: string) => {
   if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('data:')) return url;
-  return `${SONIC_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  if (url.startsWith('data:')) return url;
+  
+  // Si ya es de R2 corregido, no tocar
+  if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
+
+  // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
+  if (url.includes('/uploads/')) {
+    const parts = url.split('/uploads/');
+    return `${R2_BASE}/uploads/${parts[parts.length - 1]}`;
+  }
+
+  // Si es ruta relativa pura
+  if (url.startsWith('/')) return `${R2_BASE}${url}`;
+  
+  // Si no tiene protocolo, asumir que es path relativo
+  if (!url.startsWith('http')) return `${R2_BASE}/${url}`;
+
+  return url;
 };
 
 interface Race {
