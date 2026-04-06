@@ -10,14 +10,22 @@ export default {
   schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', title: 'Nombre', required: true },
-      race: { type: 'string', title: 'Carrera' },
+      title: { type: 'string', title: 'Nombre de la Categoría', required: true },
+      race: { type: 'string', title: 'Carrera (ID)' },
       description: { type: 'textarea', title: 'Descripción' },
+      minAge: { type: 'number', title: 'Edad Mínima', required: true },
+      maxAge: { type: 'number', title: 'Edad Máxima', required: true },
+      gender: { 
+        type: 'select', 
+        title: 'Género', 
+        enum: ['masculino', 'femenino', 'ambos'],
+        required: true 
+      },
     },
-    required: ['title'],
+    required: ['title', 'minAge', 'maxAge', 'gender'],
   },
 
-  listFields: ['title', 'race'],
+  listFields: ['title', 'race', 'minAge', 'maxAge', 'gender'],
   searchFields: ['title', 'description'],
 
   managed: true,
