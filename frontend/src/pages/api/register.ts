@@ -61,9 +61,10 @@ export const POST: APIRoute = async ({ request }) => {
     const allCategories = categoriesRes?.data || [];
 
     if (pType !== 'general') {
-        const typeMatch = allCategories.find((cat: any) => 
-            (cat.data?.title || cat.title || '').toLowerCase().trim() === pType.trim()
-        );
+        const typeMatch = allCategories.find((cat: any) => {
+            const title = (cat.data?.title || cat.title || '').toLowerCase();
+            return title.includes(pType.trim());
+        });
         if (typeMatch) {
             assignedCategoryId = typeMatch.id;
             resolvedCategoryName = typeMatch.data?.title || typeMatch.title;
@@ -81,9 +82,6 @@ export const POST: APIRoute = async ({ request }) => {
             age--;
         }
 
-        console.log(`Calculated Age: ${age} for runner born ${body.birthDate} on race date ${raceFields.date}`);
-
-        // Mapear género del corredor (M/F) a los términos de la categoría
         const runnerGender = (body.gender || 'M').toLowerCase();
         
         const match = allCategories.find((cat: any) => {
@@ -103,16 +101,14 @@ export const POST: APIRoute = async ({ request }) => {
         if (match) {
             assignedCategoryId = match.id;
             resolvedCategoryName = match.data?.title || match.title;
-            console.log(`Category Auto-Assigned by Age: ${resolvedCategoryName} (${match.id})`);
-        } else {
-            console.warn(`No category match found for age ${age} and gender ${runnerGender}`);
         }
     }
 
     // Asignar el dorsal y la categoría calculada
     body.bibNumber = nextBib;
     body.categoryId = assignedCategoryId;
-    body.category = assignedCategoryId; // Compatibilidad con lib/api mapping
+    body.category = assignedCategoryId;
+    body.categoryName = resolvedCategoryName; // Guardamos el nombre para que sea persistente
 
     // Generar código de confirmación único: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');

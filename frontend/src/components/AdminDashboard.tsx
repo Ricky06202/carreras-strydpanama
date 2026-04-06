@@ -1415,7 +1415,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                           <TableCell>
                             <Typography sx={{ fontWeight: 'bold' }}>{p.title}</Typography>
                             <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold', display: 'block' }}>
-                              🏷️ {allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'Sin categoría'}
+                              🏷️ {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'Sin categoría'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">{p.email}</Typography>
                           </TableCell>
@@ -1487,7 +1487,8 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                              <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Categoría</Typography>
                                 <Typography variant="body2" color={ACCENT} fontWeight="bold">
-                                    {allCategories.find(c => c.id === (selectedParticipant.category || selectedParticipant.categoryId))?.name || 
+                                    {selectedParticipant.categoryName || 
+                                     allCategories.find(c => c.id === (selectedParticipant.category || selectedParticipant.categoryId))?.name || 
                                      allCategories.find(c => c.id === (selectedParticipant.category || selectedParticipant.categoryId))?.title || 
                                      'General'}
                                 </Typography>

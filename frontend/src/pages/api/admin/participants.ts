@@ -45,6 +45,7 @@ export const GET: APIRoute = async ({ request }) => {
       cedula: item.data?.cedula || '',
       race: item.data?.race || '',
       category: item.data?.category || '',
+      categoryName: item.data?.categoryName || '',
       distance: item.data?.distance || '',
       teamName: item.data?.teamName || '',
       bibNumber: item.data?.bibNumber || '',
