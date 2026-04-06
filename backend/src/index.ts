@@ -67,5 +67,53 @@ app.get('/uploads/:filename', async (c) => {
   });
 });
 
+// NUEVO: Endpoint de carga personalizado para corregir la desincronización de hashes
+app.post('/api/custom-upload', async (c) => {
+  // Manejo manual de CORS para asegurar compatibilidad total con Astro
+  c.header('Access-Control-Allow-Origin', '*');
+  c.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  if (c.req.method === 'OPTIONS') {
+    return c.body(null, 204);
+  }
+
+  try {
+    const body = await c.req.parseBody();
+    const file = body['file'];
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ success: false, error: 'No se proporcionó ningún archivo válido' }, 400);
+    }
+
+    // Generar nombre de archivo único (Hash)
+    const hash = crypto.randomUUID();
+    const ext = file.name.split('.').pop() || 'jpg';
+    const finalFilename = `${hash}.${ext}`;
+    const bucketKey = `uploads/${finalFilename}`;
+
+    // Subir físicamente a R2 usando el binding
+    // @ts-ignore
+    await c.env.MEDIA_BUCKET.put(bucketKey, await file.arrayBuffer(), {
+      httpMetadata: { contentType: file.type }
+    });
+
+    // Construir la URL pública según lo solicitado
+    const r2Base = (c.env as any).R2_PUBLIC_URL || 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
+    const fullUrl = `${r2Base.replace(/\/$/, '')}/${bucketKey}`;
+
+    return c.json({
+      success: true,
+      url: fullUrl,           // URL Funcional Completa
+      file: `/${bucketKey}`,   // Ruta relativa para la DB
+      name: finalFilename
+    });
+
+  } catch (error: any) {
+    console.error('Error in custom-upload:', error);
+    return c.json({ success: false, error: error.message }, 500);
+  }
+});
+
 // Export the application
 export default app

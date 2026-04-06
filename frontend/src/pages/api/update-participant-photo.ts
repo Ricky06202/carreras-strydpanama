@@ -42,16 +42,15 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
 
-    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
+    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
 
     const uploadData = await uploadRes.json();
-    const serverPath = uploadData?.data?.file;
+    // serverPath tendrá el valor exacto del hash (ej: "/uploads/hash.ext")
+    const serverPath = uploadData?.file;
 
-    // Use the actual path from the server (which includes the hash)
-    const relativePath = serverPath 
-      ? (serverPath.startsWith('/') ? serverPath : `/${serverPath}`)
-      : `/uploads/${filename}`;
+    // Usamos el path real del servidor que contiene el hash para guardarlo en la DB
+    const relativePath = serverPath || `/uploads/${filename}`;
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
