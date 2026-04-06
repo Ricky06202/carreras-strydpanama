@@ -60,14 +60,12 @@ export const POST: APIRoute = async ({ request }) => {
 
     const uploadData = await uploadRes.json();
 
-    let publicUrl = '';
-    if (uploadData?.url) publicUrl = uploadData.url;
-    else if (uploadData?.data?.url) publicUrl = uploadData.data.url;
-    else if (Array.isArray(uploadData) && uploadData[0]?.url) publicUrl = uploadData[0].url;
-    else if (Array.isArray(uploadData?.data) && uploadData.data[0]?.url) publicUrl = uploadData.data[0].url;
-    else if (uploadData?.data?.publicUrl) publicUrl = uploadData.data.publicUrl;
-    else if (uploadData?.data?.[0]?.file?.path) publicUrl = uploadData.data[0].file.path;
+    const publicUrl = 'DEBUG_JSON:' + JSON.stringify(uploadData);
     
+    return new Response(JSON.stringify({ success: true, url: publicUrl }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
     if (!publicUrl) {
       return new Response(JSON.stringify({ success: true, url: 'DEBUG_JSON:' + JSON.stringify(uploadData) }), {
         status: 200,
