@@ -60,18 +60,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const uploadData = await uploadRes.json();
 
-    const publicUrl = 'DEBUG_JSON:' + JSON.stringify(uploadData);
-    
-    return new Response(JSON.stringify({ success: true, url: publicUrl }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
-    if (!publicUrl) {
-      return new Response(JSON.stringify({ success: true, url: 'DEBUG_JSON:' + JSON.stringify(uploadData) }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
+    const publicUrl = uploadData?.file?.publicUrl || uploadData?.data?.url || uploadData?.url || `${sonicUrl}/files/uploads/${filename}`;
 
     return new Response(JSON.stringify({ success: true, url: publicUrl }), {
       status: 200,
