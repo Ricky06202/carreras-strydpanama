@@ -30,14 +30,14 @@
   ],
   "vars": {
     "ENVIRONMENT": "development",
-    "R2_PUBLIC_URL": "https://pub-sonicjs-media-dev.r2.dev"
+    "R2_PUBLIC_URL": "https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev"
   },
   "env": {
     "production": {
       "name": "carreras-strydpanama-cms-api-production",
       "vars": {
         "ENVIRONMENT": "production",
-        "R2_PUBLIC_URL": "https://pub-sonicjs-media-dev.r2.dev"
+        "R2_PUBLIC_URL": "https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev"
       }
     }
   },
