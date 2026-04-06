@@ -47,7 +47,7 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
 
-    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, {
+    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, {
       method: 'POST',
       headers: uploadHeaders,
       body: formData,
@@ -59,16 +59,11 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const uploadData = await uploadRes.json();
-    // SonicJS devuelve la ruta final en data.file (ej: "uploads/hash.jpg")
-    const serverPath = uploadData?.data?.file;
+    // Usamos el campo 'url' (URL completa) para la respuesta al frontend
+    // y el campo 'file' (relativo) para consistencia interna si fuera necesario
+    const finalUrl = uploadData?.url || uploadData?.data?.file;
     
-    // Si el servidor devolvió una ruta, la usamos (asegurando el slash inicial)
-    // De lo contrario, cae al fallback del nombre original
-    const relativePath = serverPath 
-      ? (serverPath.startsWith('/') ? serverPath : `/${serverPath}`)
-      : `/uploads/${filename}`;
-
-    return new Response(JSON.stringify({ success: true, url: relativePath }), {
+    return new Response(JSON.stringify({ success: true, url: finalUrl }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
