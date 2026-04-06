@@ -44,8 +44,9 @@ export const POST: APIRoute = async ({ request }) => {
 
     const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-    const uploadData = await uploadRes.json();
-    const photoUrl = uploadData?.file?.publicUrl || uploadData?.data?.url || uploadData?.url || uploadData?.publicUrl || `${sonicUrl}/media/${filename}`;
+
+    // We store the relative path in the database as per Step 3
+    const relativePath = `/uploads/${filename}`;
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
@@ -60,7 +61,7 @@ export const POST: APIRoute = async ({ request }) => {
         collection_id: part.collectionId,
         title: part.title,
         status: part.status || 'published',
-        data: { ...part.data, photoUrl }
+        data: { ...part.data, photoUrl: relativePath }
       })
     });
 
@@ -80,14 +81,14 @@ export const POST: APIRoute = async ({ request }) => {
             body: JSON.stringify({
               id: runner.id, collectionId: colId, collection_id: colId,
               title: runner.title, status: 'published',
-              data: { ...runner.data, photoUrl }
+              data: { ...runner.data, photoUrl: relativePath }
             })
           });
         }
       } catch {}
     }
 
-    return new Response(JSON.stringify({ success: true, photoUrl }), {
+    return new Response(JSON.stringify({ success: true, photoUrl: relativePath }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
