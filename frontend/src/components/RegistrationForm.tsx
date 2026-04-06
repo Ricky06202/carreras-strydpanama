@@ -439,7 +439,7 @@ const handleSubmit = async () => {
       if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
       setFinalConfirmationCode(data.confirmationCode || '');
       setNotification({ message: 'Registro exitoso', type: 'success' });
-      setStep(3);
+      setStep(4);
     } catch (e: any) {
       console.error('Registration error:', e);
       setNotification({ message: e.message || 'Error al registrar', type: 'error' });
