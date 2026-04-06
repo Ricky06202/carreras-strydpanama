@@ -6,8 +6,9 @@ import {
   Grid, Container, Chip, CircularProgress, Alert,
   TextField, List, ListItem, ListItemText,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel,
-  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment, useMediaQuery, useTheme
 } from '@mui/material';
+import MenuIcon from '@mui/icons-material/Menu';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
@@ -57,9 +58,19 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   
   // Estados para Tabs y Códigos
   const [tabIndex, setTabIndex] = useState(0);
+  
+  const TABS = [
+    { label: 'Cronometraje en Vivo', value: 0 },
+    { label: 'Gestión de Códigos', value: 1 },
+    { label: 'Configurar Modalidades', value: 2 },
+    { label: 'Configurar Categorías', value: 3 },
+    { label: 'Lista de Inscritos', value: 4 },
+  ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
   const [codeQuantity, setCodeQuantity] = useState<number | ''>('');
@@ -328,9 +339,79 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     } catch(e) { console.error(e); }
   };
 
+  // --- Gestión de Categorías (Tab 3) ---
+  const [allCategories, setAllCategories] = useState<any[]>([]);
+  const [categoryChecks, setCategoryChecks] = useState<Record<string, boolean>>({});
+  const [categorySaving, setCategorySaving] = useState(false);
+  const [categoryMsg, setCategoryMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [newCat, setNewCat] = useState({ title: '', minAge: '', maxAge: '', gender: 'ambos' });
+
+  const loadAllCategories = async () => {
+    try {
+      const res = await fetch('/api/admin/all-categories');
+      const data = await res.json();
+      if (data.success) setAllCategories(data.categories);
+    } catch(e) { console.error(e); }
+  };
+
+  const createCategory = async () => {
+    if (!newCat.title || !newCat.minAge || !newCat.maxAge || !modalRaceId) {
+      alert('Completa todos los campos y selecciona una carrera');
+      return;
+    }
+    setCategorySaving(true);
+    try {
+      const res = await fetch('/api/admin/create-category', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...newCat, raceId: modalRaceId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setNewCat({ title: '', minAge: '', maxAge: '', gender: 'ambos' });
+        await loadAllCategories();
+      } else { alert(data.error); }
+    } catch(e) { alert('Error creando categoría'); }
+    setCategorySaving(false);
+  };
+
+  const saveCategoryAssignments = async () => {
+    if (!modalRaceId) return alert('Selecciona una carrera primero');
+    setCategorySaving(true);
+    setCategoryMsg(null);
+    let ok = 0; let fail = 0;
+    for (const cat of allCategories) {
+      const shouldBelong = !!categoryChecks[cat.id];
+      const currentlyBelongs = cat.race === modalRaceId;
+      if (shouldBelong !== currentlyBelongs) {
+        try {
+          const res = await fetch('/api/admin/update-category', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ categoryId: cat.id, raceId: shouldBelong ? modalRaceId : '', collectionId: cat.collectionId })
+          });
+          const data = await res.json();
+          if (data.success) ok++; else fail++;
+        } catch(e) { fail++; }
+      }
+    }
+    await loadAllCategories();
+    setCategorySaving(false);
+    if (fail === 0) setCategoryMsg({ text: `✅ Categorías actualizadas (${ok} cambios).`, ok: true });
+    else setCategoryMsg({ text: `⚠️ ${ok} actualizadas, ${fail} fallaron.`, ok: false });
+  };
+
   useEffect(() => {
-    if (tabIndex === 2 || tabIndex === 3) loadAllDistances();
+    if (tabIndex === 2) loadAllDistances();
+    if (tabIndex === 3) loadAllCategories();
   }, [tabIndex]);
+
+  useEffect(() => {
+    if (!modalRaceId) { setCategoryChecks({}); return; }
+    const checks: Record<string, boolean> = {};
+    allCategories.forEach(c => { checks[c.id] = c.race === modalRaceId; });
+    setCategoryChecks(checks);
+  }, [modalRaceId, allCategories]);
 
   useEffect(() => {
     if (!modalRaceId) { setDistanceChecks({}); return; }
@@ -446,7 +527,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   useEffect(() => {
-    if (tabIndex === 3) {
+    if (tabIndex === 4) {
       if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
@@ -670,37 +751,58 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       {error && <Alert severity="error" sx={{ mb: 4 }}>{error}</Alert>}
 
       <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
-        <Tabs 
-          value={tabIndex} 
-          onChange={(e, v) => setTabIndex(v)} 
-          centered 
-          textColor="inherit"
-          TabIndicatorProps={{ style: { backgroundColor: ACCENT } }}
-          sx={{
-            mb: 2,
-            '& .MuiTab-root': { 
-                fontWeight: 'bold',
-                fontSize: { xs: '0.8rem', md: '1rem' },
-                opacity: 0.6,
-                transition: 'opacity 0.2s'
-            },
-            '& .Mui-selected': { 
-                color: `${ACCENT} !important`,
-                opacity: 1
-            }
-          }}
-        >
-          <Tab label="Cronometraje en Vivo" />
-          <Tab label="Gestión de Códigos Físicos" />
-          <Tab label="Configurar Modalidades" />
-          <Tab label="Lista de Inscritos" />
-        </Tabs>
+        {isMobile ? (
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)' }}>Navegación del Panel</InputLabel>
+            <Select
+              value={tabIndex}
+              label="Navegación del Panel"
+              onChange={(e) => setTabIndex(Number(e.target.value))}
+              startAdornment={<MenuIcon sx={{ mr: 1, color: ACCENT }} />}
+              sx={{
+                bgcolor: '#1a1a1a',
+                color: 'white',
+                '& .MuiOutlinedInput-notchedOutline': { borderColor: ACCENT },
+                '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#E55A00' },
+              }}
+            >
+              {TABS.map((t) => (
+                <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        ) : (
+          <Tabs 
+            value={tabIndex} 
+            onChange={(e, v) => setTabIndex(v)} 
+            centered 
+            textColor="inherit"
+            TabIndicatorProps={{ style: { backgroundColor: ACCENT } }}
+            sx={{
+              mb: 2,
+              '& .MuiTab-root': { 
+                  fontWeight: 'bold',
+                  fontSize: { xs: '0.8rem', md: '1rem' },
+                  opacity: 0.6,
+                  transition: 'opacity 0.2s'
+              },
+              '& .Mui-selected': { 
+                  color: `${ACCENT} !important`,
+                  opacity: 1
+              }
+            }}
+          >
+            {TABS.map((t) => (
+              <Tab key={t.value} label={t.label} />
+            ))}
+          </Tabs>
+        )}
       </Box>
 
       {tabIndex === 0 && (
       <Grid container spacing={3}>
         {races.map((race) => (
-          <Grid key={race.id} sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+          <Grid key={race.id} size={{ xs: 12, md: 6 }}>
             <Card sx={{ 
               borderRadius: 4, 
               bgcolor: 'background.paper',
@@ -1082,6 +1184,73 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       )}
 
       {tabIndex === 3 && (
+        <Box>
+          <Card sx={{ p: 1, mb: 4, borderRadius: 4 }}>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold' }}>Categorías por Carrera</Typography>
+              
+              <FormControl fullWidth sx={{ mb: 4 }}>
+                <InputLabel>Selecciona la Carrera</InputLabel>
+                <Select value={modalRaceId} label="Selecciona la Carrera" onChange={e => setModalRaceId(e.target.value)}>
+                  {races.map(r => <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title}</MenuItem>)}
+                </Select>
+              </FormControl>
+
+              {modalRaceId && (
+                <>
+                  <Box sx={{ p: 3, mb: 4, bgcolor: 'rgba(255, 107, 0, 0.05)', borderRadius: 3, border: '1px dashed #FF6B00' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>+ Crear Nueva Categoría Rápida</Typography>
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, md: 4 }}>
+                        <TextField fullWidth size="small" label="Nombre (ej: Máster A)" value={newCat.title} onChange={e => setNewCat({...newCat, title: e.target.value})} />
+                      </Grid>
+                      <Grid size={{ xs: 6, md: 2 }}>
+                        <TextField fullWidth size="small" type="number" label="Edad Min" value={newCat.minAge} onChange={e => setNewCat({...newCat, minAge: e.target.value})} />
+                      </Grid>
+                      <Grid size={{ xs: 6, md: 2 }}>
+                        <TextField fullWidth size="small" type="number" label="Edad Max" value={newCat.maxAge} onChange={e => setNewCat({...newCat, maxAge: e.target.value})} />
+                      </Grid>
+                      <Grid size={{ xs: 8, md: 2 }}>
+                        <Select fullWidth size="small" value={newCat.gender} onChange={e => setNewCat({...newCat, gender: e.target.value})}>
+                          <MenuItem value="masculino">Masculino</MenuItem>
+                          <MenuItem value="femenino">Femenino</MenuItem>
+                          <MenuItem value="ambos">Ambos</MenuItem>
+                        </Select>
+                      </Grid>
+                      <Grid size={{ xs: 4, md: 2 }}>
+                        <Button fullWidth variant="contained" onClick={createCategory} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>CREAR</Button>
+                      </Grid>
+                    </Grid>
+                  </Box>
+
+                  <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold' }}>Asignar Categorías Existentes:</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 2, mb: 4 }}>
+                    {allCategories.map(cat => (
+                      <Paper key={cat.id} sx={{ p: 2, borderRadius: 2, cursor: 'pointer', border: '1px solid', borderColor: categoryChecks[cat.id] ? ACCENT : 'divider' }} onClick={() => setCategoryChecks(prev => ({...prev, [cat.id]: !prev[cat.id]}))}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Checkbox checked={!!categoryChecks[cat.id]} sx={{ p: 0, '&.Mui-checked': { color: ACCENT } }} />
+                          <Box>
+                            <Typography fontWeight="bold" variant="body2">{cat.title}</Typography>
+                            <Typography variant="caption" color="text.secondary">{cat.minAge}-{cat.maxAge} años • {cat.gender}</Typography>
+                          </Box>
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Box>
+
+                  {categoryMsg && <Alert severity={categoryMsg.ok ? 'success' : 'warning'} sx={{ mb: 2 }}>{categoryMsg.text}</Alert>}
+
+                  <Button variant="contained" onClick={saveCategoryAssignments} disabled={categorySaving} sx={{ bgcolor: ACCENT, px: 4, fontWeight: 'bold' }}>
+                    {categorySaving ? 'Guardando...' : 'GUARDAR CONFIGURACIÓN'}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Box>
+      )}
+
+      {tabIndex === 4 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', gap: 2, flex: 1, minWidth: 300 }}>
