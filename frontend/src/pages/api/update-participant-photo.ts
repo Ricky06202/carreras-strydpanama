@@ -45,8 +45,13 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
 
-    // We store the relative path in the database as per Step 3
-    const relativePath = `/uploads/${filename}`;
+    const uploadData = await uploadRes.json();
+    const serverPath = uploadData?.data?.file;
+
+    // Use the actual path from the server (which includes the hash)
+    const relativePath = serverPath 
+      ? (serverPath.startsWith('/') ? serverPath : `/${serverPath}`)
+      : `/uploads/${filename}`;
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
