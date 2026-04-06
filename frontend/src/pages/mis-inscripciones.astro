@@ -132,7 +132,7 @@ import Layout from '../layouts/Layout.astro';
     container.innerHTML = `<div class="text-center py-12 dark:text-gray-400 text-gray-500">⏳ Buscando tus inscripciones...</div>`;
 
     try {
-      const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(query)}`);
+      const res = await fetch(`/api/my-registrations?cedula=${encodeURIComponent(query)}&_t=${Date.now()}`);
       const data = await res.json();
       registrations = data.registrations || [];
 
