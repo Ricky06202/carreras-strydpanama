@@ -116,6 +116,7 @@ import Layout from '../layouts/Layout.astro';
   let cropScale = 1, cropX = 0, cropY = 0;
 
   const SONIC = 'https://api.carreras.strydpanama.com';
+  const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 
   // ── Search ─────────────────────────────────────────
   window.handleSearch = async function() {
@@ -166,8 +167,24 @@ import Layout from '../layouts/Layout.astro';
   // ── Render Results ──────────────────────────────────
   function ensureAbsolute(url) {
     if (!url) return '';
-    if (url.startsWith('http') || url.startsWith('data:')) return url;
-    return `${SONIC}${url.startsWith('/') ? '' : '/'}${url}`;
+    if (url.startsWith('data:')) return url;
+    
+    // Si ya es de R2 corregido, no tocar
+    if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
+
+    // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
+    if (url.includes('/uploads/')) {
+      const parts = url.split('/uploads/');
+      return `${R2_BASE}/uploads/${parts[parts.length - 1]}`;
+    }
+
+    // Si es ruta relativa pura
+    if (url.startsWith('/')) return `${R2_BASE}${url}`;
+    
+    // Si no tiene protocolo, asumir que es path relativo
+    if (!url.startsWith('http')) return `${R2_BASE}/${url}`;
+
+    return url;
   }
 
   function formatDate(dateStr) {

@@ -58,7 +58,33 @@ function formatTime(secs: number | string): string {
 
 const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
 const raceName = race?.data?.title || 'Carrera';
-const photoUrl = participant?.data?.photoUrl || '';
+
+// URL de R2 Directa
+const R2_PUBLIC_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
+
+function ensureR2Url(url: string) {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  
+  // Si ya es de R2 corregido, no tocar
+  if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
+
+  // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
+  if (url.includes('/uploads/')) {
+    const parts = url.split('/uploads/');
+    return `${R2_PUBLIC_URL}/uploads/${parts[parts.length - 1]}`;
+  }
+
+  // Si es ruta relativa pura
+  if (url.startsWith('/')) return `${R2_PUBLIC_URL}${url}`;
+  
+  // Si no tiene protocolo, asumir que es path relativo
+  if (!url.startsWith('http')) return `${R2_PUBLIC_URL}/${url}`;
+
+  return url;
+}
+
+const photoUrl = ensureR2Url(participant?.data?.photoUrl || '');
 const finishTime = participant?.data?.finishTime;
 const bibNumber = participant?.data?.bibNumber;
 const raceDate = race?.data?.date ? new Date(race.data.date).toLocaleDateString('es-PA', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
