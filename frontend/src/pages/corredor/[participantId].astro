@@ -59,32 +59,18 @@ function formatTime(secs: number | string): string {
 const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
 const raceName = race?.data?.title || 'Carrera';
 
-// URL de R2 Directa
-const R2_PUBLIC_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
+// URL de R2 Directa corregida
+const R2_BASE_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 
-function ensureR2Url(url: string) {
-  if (!url) return '';
-  if (url.startsWith('data:')) return url;
-  
-  // Si ya es de R2 corregido, no tocar
-  if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
+// Lógica de reemplazo literal solicitada
+const rawPhotoUrl = participant?.data?.photoUrl || '';
+let fixedImageUrl = rawPhotoUrl ? rawPhotoUrl.replace("https://api.carreras.strydpanama.com", R2_BASE_URL) : '';
 
-  // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
-  if (url.includes('/uploads/')) {
-    const parts = url.split('/uploads/');
-    return `${R2_PUBLIC_URL}/uploads/${parts[parts.length - 1]}`;
-  }
-
-  // Si es ruta relativa pura
-  if (url.startsWith('/')) return `${R2_PUBLIC_URL}${url}`;
-  
-  // Si no tiene protocolo, asumir que es path relativo
-  if (!url.startsWith('http')) return `${R2_PUBLIC_URL}/${url}`;
-
-  return url;
+// Asegurar que las rutas relativas también apunten a R2
+if (fixedImageUrl && !fixedImageUrl.startsWith('http')) {
+  fixedImageUrl = `${R2_BASE_URL}${fixedImageUrl.startsWith('/') ? '' : '/'}${fixedImageUrl}`;
 }
 
-const photoUrl = ensureR2Url(participant?.data?.photoUrl || '');
 const finishTime = participant?.data?.finishTime;
 const bibNumber = participant?.data?.bibNumber;
 const raceDate = race?.data?.date ? new Date(race.data.date).toLocaleDateString('es-PA', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
@@ -100,7 +86,7 @@ const hasResult = !!finishTime;
   <meta name="description" content={`Resultados de ${name} en ${raceName}`} />
   <meta property="og:title" content={`${name} — ${raceName}`} />
   <meta property="og:description" content={`Ver tiempo oficial y certificado de participación`} />
-  {photoUrl && <meta property="og:image" content={photoUrl} />}
+  {fixedImageUrl && <meta property="og:image" content={fixedImageUrl} />}
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
   <style>
@@ -204,8 +190,8 @@ const hasResult = !!finishTime;
 
         <div class="card">
           <div class="hero">
-            {photoUrl
-              ? <img src={photoUrl} alt={name} class="runner-photo" />
+            {fixedImageUrl
+              ? <img src={fixedImageUrl} alt={name} class="runner-photo" />
               : <div class="runner-placeholder">🏃</div>
             }
             <div class="runner-name">{name}</div>
@@ -258,7 +244,7 @@ const hasResult = !!finishTime;
     const RACE_NAME = `{raceName}`;
     const FINISH_TIME = '{finishTime ? formatTime(finishTime) : ""}';
     const BIB = '{bibNumber}';
-    const PHOTO_URL = '{photoUrl}';
+    const PHOTO_URL = '{fixedImageUrl}';
     const POSITION = '{positionCategory ?? ""}';
 
     async function generateCertificate() {
