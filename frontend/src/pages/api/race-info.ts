@@ -33,7 +33,10 @@ export const GET: APIRoute = async ({ request }) => {
       .filter((item: any) => item.status === 'published' && (item.data?.race === raceId || item.data?.race === undefined))
       .map((item: any) => ({
         id: item.id,
-        name: item.data?.title || item.title || 'Sin nombre'
+        name: item.data?.title || item.title || 'Sin nombre',
+        minAge: item.data?.minAge,
+        maxAge: item.data?.maxAge,
+        gender: item.data?.gender,
       }));
     const distances = (distancesRes?.data || [])
       // Solo incluir distancias cuyo campo 'race' apunte a esta carrera exacta

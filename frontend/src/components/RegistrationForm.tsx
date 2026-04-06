@@ -104,6 +104,9 @@ interface Race {
 interface Category {
   id: string;
   name: string;
+  minAge?: number;
+  maxAge?: number;
+  gender?: string;
 }
 
 interface Distance {
@@ -356,6 +359,39 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     }
   }, [registrationType, distances]);
 
+  // ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA (INDIVIDUAL)
+  useEffect(() => {
+    if (registrationType === 'individual' && formData.birthDay && formData.birthMonth && formData.birthYear && formData.gender && categories.length > 0 && raceInfo?.data?.date) {
+      const raceDate = new Date(raceInfo.data.date);
+      const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
+      
+      let age = raceDate.getFullYear() - birthDate.getFullYear();
+      const m = raceDate.getMonth() - birthDate.getMonth();
+      if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
+        age--;
+      }
+
+      const runnerGender = formData.gender.toLowerCase(); // 'm' o 'f'
+      
+      const match = categories.find(cat => {
+        const min = Number(cat.minAge || 0);
+        const max = Number(cat.maxAge || 999);
+        const catGender = (cat.gender || 'ambos').toLowerCase();
+
+        const ageMatch = age >= min && age <= max;
+        const genderMatch = catGender === 'ambos' || 
+                           (catGender === 'masculino' && runnerGender === 'm') || 
+                           (catGender === 'femenino' && runnerGender === 'f');
+        
+        return ageMatch && genderMatch;
+      });
+
+      if (match && formData.category !== match.id) {
+        setFormData(prev => ({ ...prev, category: match.id }));
+      }
+    }
+  }, [registrationType, formData.birthDay, formData.birthMonth, formData.birthYear, formData.gender, categories, raceInfo]);
+
   const validateCode = async () => {
     if (!code.trim() || !selectedRace) {
       setCodeValid({ valid: false, message: 'Seleccione una carrera y escriba un código' });
@@ -462,8 +498,8 @@ const handleSubmit = async () => {
       if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
       
       // Capturar el código de confirmación devuelto por el backend
-      const code = data.confirmationCode || '';
-      setFinalConfirmationCode(code);
+      const confCode = data.confirmationCode || '';
+      setFinalConfirmationCode(confCode);
       
       setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(4);
@@ -805,12 +841,22 @@ const handleSubmit = async () => {
             <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
 
               {categories.length > 0 && (
-                <FormControl fullWidth>
-                  <InputLabel>Categoría</InputLabel>
-                  <Select value={formData.category} label="Categoría" onChange={(e) => setFormData({...formData, category: e.target.value})}>
-                    <MenuItem value="">Ninguna</MenuItem>
+                <FormControl fullWidth disabled>
+                  <InputLabel id="category-label">Categoría (Asignada Automáticamente)</InputLabel>
+                  <Select 
+                    labelId="category-label"
+                    value={formData.category} 
+                    label="Categoría (Asignada Automáticamente)" 
+                    onChange={(e) => setFormData({...formData, category: e.target.value})}
+                  >
+                    <MenuItem value="">{formData.birthYear ? 'No se encontró categoría para tu edad/género' : 'Ingresa tu fecha de nacimiento'}</MenuItem>
                     {categories.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
                   </Select>
+                  {formData.category && (
+                    <Typography variant="caption" sx={{ color: 'success.main', mt: 0.5, ml: 1, fontWeight: 'bold' }}>
+                      ✓ {categories.find(c => c.id === formData.category)?.name}
+                    </Typography>
+                  )}
                 </FormControl>
               )}
               {distances.length > 0 && registrationType === 'individual' && (() => {

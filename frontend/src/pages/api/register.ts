@@ -50,16 +50,64 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
     
-    // Asignar el dorsal calculado
+    // 3. ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA POR EDAD Y GÉNERO
+    // Calculamos edad al día de la carrera
+    let assignedCategoryId = body.categoryId;
+    let resolvedCategoryName = 'General';
+
+    if (body.birthDate && raceFields.date) {
+        const raceDate = new Date(raceFields.date);
+        const birthDate = new Date(body.birthDate);
+        let age = raceDate.getFullYear() - birthDate.getFullYear();
+        const m = raceDate.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
+            age--;
+        }
+
+        console.log(`Calculated Age: ${age} for runner born ${body.birthDate} on race date ${raceFields.date}`);
+
+        // Obtener todas las categorías de esta carrera
+        const categoriesRes = await api.getCategories(env, body.raceId);
+        const allCategories = categoriesRes?.data || [];
+        
+        // Mapear género del corredor (M/F) a los términos de la categoría
+        const runnerGender = (body.gender || 'M').toLowerCase();
+        
+        const match = allCategories.find((cat: any) => {
+            const c = cat.data || {};
+            const min = Number(c.minAge || 0);
+            const max = Number(c.maxAge || 999);
+            const catGender = (c.gender || 'ambos').toLowerCase();
+
+            const ageMatch = age >= min && age <= max;
+            const genderMatch = catGender === 'ambos' || 
+                               (catGender === 'masculino' && runnerGender === 'm') || 
+                               (catGender === 'femenino' && runnerGender === 'f');
+            
+            return ageMatch && genderMatch;
+        });
+
+        if (match) {
+            assignedCategoryId = match.id;
+            resolvedCategoryName = match.data?.title || match.title;
+            console.log(`Category Auto-Assigned: ${resolvedCategoryName} (${match.id})`);
+        } else {
+            console.warn(`No category match found for age ${age} and gender ${runnerGender}`);
+        }
+    }
+
+    // Asignar el dorsal y la categoría calculada
     body.bibNumber = nextBib;
+    body.categoryId = assignedCategoryId;
+    body.category = assignedCategoryId; // Compatibilidad con lib/api mapping
 
     // Generar código de confirmación único: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
     const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
     body.confirmationCode = confCode;
 
-    // 3. Registrar al participante con un título único para evitar conflictos de slug
-    const participantTitle = `${body.firstName} ${body.lastName} - Dorsal ${nextBib}`;
+    // 4. Registrar al participante con un título único para evitar conflictos de slug
+    const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib}`;
     
     // Asegurar que el código vaya dentro del objeto data final del participante
     const registrationData = {
