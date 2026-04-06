@@ -752,9 +752,9 @@ const handleSubmit = async () => {
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                     {[
                       { value: 'general', label: 'Público General' },
-                      { value: 'estudiante', label: 'Estudiante (UP/IUA)' },
-                      { value: 'docente', label: 'Docente (UP/IUA)' },
-                      { value: 'administrativo', label: 'Administrativo (UP/IUA)' }
+                      { value: 'estudiante', label: 'Estudiante (UTP)' },
+                      { value: 'docente', label: 'Docente (UTP)' },
+                      { value: 'administrativo', label: 'Administrativo (UTP)' }
                     ].map((t) => (
                       <Button
                         key={t.value}
