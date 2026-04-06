@@ -60,7 +60,15 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 3. Registrar al participante con un título único para evitar conflictos de slug
     const participantTitle = `${body.firstName} ${body.lastName} - Dorsal ${nextBib}`;
-    const result = await api.registerParticipant(env, { ...body, title: participantTitle });
+    
+    // Asegurar que el código vaya dentro del objeto data final del participante
+    const registrationData = {
+        ...body,
+        title: participantTitle,
+        confirmationCode: confCode // Re-confirmamos que se incluya
+    };
+    
+    const result = await api.registerParticipant(env, registrationData);
 
     // 4. Marcar Código como canjeado si se usó
     if (usedCodeId && usedCodeData) {
@@ -175,7 +183,13 @@ export const POST: APIRoute = async ({ request }) => {
       console.error('Failed to send confirmation email:', mailError);
     }
 
-    return new Response(JSON.stringify({ ...result, assignedBib: nextBib, confirmationCode: confCode }), {
+    // Retornamos el objeto con el código en la raíz para facilitar la lectura del frontend
+    return new Response(JSON.stringify({ 
+      success: true,
+      assignedBib: nextBib, 
+      confirmationCode: confCode,
+      data: result.data || result
+    }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
