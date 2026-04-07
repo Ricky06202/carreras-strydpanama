@@ -55,25 +55,39 @@ export const POST: APIRoute = async ({ request }) => {
     let assignedCategoryId = body.categoryId;
     let resolvedCategoryName = 'General';
 
-    // PRIORIDAD: Tipo de Participante (Estudiante, Docente, Administrativo)
+    // PRIORIDAD: Tipo de Participante (Estudiante, Docente, Administrativo) + Género
     const pType = (body.participantType || 'general').toLowerCase();
     const categoriesRes = await api.getCategories(env, body.raceId);
     const allCategories = categoriesRes?.data || [];
 
-    if (pType !== 'general') {
+    // Mapeo de tipos especiales → términos de búsqueda
+    const TYPE_SEARCH_TERMS: Record<string, string> = {
+      'estudiante': 'estudiante',
+      'docente': 'docente',
+      'administrativo': 'administrativo',
+    };
+
+    if (pType !== 'general' && TYPE_SEARCH_TERMS[pType]) {
+        const searchTerm = TYPE_SEARCH_TERMS[pType];
+        const runnerGender = (body.gender || '').toLowerCase();
         const typeMatch = allCategories.find((cat: any) => {
             const isSameRace = cat.data?.race === body.raceId;
             const title = (cat.data?.title || cat.title || '').toLowerCase();
-            return isSameRace && title.includes(pType.trim());
+            const catGender = (cat.data?.gender || 'ambos').toLowerCase();
+            const nameMatch = title.includes(searchTerm);
+            const genderMatch = catGender === 'ambos' ||
+                               (catGender === 'masculino' && runnerGender === 'm') ||
+                               (catGender === 'femenino' && runnerGender === 'f');
+            return isSameRace && nameMatch && genderMatch;
         });
         if (typeMatch) {
             assignedCategoryId = typeMatch.id;
             resolvedCategoryName = typeMatch.data?.title || typeMatch.title;
-            console.log(`Category Assigned by Type (${pType}): ${resolvedCategoryName}`);
+            console.log(`Category Assigned by Type+Gender (${pType}, ${runnerGender}): ${resolvedCategoryName}`);
         }
     }
 
-    // Si no se asignó por tipo, procedemos por EDAD
+    // Si no se asignó por tipo (es público general o no hubo match), procedemos por EDAD
     if (!assignedCategoryId && body.birthDate && raceFields.date) {
         const raceDate = new Date(raceFields.date);
         const birthDate = new Date(body.birthDate);
@@ -85,10 +99,16 @@ export const POST: APIRoute = async ({ request }) => {
 
         const runnerGender = (body.gender || 'M').toLowerCase();
         
+        // Excluir categorías de tipos especiales para que público general no caiga ahí
+        const specialTerms = Object.values(TYPE_SEARCH_TERMS);
         const match = allCategories.find((cat: any) => {
             const c = cat.data || {};
             // IMPORTANTE: Filtrar por carrera primero
             if (c.race !== body.raceId) return false;
+
+            // Excluir categorías de tipos especiales
+            const catTitle = (c.title || cat.title || '').toLowerCase();
+            if (specialTerms.some(term => catTitle.includes(term))) return false;
 
             const min = Number(c.minAge || 0);
             const max = Number(c.maxAge || 999);
