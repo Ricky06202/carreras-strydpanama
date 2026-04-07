@@ -20,7 +20,9 @@ export default {
         title: 'Estado del Código',
         enum: ['generated', 'sold', 'redeemed'],
       },
-      usedDate: { type: 'date', title: 'Fecha de Canje' }
+      usedDate: { type: 'date', title: 'Fecha de Canje' },
+      redeemedBy: { type: 'string', title: 'Canjeado Por (Nombre)' },
+      redeemedByCedula: { type: 'string', title: 'Cédula del Canjeador' },
     },
     required: ['title', 'code', 'race'],
   },

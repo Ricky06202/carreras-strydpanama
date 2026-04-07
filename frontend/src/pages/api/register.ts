@@ -163,7 +163,9 @@ export const POST: APIRoute = async ({ request }) => {
                 ...usedCodeData,
                 used: true,
                 status: 'redeemed',
-                usedDate: new Date().toISOString()
+                usedDate: new Date().toISOString(),
+                redeemedBy: `${body.firstName} ${body.lastName}`,
+                redeemedByCedula: body.cedula || ''
             }
         };
         await apiFetch(`/api/content/${usedCodeId}`, env, {
