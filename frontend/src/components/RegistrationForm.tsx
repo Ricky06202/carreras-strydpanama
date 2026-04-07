@@ -360,22 +360,42 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     }
   }, [registrationType, distances]);
 
+  // Mapeo de participantType del botón → término de búsqueda en nombres de categorías
+  const TYPE_SEARCH_TERMS: Record<string, string> = {
+    'estudiante': 'estudiante',
+    'docente': 'docente',
+    'administrativo': 'administrativo',
+  };
+
   // ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA (INDIVIDUAL)
   useEffect(() => {
     if (registrationType === 'individual' && categories.length > 0) {
-      // 1. PRIORIDAD: Match por Participant Type (Bypass Edad)
+      const runnerGender = (formData.gender || '').toLowerCase();
+
+      // 1. PRIORIDAD: Match por Participant Type + Género (Bypass Edad)
       if (formData.participantType !== 'general') {
-        const typeMatch = categories.find(cat => 
-          (cat.name || '').toLowerCase().trim() === formData.participantType.toLowerCase().trim()
-        );
-        if (typeMatch && formData.category !== typeMatch.id) {
-          setFormData(prev => ({ ...prev, category: typeMatch.id }));
-          return; // Saltamos edad si hay match por tipo
+        const searchTerm = TYPE_SEARCH_TERMS[formData.participantType];
+        if (searchTerm) {
+          const typeMatch = categories.find(cat => {
+            const catName = (cat.name || '').toLowerCase();
+            const catGender = (cat.gender || 'ambos').toLowerCase();
+            const nameMatch = catName.includes(searchTerm);
+            // Si el runner ya eligió género, filtrar por él; si no, tomar la primera que haga match
+            const genderMatch = !runnerGender || catGender === 'ambos' ||
+                               (catGender === 'masculino' && runnerGender === 'm') ||
+                               (catGender === 'femenino' && runnerGender === 'f');
+            return nameMatch && genderMatch;
+          });
+
+          if (typeMatch && formData.category !== typeMatch.id) {
+            setFormData(prev => ({ ...prev, category: typeMatch.id }));
+            return; // Saltamos edad si hay match por tipo
+          }
         }
       }
 
-      // 2. FALLBACK: Match por Edad y Género
-      if (formData.birthDay && formData.birthMonth && formData.birthYear && formData.gender && raceInfo?.data?.date) {
+      // 2. FALLBACK (solo para Público General): Match por Edad y Género
+      if (formData.participantType === 'general' && formData.birthDay && formData.birthMonth && formData.birthYear && runnerGender && raceInfo?.data?.date) {
         const raceDate = new Date(raceInfo.data.date);
         const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
         
@@ -384,10 +404,14 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
           age--;
         }
-
-        const runnerGender = formData.gender.toLowerCase(); 
         
+        // Excluir categorías de tipos especiales para que el público general no caiga ahí
+        const specialTypes = Object.values(TYPE_SEARCH_TERMS);
         const match = categories.find(cat => {
+          const catName = (cat.name || '').toLowerCase();
+          // Si la categoría tiene un nombre de tipo especial, no es para público general
+          if (specialTypes.some(term => catName.includes(term))) return false;
+
           const min = Number(cat.minAge || 0);
           const max = Number(cat.maxAge || 999);
           const catGender = (cat.gender || 'ambos').toLowerCase();
@@ -449,6 +473,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   studentIdUrl?: string;
   matriculaUrl?: string;
   photoUrl?: string;
+  participantType?: string;
   teamMembers?: Array<{
     firstName: string;
     lastName: string;
@@ -486,7 +511,8 @@ const handleSubmit = async () => {
         receiptUrl: formData.receiptUrl,
         studentIdUrl: formData.studentIdUrl,
         matriculaUrl: formData.matriculaUrl,
-        photoUrl: formData.photoUrl
+        photoUrl: formData.photoUrl,
+        participantType: formData.participantType
       };
 
       if (registrationType === 'team') {
@@ -563,7 +589,8 @@ const handleSubmit = async () => {
             receiptUrl: formData.receiptUrl,
             studentIdUrl: formData.studentIdUrl,
             matriculaUrl: formData.matriculaUrl,
-            photoUrl: formData.photoUrl
+            photoUrl: formData.photoUrl,
+            participantType: formData.participantType
         };
 
         if (registrationType === 'team') {

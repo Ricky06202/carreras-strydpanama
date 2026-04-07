@@ -49,10 +49,7 @@ carreras-strydpanama/
 - **Gris Oscuro**: `#1a1a1a`, `#2d2d2d` (superficies en modo oscuro)
 - **Gris Claro**: `#f5f5f5`, `#e0e0e0` (superficies en modo claro)
 
-**PROHIBIDO - NO USAR:**
-- ❌ **AZUL** - No existe azul en este diseño. Nada de `#1e3a8a`, `#3b82f6`, `blue.*`
-- ❌ **AMARILLO** - No usar amarillo como color principal. El color es NARANJA.
-- ❌ **CYAN** - No usar `#22d3ee`, `cyan.*`
+
 
 ### Patrones de Color
 
@@ -95,10 +92,7 @@ Acento: Naranja (#FF6B00)
 </Button>
 ```
 
-**PROHIBIDO - BOTONES NO USAR:**
-- ❌ Fondo blanco con texto amarillo/naranja
-- ❌ Fondo azul con cualquier cosa
-- ❌ Cualquier combinación que no sea naranja/blanco o blanco/naranja
+
 
 ### Variables de Color en Código
 
@@ -111,8 +105,6 @@ const DARK_BG = '#0f0f0f';
 const WHITE = '#FFFFFF';
 const LIGHT_BG = '#f5f5f5';
 
-// PROHIBIDO - NO USAR:
-// const ACCENT = '#facc15'  // AMARILLO - PROHIBIDO
 ```
 
 ### Ejemplo Hero Section Correcto
@@ -174,7 +166,7 @@ npm run build
 ### Errores Comunes
 - "Cannot read properties of undefined" - Usar verificaciones defensivas al acceder a propiedades de respuestas API
 - CORS errors - Asegurar que SonicJS tenga configurado el origen del frontend
-- Colors - USAR SIEMPRE NARANJA (#FF6B00), NUNCA AZUL NI AMARILLO
+- Colors - USAR SIEMPRE NARANJA (#FF6B00) como color principal de marca.
 
 ---
 
@@ -411,10 +403,8 @@ const races = response.data || [];
 ### 3. Reglas de Diseño UI Inquebrantables
 - Somos **STRYD Panama**. Nuestra paleta y estética son cruciales para el cliente.
 - **Tu misión es hacer UI's que se vean "Caras y Premium", no proyectos de universidad.**
-- 🧡 **NARANJA (`#FF6B00`) ES LA LEY**: Usarás naranja para botones estelares, bordes de elementos activos y de confirmación.
+- 🧡 **NARANJA (`#FF6B00`) ES EL PRINCIPAL**: Usarás naranja para botones estelares, bordes de elementos activos y de confirmación.
 - 🖤 **Fondos**: El sistema abraza el **Dark Mode** de alta gama (fondos `#0f0f0f` con tarjetas `#1a1a1a`).
-- 🚫 **PROHIBIDO EL AZUL**: No asumas por accidente clases de Tailwind como `bg-blue-600` o `text-indigo-500` ¡Cero azul en este repo!
-- 🚫 **PROHIBIDO EL AMARILLO**: `bg-yellow-400` y variantes NO DEBEN existir. Usa tonos de naranja claro para variaciones.
 - ⛔ **PROHIBIDO CÓDIGO PLACEHOLDER**: NADA de botones genéricos `<button>Click</button>` sin estilos. Debes proveer un componente funcional de UI (`@mui/material` o `Tailwind CSS`) totalmente responsivo en el primer intento. El operador humano evaluará tu trabajo buscando excelencia al primer impacto.
 
 ### 4. Sistema de Tiempos y Cronómetros
