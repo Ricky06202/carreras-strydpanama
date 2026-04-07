@@ -1,0 +1,475 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
+import { apiFetch } from '../lib/api';
+
+let races: any[] = [];
+let selectedRaceId = Astro.url.searchParams.get('raceId') || '';
+
+try {
+  const res = await apiFetch('/api/collections/races/content?limit=50', env, { method: 'GET' });
+  races = (res?.data || []).filter((r: any) => ['active', 'finished'].includes(r.data?.status));
+  if (!selectedRaceId && races.length > 0) {
+    const finished = races.find((r: any) => r.data?.status === 'finished');
+    selectedRaceId = finished?.id || races[0].id;
+  }
+} catch(e) {}
+
+let allFinishers: any[] = [];
+let distanceMap: Record<string, string> = {};
+let categoryMap: Record<string, string> = {};
+let distanceNames: string[] = [];
+let categoryNames: string[] = [];
+let teamData: any[] = [];
+
+if (selectedRaceId) {
+  try {
+    const [partsRes, distsRes, catsRes] = await Promise.all([
+      apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/distances/content?limit=200`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/categories/content?limit=200`, env, { method: 'GET' }),
+    ]);
+
+    const allDists = (distsRes?.data || []).filter((d: any) => d.data?.race === selectedRaceId);
+    for (const d of allDists) distanceMap[d.id] = d.data?.title || d.title;
+    distanceNames = [...new Set(Object.values(distanceMap))].sort();
+
+    const allCats = (catsRes?.data || []).filter((c: any) => c.data?.race === selectedRaceId || !c.data?.race);
+    for (const c of allCats) categoryMap[c.id] = c.data?.title || c.title;
+
+    const allParts = (partsRes?.data || []).filter((p: any) => 
+      (p.data?.race === selectedRaceId || p.data?.raceId === selectedRaceId) && p.data?.finishTime
+    );
+
+    const usedCats = new Set<string>();
+    allFinishers = allParts
+      .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
+      .map((p: any, i: number) => {
+        const catId = p.data?.category || p.data?.categoryId || '';
+        const catName = p.data?.categoryName || categoryMap[catId] || 'General';
+        const distName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const gender = (p.data?.gender || '').toLowerCase();
+        usedCats.add(catName);
+        return {
+          pos: i + 1, id: p.id,
+          name: `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim(),
+          bib: p.data?.bibNumber, finishTime: Number(p.data?.finishTime),
+          photoUrl: p.data?.photoUrl || '', country: p.data?.country || '',
+          teamName: p.data?.teamName || '', categoryName: catName,
+          distanceName: distName, gender: gender === 'm' ? 'masculino' : gender === 'f' ? 'femenino' : gender,
+          registrationType: p.data?.registrationType || 'individual',
+        };
+      });
+    categoryNames = [...usedCats].sort();
+
+    // Build team data
+    const teamMap: Record<string, any[]> = {};
+    for (const f of allFinishers) {
+      if (f.teamName && f.registrationType === 'team') {
+        if (!teamMap[f.teamName]) teamMap[f.teamName] = [];
+        teamMap[f.teamName].push(f);
+      }
+    }
+    teamData = Object.entries(teamMap).map(([name, members]) => {
+      const totalTime = members.reduce((s: number, m: any) => s + m.finishTime, 0);
+      const avg = members.length > 0 ? totalTime / members.length : 0;
+      return { name, members, avgTime: avg, totalMembers: members.length };
+    }).sort((a, b) => a.avgTime - b.avgTime);
+  } catch(e) {}
+}
+
+const selectedRace = races.find(r => r.id === selectedRaceId);
+const raceName = selectedRace?.data?.title || selectedRace?.title || '';
+
+function formatTime(secs: number): string {
+  const s = Number(secs);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+const clientData = JSON.stringify({ finishers: allFinishers, distanceNames, categoryNames, teamData });
+const medals = ['🥇', '🥈', '🥉'];
+---
+
+<Layout title={`Resultados — ${raceName || 'STRYD Panama'}`}>
+<style>
+  .results-page { font-family: 'Inter', sans-serif; }
+  .race-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
+  .race-chip {
+    background: var(--chip-bg, #1a1a1a); border: 1px solid var(--chip-border, #333); color: #aaa;
+    padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
+    text-decoration: none; transition: all 0.2s;
+  }
+  .race-chip:hover, .race-chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; }
+
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #1f1f1f; margin-bottom: 28px; }
+  .tab {
+    padding: 12px 28px; cursor: pointer; font-weight: 700; font-size: 14px;
+    color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
+    background: none; border-top: none; border-left: none; border-right: none;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .tab:hover { color: #FF6B00; }
+  .tab.active { color: #FF6B00; border-bottom-color: #FF6B00; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Podium */
+  .podium-row { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
+  .podium-block { flex: 1; min-width: 300px; max-width: 500px; }
+  .podium-title { text-align: center; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #FF6B00; font-weight: 700; margin-bottom: 20px; }
+  .podium-list { display: flex; flex-direction: column; gap: 12px; }
+  .podium-item {
+    display: flex; align-items: center; gap: 16px;
+    background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 16px 20px; transition: transform 0.2s;
+  }
+  .podium-item:hover { transform: translateX(4px); }
+  .podium-item.gold { border-color: #FFD700; background: linear-gradient(135deg, #1a1500, #111); }
+  .podium-item.silver { border-color: #C0C0C0; }
+  .podium-item.bronze { border-color: #CD7F32; }
+  .podium-medal { font-size: 32px; min-width: 40px; text-align: center; }
+  .podium-photo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #FF6B00; }
+  .podium-photo-placeholder { width: 56px; height: 56px; border-radius: 50%; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 3px solid #333; }
+  .podium-info { flex: 1; }
+  .podium-name { font-weight: 900; font-size: 16px; }
+  .podium-sub { font-size: 12px; color: #888; }
+  .podium-time { font-weight: 900; font-size: 18px; color: #FF6B00; }
+
+  /* Filters */
+  .filters-bar { background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 20px; margin-bottom: 28px; }
+  .filter-row { display: flex; flex-direction: column; gap: 12px; }
+  .filter-group { display: flex; flex-direction: column; gap: 6px; }
+  .filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; font-weight: 600; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    background: #1a1a1a; border: 1px solid #333; color: #aaa;
+    padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s;
+    font-weight: 500; border-top: none; border-left: none; border-right: none;
+    border: 1px solid #333;
+  }
+  .chip:hover { border-color: #FF6B00; color: #FF6B00; }
+  .chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; font-weight: 700; }
+  .search-box {
+    background: #1a1a1a; border: 1px solid #333; color: #fff;
+    padding: 10px 16px; border-radius: 12px; font-size: 14px; width: 100%; max-width: 400px;
+  }
+  .search-box:focus { outline: none; border-color: #FF6B00; }
+  .result-count { font-size: 13px; color: #FF6B00; font-weight: 600; }
+
+  /* Results Table */
+  .results-wrap { background: #111; border: 1px solid #1f1f1f; border-radius: 16px; overflow: hidden; }
+  .results-table { width: 100%; border-collapse: collapse; }
+  .results-table thead th {
+    background: #0f0f0f; padding: 14px 12px; text-align: left;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 700;
+    border-bottom: 1px solid #1f1f1f; position: sticky; top: 0;
+  }
+  .results-table tbody tr { border-bottom: 1px solid #1a1a1a; transition: background 0.15s; cursor: pointer; }
+  .results-table tbody tr:hover { background: rgba(255,107,0,0.04); }
+  .results-table tbody td { padding: 10px 12px; font-size: 13px; }
+  .pos-badge { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 900; font-size: 12px; }
+  .pos-1 { background: rgba(255,215,0,0.15); color: #FFD700; }
+  .pos-2 { background: rgba(192,192,192,0.15); color: #C0C0C0; }
+  .pos-3 { background: rgba(205,127,50,0.15); color: #CD7F32; }
+  .pos-n { background: #1a1a1a; color: #888; }
+  .td-bib { color: #FF6B00; font-weight: 700; }
+  .td-time { font-weight: 900; font-variant-numeric: tabular-nums; }
+  .td-cat { font-size: 11px; color: #888; background: #1a1a1a; padding: 2px 8px; border-radius: 10px; display: inline-block; }
+  .mini-photo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #333; vertical-align: middle; margin-right: 6px; }
+
+  /* Team Section */
+  .team-card {
+    background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 24px; margin-bottom: 16px;
+    transition: border-color 0.2s;
+  }
+  .team-card:hover { border-color: #FF6B00; }
+  .team-card.gold { border-color: #FFD700; }
+  .team-card.silver { border-color: #C0C0C0; }
+  .team-card.bronze { border-color: #CD7F32; }
+  .team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .team-name { font-weight: 900; font-size: 18px; }
+  .team-avg { font-weight: 900; font-size: 20px; color: #FF6B00; }
+  .team-avg-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
+  .team-members { display: flex; flex-direction: column; gap: 8px; }
+  .team-member {
+    display: flex; align-items: center; gap: 12px; padding: 8px 12px;
+    background: #0f0f0f; border-radius: 10px;
+  }
+  .member-name { flex: 1; font-weight: 600; font-size: 14px; }
+  .member-time { font-weight: 900; font-size: 14px; color: #FF6B00; }
+  .member-bib { font-size: 12px; color: #888; }
+
+  .empty-state { text-align: center; padding: 80px 20px; color: #555; }
+  .empty-icon { font-size: 60px; margin-bottom: 16px; }
+  .section-divider { border: none; border-top: 1px solid #1f1f1f; margin: 32px 0; }
+  .hidden { display: none; }
+
+  @media (max-width: 768px) {
+    .results-table thead th:nth-child(5), .results-table tbody td:nth-child(5),
+    .results-table thead th:nth-child(7), .results-table tbody td:nth-child(7) { display: none; }
+    .podium-row { flex-direction: column; gap: 24px; }
+  }
+  @media (max-width: 480px) {
+    .results-table thead th:nth-child(6), .results-table tbody td:nth-child(6) { display: none; }
+  }
+</style>
+
+<div class="results-page">
+  <!-- Race Selector -->
+  {races.length > 0 && (
+    <div class="race-selector">
+      {races.map(r => (
+        <a href={`/resultados?raceId=${r.id}`} class={`race-chip ${r.id === selectedRaceId ? 'active' : ''}`}>
+          {r.data?.title || r.title}
+        </a>
+      ))}
+    </div>
+  )}
+
+  {allFinishers.length === 0 ? (
+    <div class="empty-state">
+      <div class="empty-icon">🏁</div>
+      <h2 style="color:#666;margin-bottom:8px;">Aún no hay resultados</h2>
+      <p>Los resultados aparecerán cuando los corredores lleguen a la meta.</p>
+    </div>
+  ) : (
+    <div id="results-app">
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="individual">🏃 Individual</button>
+        <button class="tab" data-tab="equipos">👥 Equipos</button>
+      </div>
+
+      <!-- TAB: Individual -->
+      <div class="tab-content active" id="tab-individual">
+        <!-- Podium: Top 3 M + Top 3 F -->
+        <div class="podium-row" id="podium-section">
+          <div class="podium-block">
+            <div class="podium-title">🏆 Podio Masculino</div>
+            <div class="podium-list" id="podium-male"></div>
+          </div>
+          <div class="podium-block">
+            <div class="podium-title">🏆 Podio Femenino</div>
+            <div class="podium-list" id="podium-female"></div>
+          </div>
+        </div>
+
+        <hr class="section-divider" />
+
+        <!-- Filters -->
+        <div class="filters-bar">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#888;font-weight:700;">🔍 Filtrar Resultados</span>
+            <span class="result-count" id="result-count"></span>
+          </div>
+          <div class="filter-row">
+            <input type="text" class="search-box" id="search-input" placeholder="Buscar por nombre, dorsal o equipo..." />
+            {distanceNames.length > 0 && (
+              <div class="filter-group">
+                <span class="filter-label">Distancia</span>
+                <div class="chip-row" id="dist-chips">
+                  <button class="chip active" data-val="all">Todas</button>
+                  {distanceNames.map(d => <button class="chip" data-val={d}>{d}</button>)}
+                </div>
+              </div>
+            )}
+            {categoryNames.length > 0 && (
+              <div class="filter-group">
+                <span class="filter-label">Categoría</span>
+                <div class="chip-row" id="cat-chips">
+                  <button class="chip active" data-val="all">Todas</button>
+                  {categoryNames.map(c => <button class="chip" data-val={c}>{c}</button>)}
+                </div>
+              </div>
+            )}
+            <div class="filter-group">
+              <span class="filter-label">Género</span>
+              <div class="chip-row" id="gender-chips">
+                <button class="chip active" data-val="all">Todos</button>
+                <button class="chip" data-val="masculino">Masculino</button>
+                <button class="chip" data-val="femenino">Femenino</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="results-wrap">
+          <table class="results-table">
+            <thead><tr>
+              <th>Pos</th><th>Corredor</th><th>Dorsal</th><th>Tiempo</th><th>Categoría</th><th>Distancia</th><th>Equipo</th>
+            </tr></thead>
+            <tbody id="results-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB: Equipos -->
+      <div class="tab-content" id="tab-equipos">
+        <div id="teams-container"></div>
+      </div>
+    </div>
+  )}
+</div>
+
+<script define:vars={{ clientData }}>
+  const data = JSON.parse(clientData);
+  const all = data.finishers;
+  const teams = data.teamData;
+  const medals = ['🥇', '🥈', '🥉'];
+
+  let fDist = 'all', fCat = 'all', fGender = 'all', fSearch = '';
+
+  function fmt(secs) {
+    const s = Number(secs); const h = Math.floor(s/3600);
+    const m = Math.floor((s%3600)/60); const sec = Math.floor(s%60);
+    if (h > 0) return h+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+    return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  }
+
+  function getFiltered() {
+    let r = [...all];
+    if (fDist !== 'all') r = r.filter(x => x.distanceName === fDist);
+    if (fCat !== 'all') r = r.filter(x => x.categoryName === fCat);
+    if (fGender !== 'all') r = r.filter(x => x.gender === fGender);
+    if (fSearch) {
+      const q = fSearch.toLowerCase();
+      r = r.filter(x => x.name.toLowerCase().includes(q) || String(x.bib).includes(q) || (x.teamName||'').toLowerCase().includes(q));
+    }
+    r.sort((a,b) => a.finishTime - b.finishTime);
+    r.forEach((x,i) => { x.fPos = i+1; });
+    return r;
+  }
+
+  function renderPodium() {
+    const maleList = document.getElementById('podium-male');
+    const femaleList = document.getElementById('podium-female');
+    if (!maleList || !femaleList) return;
+
+    const males = all.filter(x => x.gender === 'masculino').slice(0, 3);
+    const females = all.filter(x => x.gender === 'femenino').slice(0, 3);
+
+    [{ el: maleList, data: males }, { el: femaleList, data: females }].forEach(({ el, data: list }) => {
+      if (list.length === 0) { el.innerHTML = '<div style="text-align:center;color:#555;padding:20px;">Sin resultados</div>'; return; }
+      el.innerHTML = list.map((r, i) => {
+        const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze';
+        const photo = r.photoUrl
+          ? `<img src="${r.photoUrl}" alt="" class="podium-photo" />`
+          : `<div class="podium-photo-placeholder">🏃</div>`;
+        return `<a href="/corredor/${r.id}" style="text-decoration:none;color:inherit;" class="podium-item ${cls}">
+          <div class="podium-medal">${medals[i]}</div>
+          ${photo}
+          <div class="podium-info">
+            <div class="podium-name">${r.name}</div>
+            <div class="podium-sub">#${r.bib} • ${r.categoryName}</div>
+          </div>
+          <div class="podium-time">${fmt(r.finishTime)}</div>
+        </a>`;
+      }).join('');
+    });
+  }
+
+  function renderTable(filtered) {
+    const tbody = document.getElementById('results-body');
+    const countEl = document.getElementById('result-count');
+    if (!tbody) return;
+    countEl.textContent = filtered.length + ' resultado' + (filtered.length !== 1 ? 's' : '');
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#555;">Sin resultados para los filtros seleccionados</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(r => {
+      const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
+      const ph = r.photoUrl ? `<img src="${r.photoUrl}" alt="" class="mini-photo"/>` : '';
+      return `<tr onclick="window.location='/corredor/${r.id}'">
+        <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
+        <td style="font-weight:700;">${ph}${r.name}</td>
+        <td class="td-bib">#${r.bib}</td>
+        <td class="td-time">${fmt(r.finishTime)}</td>
+        <td><span class="td-cat">${r.categoryName}</span></td>
+        <td style="color:#888;font-size:12px;">${r.distanceName}</td>
+        <td style="color:#888;font-size:12px;">${r.teamName || '—'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderTeams() {
+    const container = document.getElementById('teams-container');
+    if (!container) return;
+    if (teams.length === 0) {
+      container.innerHTML = '<div style="text-align:center;color:#555;padding:60px;">No hay equipos registrados con tiempos.</div>';
+      return;
+    }
+    container.innerHTML = teams.map((t, i) => {
+      const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      const medal = i < 3 ? medals[i] : `#${i+1}`;
+      return `<div class="team-card ${cls}">
+        <div class="team-header">
+          <div>
+            <span style="font-size:28px;margin-right:12px;">${medal}</span>
+            <span class="team-name">${t.name}</span>
+            <span style="font-size:12px;color:#888;margin-left:8px;">(${t.totalMembers} integrantes)</span>
+          </div>
+          <div style="text-align:right;">
+            <div class="team-avg-label">Tiempo Promedio</div>
+            <div class="team-avg">${fmt(t.avgTime)}</div>
+          </div>
+        </div>
+        <div class="team-members">
+          ${t.members.map(m => `
+            <a href="/corredor/${m.id}" class="team-member" style="text-decoration:none;color:inherit;">
+              ${m.photoUrl ? `<img src="${m.photoUrl}" alt="" class="mini-photo"/>` : ''}
+              <span class="member-name">${m.name}</span>
+              <span class="member-bib">#${m.bib}</span>
+              <span class="member-time">${fmt(m.finishTime)}</span>
+            </a>
+          `).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function render() {
+    const filtered = getFiltered();
+    renderTable(filtered);
+  }
+
+  // Tab switching
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.getElementById('tab-' + tab.dataset.tab)?.classList.add('active');
+    });
+  });
+
+  // Filter chips
+  function setupChips(containerId, setter) {
+    document.querySelectorAll(`#${containerId} .chip`).forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll(`#${containerId} .chip`).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        setter(btn.dataset.val);
+        render();
+      });
+    });
+  }
+  setupChips('dist-chips', v => fDist = v);
+  setupChips('cat-chips', v => fCat = v);
+  setupChips('gender-chips', v => fGender = v);
+
+  const si = document.getElementById('search-input');
+  if (si) si.addEventListener('input', e => { fSearch = e.target.value; render(); });
+
+  // Initial render
+  renderPodium();
+  render();
+  renderTeams();
+</script>
+</Layout>

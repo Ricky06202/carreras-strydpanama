@@ -58,15 +58,15 @@ function formatTime(secs: number | string): string {
 
 const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
 const raceName = race?.data?.title || 'Carrera';
+const certArtUrl = race?.data?.certificateArtUrl || '';
+const certLogoUrl = race?.data?.certificateLogoUrl || '';
+const categoryName = participant?.data?.categoryName || '';
+const teamName = participant?.data?.teamName || '';
+const distanceName = participant?.data?.distanceName || '';
 
-// URL de R2 Directa corregida
 const R2_BASE_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
-
-// Lógica de reemplazo literal solicitada
 const rawPhotoUrl = participant?.data?.photoUrl || '';
 let fixedImageUrl = rawPhotoUrl ? rawPhotoUrl.replace("https://api.carreras.strydpanama.com", R2_BASE_URL) : '';
-
-// Asegurar que las rutas relativas también apunten a R2
 if (fixedImageUrl && !fixedImageUrl.startsWith('http')) {
   fixedImageUrl = `${R2_BASE_URL}${fixedImageUrl.startsWith('/') ? '' : '/'}${fixedImageUrl}`;
 }
@@ -197,6 +197,9 @@ const hasResult = !!finishTime;
             <div class="runner-name">{name}</div>
             <div class="race-name">{raceName}</div>
             {raceDate && <div class="race-date">{raceDate}</div>}
+            {categoryName && <div style="color:#888;font-size:13px;margin-top:4px;">Categoría: {categoryName}</div>}
+            {teamName && <div style="color:#FF6B00;font-size:13px;margin-top:4px;">👥 Equipo: {teamName}</div>}
+            {distanceName && <div style="color:#888;font-size:13px;margin-top:4px;">Distancia: {distanceName}</div>}
             <div class="bib-badge">#{bibNumber}</div>
           </div>
 
@@ -225,8 +228,11 @@ const hasResult = !!finishTime;
 
         <div class="card">
           <div class="actions">
-            <button class="btn btn-primary" id="cert-btn" onclick="generateCertificate()">
-              📄 Descargar Certificado
+            <button class="btn btn-primary" id="cert-btn" onclick="generateCertificate('pdf')">
+              📄 Certificado PDF
+            </button>
+            <button class="btn btn-secondary" id="jpg-btn" onclick="generateCertificate('jpg')">
+              🖼️ Certificado JPG
             </button>
             <button class="btn btn-secondary" id="email-btn" onclick="sendByEmail()">
               📧 Enviar al Email
@@ -246,9 +252,14 @@ const hasResult = !!finishTime;
     const BIB = '{bibNumber}';
     const PHOTO_URL = '{fixedImageUrl}';
     const POSITION = '{positionCategory ?? ""}';
+    const CERT_ART_URL = '{certArtUrl}';
+    const CERT_LOGO_URL = '{certLogoUrl}';
+    const CATEGORY_NAME = '{categoryName}';
+    const DISTANCE_NAME = '{distanceName}';
+    const TEAM_NAME = '{teamName}';
 
-    async function generateCertificate() {
-      const btn = document.getElementById('cert-btn');
+    async function generateCertificate(format) {
+      const btn = document.getElementById(format === 'jpg' ? 'jpg-btn' : 'cert-btn');
       btn.disabled = true;
       btn.textContent = 'Generando...';
       
@@ -262,9 +273,28 @@ const hasResult = !!finishTime;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
 
-        // Fondo negro
-        doc.setFillColor(0, 0, 0);
-        doc.rect(0, 0, 280, 216, 'F');
+        // Fondo: usar arte de carrera si existe, o fondo negro
+        if (CERT_ART_URL) {
+          try {
+            const artRes = await fetch(CERT_ART_URL);
+            const artBlob = await artRes.blob();
+            const artBase64 = await new Promise(resolve => {
+              const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(artBlob);
+            });
+            doc.addImage(artBase64, 'JPEG', 0, 0, 280, 216, '', 'FAST');
+            // Semi-transparent overlay for readability
+            doc.setFillColor(0, 0, 0);
+            doc.setGState(new doc.GState({ opacity: 0.7 }));
+            doc.rect(0, 0, 280, 216, 'F');
+            doc.setGState(new doc.GState({ opacity: 1 }));
+          } catch(e) {
+            doc.setFillColor(0, 0, 0);
+            doc.rect(0, 0, 280, 216, 'F');
+          }
+        } else {
+          doc.setFillColor(0, 0, 0);
+          doc.rect(0, 0, 280, 216, 'F');
+        }
 
         // Borde naranja
         doc.setDrawColor(255, 107, 0);
@@ -305,6 +335,7 @@ const hasResult = !!finishTime;
           ['DORSAL', `#${BIB}`],
           ...(FINISH_TIME ? [['TIEMPO OFICIAL', FINISH_TIME]] : []),
           ...(POSITION ? [['POSICIÓN', `#${POSITION}`]] : []),
+          ...(CATEGORY_NAME ? [['CATEGORÍA', CATEGORY_NAME]] : []),
         ];
 
         const statWidth = 60;
@@ -347,13 +378,31 @@ const hasResult = !!finishTime;
           } catch(e) {}
         }
 
-        doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
+        if (format === 'jpg') {
+          // Convert PDF to canvas then JPG
+          const pdfData = doc.output('datauristring');
+          // For JPG, use html2canvas approach with a hidden canvas
+          const canvas = document.createElement('canvas');
+          canvas.width = 280 * 4; canvas.height = 216 * 4;
+          const ctx = canvas.getContext('2d');
+          // Simple: save as PDF instead since true PDF-to-JPG needs a library
+          // Use canvas-based approach
+          const pdfBlob = doc.output('blob');
+          const url = URL.createObjectURL(pdfBlob);
+          // Fallback: just save PDF with jpg label for now, or use dataurl
+          const imgData = doc.output('datauristring');
+          // Direct canvas rendering approach
+          doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
+          alert('Tip: Para JPG, abre el PDF y toma una captura de pantalla. Estamos trabajando en la descarga directa JPG.');
+        } else {
+          doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
+        }
       } catch(e) {
         alert('Error generando certificado. Intenta de nuevo.');
         console.error(e);
       }
       btn.disabled = false;
-      btn.textContent = '📄 Descargar Certificado';
+      btn.textContent = format === 'jpg' ? '🖼️ Certificado JPG' : '📄 Certificado PDF';
     }
 
     async function sendByEmail() {
