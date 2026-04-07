@@ -84,6 +84,14 @@ export default {
         type: 'boolean',
         title: 'Habilitar Inscripción por Equipos',
       },
+      certificateArtUrl: {
+        type: 'string',
+        title: 'URL Arte del Certificado (fondo)',
+      },
+      certificateLogoUrl: {
+        type: 'string',
+        title: 'URL Logo para Certificado',
+      },
     },
     required: ['title'],
   },

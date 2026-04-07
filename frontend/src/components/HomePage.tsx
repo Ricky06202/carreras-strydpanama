@@ -284,7 +284,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                     '&:hover': { bgcolor: 'action.hover' },
                     cursor: 'pointer',
                     textDecoration: 'none'
-                  }} component="a" href={`/race/${race.id}`}>
+                  }} component="a" href={`/resultados?raceId=${race.id}`}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Box>
                         <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{race.data?.title || race.title}</Typography>

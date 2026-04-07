@@ -139,17 +139,65 @@ export const POST: APIRoute = async ({ request }) => {
     const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
     body.confirmationCode = confCode;
 
-    // 4. Registrar al participante con un título único para evitar conflictos de slug
+    // 4. Registrar al participante principal (capitán) con un título único
     const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib}`;
     
-    // Asegurar que el código vaya dentro del objeto data final del participante
     const registrationData = {
         ...body,
         title: participantTitle,
-        confirmationCode: confCode // Re-confirmamos que se incluya
+        confirmationCode: confCode
     };
     
     const result = await api.registerParticipant(env, registrationData);
+
+    // 4b. Si es equipo, registrar a cada miembro adicional como participante individual
+    const teamMemberBibs: number[] = [nextBib]; // Guardar dorsales del equipo
+    if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
+        let memberBib = nextBib;
+        for (const member of body.teamMembers) {
+            // Saltamos si no tiene nombre (campos vacíos)
+            if (!member.firstName || !member.lastName) continue;
+            // Saltamos al capitán (mismo nombre/cédula que el registro principal)
+            if (member.cedula === body.cedula && member.firstName === body.firstName) continue;
+
+            memberBib++;
+            teamMemberBibs.push(memberBib);
+            const memberConfCode = 'STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+            const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib}`;
+            const memberData = {
+                firstName: member.firstName,
+                lastName: member.lastName,
+                email: member.email || body.email,
+                phone: member.phone || body.phone,
+                cedula: member.cedula || '',
+                country: member.country || body.country,
+                birthDate: member.birthDate || '',
+                gender: member.gender || '',
+                size: member.size || '',
+                race: body.raceId,
+                raceId: body.raceId,
+                category: assignedCategoryId,
+                categoryId: assignedCategoryId,
+                categoryName: resolvedCategoryName,
+                distance: body.distanceId,
+                distanceId: body.distanceId,
+                teamName: body.teamName || '',
+                photoUrl: member.photoUrl || '',
+                bibNumber: memberBib,
+                paymentStatus: body.paymentMethod,
+                confirmationCode: memberConfCode,
+                participantType: body.participantType || 'general',
+                registrationType: 'team',
+                title: memberTitle,
+            };
+            try {
+                await api.registerParticipant(env, memberData);
+                console.log(`Team member registered: ${member.firstName} ${member.lastName} - BIB ${memberBib}`);
+            } catch (e) {
+                console.error(`Failed to register team member ${member.firstName}:`, e);
+            }
+        }
+    }
 
     // 4. Marcar Código como canjeado si se usó
     if (usedCodeId && usedCodeData) {
