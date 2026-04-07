@@ -712,7 +712,7 @@ const handleSubmit = async () => {
             </FormControl>
 
             <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-              <TextField fullWidth label="Código de descuento (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" />
+              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" />
               <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' } }}>
                 Validar
               </Button>
