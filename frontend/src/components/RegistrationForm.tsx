@@ -168,6 +168,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [runnerLookupStatus, setRunnerLookupStatus] = useState<'idle' | 'loading' | 'found' | 'new'>('idle');
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
   const [finalConfirmationCode, setFinalConfirmationCode] = useState('');
+  const [assignedBib, setAssignedBib] = useState<number | null>(null);
 
   const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -538,9 +539,10 @@ const handleSubmit = async () => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || 'Error al registrar');
       
-      // Capturar el código de confirmación devuelto por el backend
+      // Capturar el código de confirmación y dorsal devueltos por el backend
       const confCode = data.confirmationCode || '';
       setFinalConfirmationCode(confCode);
+      if (data.assignedBib) setAssignedBib(data.assignedBib);
       
       setNotification({ message: 'Registro exitoso', type: 'success' });
       setStep(4);
@@ -613,6 +615,7 @@ const handleSubmit = async () => {
         
         if (!resReg.ok) throw new Error(dataReg.message || 'Error guardando registro previo');
         setFinalConfirmationCode(dataReg.confirmationCode || '');
+        if (dataReg.assignedBib) setAssignedBib(dataReg.assignedBib);
 
         // SonicJS returns the item inside dataReg.data[0].id usually. Let's find it.
         // Also result spreads inside dataReg directly if it's merged.
@@ -1389,8 +1392,8 @@ const handleSubmit = async () => {
                     <Typography variant="body2" fontWeight="bold">{formData.firstName} {formData.lastName}</Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
-                    <Typography variant="caption" color="text.secondary">Dorsal Reservado</Typography>
-                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>Pendiente de asignación</Typography>
+                    <Typography variant="caption" color="text.secondary">Dorsal Asignado</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT} sx={{ fontSize: '1.2rem' }}>#{assignedBib || '—'}</Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Distancia</Typography>
@@ -1459,10 +1462,18 @@ const handleSubmit = async () => {
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
-                  <Typography variant="body1" fontWeight="bold" sx={{ color: formData.paymentMethod === 'yappy' ? ACCENT : 'inherit' }}>
-                    {paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod}
+                  <Typography variant="body1" fontWeight="bold" sx={{ color: ACCENT }}>
+                    {(codeValid && codeValid.valid)
+                      ? 'Boleto Físico (Cupón)'
+                      : (paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod || 'No especificado')}
                   </Typography>
                 </Box>
+                {(codeValid && codeValid.valid) && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
+                    <Typography variant="body2" color="text.secondary">Cupón Canjeado:</Typography>
+                    <Typography variant="body1" fontWeight="bold" sx={{ fontFamily: 'monospace', color: 'success.main' }}>✅ {code}</Typography>
+                  </Box>
+                )}
                 
                 {registrationType === 'team' && (
                   <Box sx={{ mt: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2 }}>
