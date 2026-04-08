@@ -146,4 +146,18 @@ export const api = {
 
   updateRace: (env: any, id: string, data: any) =>
     api.updateContent(env, id, data),
+
+  getPublicAtletas: (env: any) =>
+    apiFetch('/api/collections/runners/content?limit=1000', env).then((res: any) => ({
+      ...res,
+      data: (res?.data || []).filter((r: any) => r.data?.publicProfile === true),
+    })),
+
+  getAtleta: (env: any, cedula: string) =>
+    apiFetch('/api/collections/runners/content?limit=2000', env).then((res: any) => {
+      const match = (res?.data || []).find((r: any) =>
+        (r.data?.cedula || '') === cedula && r.data?.publicProfile === true
+      );
+      return match || null;
+    }),
 };

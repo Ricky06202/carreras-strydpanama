@@ -1,0 +1,52 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import AtletaProfile from '../../components/AtletaProfile';
+import { apiFetch } from '../../lib/api';
+import { env } from 'cloudflare:workers';
+
+const { cedula } = Astro.params;
+
+let runner = null;
+try {
+  const res = await apiFetch('/api/collections/runners/content?limit=2000', env);
+  const match = (res?.data || []).find((r: any) =>
+    (r.data?.cedula || '') === decodeURIComponent(cedula || '')
+  );
+  if (match && match.data?.publicProfile) {
+    runner = {
+      id: match.id,
+      cedula: match.data.cedula || '',
+      firstName: match.data.firstName || '',
+      lastName: match.data.lastName || '',
+      photoUrl: match.data.photoUrl || '',
+      bannerUrl: match.data.bannerUrl || '',
+      country: match.data.country || '',
+      totalRaces: match.data.totalRaces || 0,
+      bio: match.data.bio || '',
+      personalRecords: match.data.personalRecords || '[]',
+      favoriteRaces: match.data.favoriteRaces || '[]',
+      plannedRaces: match.data.plannedRaces || '[]',
+      instagram: match.data.instagram || '',
+      strava: match.data.strava || '',
+      facebook: match.data.facebook || '',
+      tiktok: match.data.tiktok || '',
+      gearWatch: match.data.gearWatch || '',
+      gearShoes: match.data.gearShoes || '',
+      gearElectrolyte: match.data.gearElectrolyte || '',
+      gearOther: match.data.gearOther || '',
+      galleryPhotos: match.data.galleryPhotos || '[]',
+      publicFields: match.data.publicFields || '{}',
+    };
+  }
+} catch (e) {
+  console.error('Error loading atleta:', e);
+}
+
+if (!runner) {
+  return Astro.redirect('/atletas');
+}
+---
+
+<Layout title={`${runner.firstName} ${runner.lastName} — Atletas STRYD Panama`}>
+  <AtletaProfile client:load runner={runner} />
+</Layout>
