@@ -51,6 +51,9 @@ interface Race {
     status?: string;
     timerStart?: number;
     timerStop?: number;
+    timer2Start?: number;
+    timer2Stop?: number;
+    timer2Label?: string;
   };
 }
 
@@ -633,12 +636,16 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     doc.save(`Participantes_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
-  // Estados para Meta de Llegada
+  // Estados para Meta de Llegada y Retorno
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
   const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
+  const [checkpointInput, setCheckpointInput] = useState<Record<string, string>>({});
+  const [recentCheckpoints, setRecentCheckpoints] = useState<Record<string, any[]>>({});
+  const [timer2LabelEdit, setTimer2LabelEdit] = useState<Record<string, string>>({});
 
-  const registerFinish = async (raceId: string, timerStart: number) => {
-    const bib = bibInput[raceId]?.trim();
+  const registerFinish = async (raceId: string, timerStart: number, inputKey?: string) => {
+    const key = inputKey ?? raceId;
+    const bib = bibInput[key]?.trim();
     if (!bib) return;
 
     setLoading(raceId);
@@ -651,24 +658,50 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ raceId, bibNumber: bib, finishTime })
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar llegada');
-      
-      // Limpiar input y agregar a la lista de recientes
-      setBibInput(prev => ({ ...prev, [raceId]: '' }));
-      setRecentFinishes(prev => {
-        const raceFinishes = prev[raceId] || [];
-        return {
-          ...prev,
-          [raceId]: [data.participant, ...raceFinishes].slice(0, 10) // Mantener últimos 10
-        };
-      });
+
+      setBibInput(prev => ({ ...prev, [key]: '' }));
+      setRecentFinishes(prev => ({
+        ...prev,
+        [key]: [data.participant, ...(prev[key] || [])].slice(0, 10),
+      }));
       
       // Feedback visual opcional
       const beep = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
       beep.play().catch(() => {}); // Intentar sonido tipo scanner
       
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const registerCheckpoint = async (raceId: string, timerStart: number) => {
+    const bib = checkpointInput[raceId]?.trim();
+    if (!bib) return;
+
+    setLoading(raceId);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/register-checkpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceId, bibNumber: bib, timerStart }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar retorno');
+
+      setCheckpointInput(prev => ({ ...prev, [raceId]: '' }));
+      setRecentCheckpoints(prev => ({
+        ...prev,
+        [raceId]: [data.participant, ...(prev[raceId] || [])].slice(0, 20),
+      }));
+
+      const beep = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
+      beep.play().catch(() => {});
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -708,17 +741,29 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   const stopTimer = (id: string) => {
-    updateRace(id, { 
-      timerStop: Math.floor(Date.now() / 1000)
+    updateRace(id, {
+      timerStop: Math.floor(Date.now() / 1000),
+      status: 'finished'
     });
   };
 
   const resetTimer = (id: string) => {
     if (confirm('¿Estás seguro de reiniciar el cronómetro?')) {
-      updateRace(id, { 
-        timerStart: null, 
-        timerStop: null
-      });
+      updateRace(id, { timerStart: null, timerStop: null, status: 'accepting' });
+    }
+  };
+
+  const startTimer2 = (id: string) => {
+    updateRace(id, { timer2Start: Math.floor(Date.now() / 1000), timer2Stop: null });
+  };
+
+  const stopTimer2 = (id: string) => {
+    updateRace(id, { timer2Stop: Math.floor(Date.now() / 1000) });
+  };
+
+  const resetTimer2 = (id: string) => {
+    if (confirm('¿Estás seguro de reiniciar el 2° cronómetro?')) {
+      updateRace(id, { timer2Start: null, timer2Stop: null });
     }
   };
 
@@ -895,40 +940,38 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                     }} sx={{ display: 'flex', gap: 1 }}>
                       <TextField
                         fullWidth
-                        size="small"
                         placeholder="Escanear o teclear Dorsal"
                         value={bibInput[race.id] || ''}
                         onChange={(e) => setBibInput(prev => ({ ...prev, [race.id]: e.target.value }))}
                         disabled={!!loading}
                         autoComplete="off"
-                        InputProps={{
-                          sx: { fontWeight: 'bold', fontSize: '1.2rem' }
-                        }}
+                        InputProps={{ sx: { fontWeight: 'bold', fontSize: '1.5rem', height: 64 } }}
+                        inputProps={{ style: { textAlign: 'center' } }}
                       />
                       <Button
                         type="submit"
                         variant="contained"
                         disabled={!!loading || !bibInput[race.id]}
-                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, px: 3, fontSize: '1rem', fontWeight: 'bold' }}
                       >
-                        Registrar
+                        OK
                       </Button>
                     </Box>
-                    
+
                     {/* Lista de Llegadas Recientes */}
                     {recentFinishes[race.id]?.length > 0 && (
-                      <Box sx={{ mt: 3, bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
+                      <Box sx={{ mt: 2, bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
                         <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
-                          ÚLTIMOS REGISTROS
+                          ÚLTIMAS LLEGADAS
                         </Typography>
                         <List dense disablePadding>
                           {recentFinishes[race.id].map((finish: any, i: number) => (
-                            <ListItem key={i} disablePadding sx={{ py: 0.5, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                              <ListItemText 
+                            <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                              <ListItemText
                                 primary={
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
-                                      #{finish.bibNumber} - {finish.name}
+                                      #{finish.bibNumber} {finish.name}
                                     </Typography>
                                     <Typography variant="body2" color="success.main" sx={{ fontWeight: 'bold', fontFamily: 'monospace' }}>
                                       {formatTime(finish.finishTime)}
@@ -941,8 +984,193 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                         </List>
                       </Box>
                     )}
+
+                    {/* --- SECCIÓN RETORNO / CHECKPOINT --- */}
+                    <Box sx={{ mt: 3, pt: 3, borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 1.5, color: 'text.secondary' }}>
+                        🔄 Retorno / Checkpoint
+                      </Typography>
+                      <Box component="form" onSubmit={(e) => {
+                        e.preventDefault();
+                        if (checkpointInput[race.id]?.trim()) {
+                          registerCheckpoint(race.id, race.data!.timerStart!);
+                        }
+                      }} sx={{ display: 'flex', gap: 1 }}>
+                        <TextField
+                          fullWidth
+                          placeholder="Dorsal en retorno"
+                          value={checkpointInput[race.id] || ''}
+                          onChange={(e) => setCheckpointInput(prev => ({ ...prev, [race.id]: e.target.value }))}
+                          disabled={!!loading}
+                          autoComplete="off"
+                          InputProps={{ sx: { fontWeight: 'bold', fontSize: '1.3rem', height: 56 } }}
+                          inputProps={{ style: { textAlign: 'center' } }}
+                        />
+                        <Button
+                          type="submit"
+                          variant="outlined"
+                          disabled={!!loading || !checkpointInput[race.id]}
+                          sx={{ color: '#4fc3f7', borderColor: '#4fc3f7', '&:hover': { borderColor: '#0288d1', bgcolor: 'rgba(79,195,247,0.05)' }, px: 2, fontWeight: 'bold' }}
+                        >
+                          OK
+                        </Button>
+                      </Box>
+                      {recentCheckpoints[race.id]?.length > 0 && (
+                        <Box sx={{ mt: 1.5, bgcolor: 'background.default', borderRadius: 2, p: 1.5 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
+                            EN RETORNO (aún sin llegar a meta)
+                          </Typography>
+                          <List dense disablePadding>
+                            {recentCheckpoints[race.id]
+                              .filter((cp: any) => !recentFinishes[race.id]?.some((f: any) => f.bibNumber === cp.bibNumber))
+                              .map((cp: any, i: number) => (
+                              <ListItem key={i} disablePadding sx={{ py: 0.3 }}>
+                                <ListItemText
+                                  primary={
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                        #{cp.bibNumber} {cp.name}
+                                      </Typography>
+                                      <Typography variant="caption" sx={{ color: '#4fc3f7', fontFamily: 'monospace' }}>
+                                        +{formatTime(cp.checkpointTime)}
+                                      </Typography>
+                                    </Box>
+                                  }
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      )}
+                    </Box>
                   </Box>
                 )}
+
+                {/* --- 2° CRONÓMETRO --- */}
+                <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                  {/* Label editable */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <TimerIcon sx={{ color: '#4fc3f7', fontSize: 20 }} />
+                    <TextField
+                      size="small"
+                      variant="standard"
+                      placeholder="2° Cronómetro (ej: 1K Niños)"
+                      value={timer2LabelEdit[race.id] ?? (race.data?.timer2Label || '')}
+                      onChange={(e) => setTimer2LabelEdit(prev => ({ ...prev, [race.id]: e.target.value }))}
+                      onBlur={() => {
+                        const label = timer2LabelEdit[race.id];
+                        if (label !== undefined && label !== race.data?.timer2Label) {
+                          updateRace(race.id, { timer2Label: label });
+                        }
+                      }}
+                      sx={{ flex: 1, '& input': { fontWeight: 'bold', fontSize: '1rem' } }}
+                      InputProps={{ disableUnderline: false }}
+                    />
+                  </Box>
+
+                  <Box sx={{ bgcolor: '#000', borderRadius: 3, p: 2, mb: 2, textAlign: 'center', border: '1px solid #1a3a4a' }}>
+                    <Typography variant="h4" sx={{ color: '#4fc3f7', fontFamily: 'monospace', fontWeight: 'bold' }}>
+                      {race.data?.timer2Start
+                        ? formatTime((race.data.timer2Stop || now) - race.data.timer2Start)
+                        : '00:00'}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'grey.500' }}>
+                      {race.data?.timer2Start
+                        ? (race.data.timer2Stop ? 'Finalizado' : `En curso (${new Date(race.data.timer2Start * 1000).toLocaleTimeString()})`)
+                        : 'Listo para iniciar'}
+                    </Typography>
+                  </Box>
+
+                  <Box sx={{ display: 'flex', gap: 2 }}>
+                    {!race.data?.timer2Start ? (
+                      <Button
+                        fullWidth
+                        variant="outlined"
+                        startIcon={loading === race.id ? <CircularProgress size={18} color="inherit" /> : <PlayArrowIcon />}
+                        onClick={() => startTimer2(race.id)}
+                        disabled={!!loading}
+                        sx={{ color: '#4fc3f7', borderColor: '#4fc3f7', py: 1.5, '&:hover': { borderColor: '#0288d1', bgcolor: 'rgba(79,195,247,0.05)' } }}
+                      >
+                        INICIAR 2°
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          startIcon={loading === race.id ? <CircularProgress size={18} color="inherit" /> : <StopIcon />}
+                          onClick={() => stopTimer2(race.id)}
+                          disabled={!!loading || !!race.data?.timer2Stop}
+                          sx={{ color: '#ff4444', borderColor: '#ff4444', '&:hover': { borderColor: '#cc0000', bgcolor: 'rgba(255,0,0,0.05)' } }}
+                        >
+                          DETENER
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => resetTimer2(race.id)}
+                          disabled={!!loading}
+                          sx={{ minWidth: 56, color: 'text.secondary', borderColor: 'divider' }}
+                        >
+                          <RestartAltIcon />
+                        </Button>
+                      </>
+                    )}
+                  </Box>
+
+                  {/* Meta para 2° cronómetro */}
+                  {race.data?.timer2Start && !race.data?.timer2Stop && (
+                    <Box sx={{ mt: 3, pt: 3, borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1.5, color: '#4fc3f7' }}>
+                        🏁 Meta — {race.data.timer2Label || '2° Distancia'}
+                      </Typography>
+                      <Box component="form" onSubmit={(e) => {
+                        e.preventDefault();
+                        const key = `${race.id}_t2`;
+                        if (bibInput[key]?.trim()) {
+                          registerFinish(race.id, race.data!.timer2Start!, key);
+                        }
+                      }} sx={{ display: 'flex', gap: 1 }}>
+                        <TextField
+                          fullWidth
+                          placeholder="Dorsal"
+                          value={bibInput[`${race.id}_t2`] || ''}
+                          onChange={(e) => setBibInput(prev => ({ ...prev, [`${race.id}_t2`]: e.target.value }))}
+                          disabled={!!loading}
+                          autoComplete="off"
+                          InputProps={{ sx: { fontWeight: 'bold', fontSize: '1.5rem', height: 64 } }}
+                          inputProps={{ style: { textAlign: 'center' } }}
+                        />
+                        <Button
+                          type="submit"
+                          variant="contained"
+                          disabled={!!loading || !bibInput[`${race.id}_t2`]}
+                          sx={{ bgcolor: '#0288d1', '&:hover': { bgcolor: '#0277bd' }, px: 3, fontWeight: 'bold' }}
+                        >
+                          OK
+                        </Button>
+                      </Box>
+                      {recentFinishes[`${race.id}_t2`]?.length > 0 && (
+                        <Box sx={{ mt: 2, bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
+                          <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>ÚLTIMAS LLEGADAS</Typography>
+                          <List dense disablePadding>
+                            {recentFinishes[`${race.id}_t2`].map((finish: any, i: number) => (
+                              <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                                <ListItemText
+                                  primary={
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 'bold' }}>#{finish.bibNumber} {finish.name}</Typography>
+                                      <Typography variant="body2" sx={{ color: '#4fc3f7', fontWeight: 'bold', fontFamily: 'monospace' }}>{formatTime(finish.finishTime)}</Typography>
+                                    </Box>
+                                  }
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </Box>
               </CardContent>
             </Card>
           </Grid>

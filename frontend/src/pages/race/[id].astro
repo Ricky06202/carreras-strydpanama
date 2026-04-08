@@ -72,7 +72,7 @@ const raceData = race?.data || {};
               </svg>
             </div>
           )}
-          {raceData.status === 'active' && (
+          {raceData.status === 'active' && !raceData.timerStop && (
             <div class="absolute top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-full font-bold animate-pulse">
               EN VIVO
             </div>

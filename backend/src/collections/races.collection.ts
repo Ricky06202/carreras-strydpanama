@@ -80,6 +80,18 @@ export default {
         type: 'number',
         title: 'Fin Cronómetro (Timestamp)',
       },
+      timer2Label: {
+        type: 'string',
+        title: 'Etiqueta 2° Cronómetro (ej: 1K Niños)',
+      },
+      timer2Start: {
+        type: 'number',
+        title: 'Inicio 2° Cronómetro (Timestamp)',
+      },
+      timer2Stop: {
+        type: 'number',
+        title: 'Fin 2° Cronómetro (Timestamp)',
+      },
       teamEnabled: {
         type: 'boolean',
         title: 'Habilitar Inscripción por Equipos',

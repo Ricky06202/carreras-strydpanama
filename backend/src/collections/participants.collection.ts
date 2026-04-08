@@ -37,6 +37,7 @@ export default {
       categoryName: { type: 'string', title: 'Nombre de Categoría' },
       distanceName: { type: 'string', title: 'Nombre de Distancia' },
       registrationType: { type: 'string', title: 'Tipo de Registro (individual/team)' },
+      checkpointTime: { type: 'number', title: 'Tiempo en Retorno (s)' },
     },
     required: ['title', 'firstName', 'lastName', 'email'],
   },
