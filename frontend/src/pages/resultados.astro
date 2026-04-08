@@ -178,7 +178,8 @@ const medals = ['🥇', '🥈', '🥉'];
   .td-bib { color: #FF6B00; font-weight: 700; }
   .td-time { font-weight: 900; font-variant-numeric: tabular-nums; }
   .td-cat { font-size: 11px; color: #888; background: #1a1a1a; padding: 2px 8px; border-radius: 10px; display: inline-block; }
-  .mini-photo { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 2px solid #333; vertical-align: middle; margin-right: 6px; }
+  .mini-photo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #FF6B00; vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
+  .mini-photo-placeholder { width: 34px; height: 34px; border-radius: 50%; background: #2a2a2a; border: 2px solid #333; vertical-align: middle; margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
 
   /* Team Section */
   .team-card {
@@ -225,7 +226,8 @@ const medals = ['🥇', '🥈', '🥉'];
     .results-table thead th { padding: 10px 6px; font-size: 10px; }
     .pos-badge { width: 26px; height: 26px; font-size: 11px; }
     .td-time { font-size: 13px; }
-    .mini-photo { width: 22px; height: 22px; margin-right: 4px; }
+    .mini-photo { width: 26px; height: 26px; margin-right: 6px; }
+    .mini-photo-placeholder { width: 26px; height: 26px; margin-right: 6px; font-size: 12px; }
     .team-card { padding: 16px; }
     .team-header { flex-direction: column; gap: 8px; }
     .team-name { font-size: 16px; }
@@ -404,10 +406,12 @@ const medals = ['🥇', '🥈', '🥉'];
 
     tbody.innerHTML = filtered.map(r => {
       const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
-      const ph = r.photoUrl ? `<img src="${r.photoUrl}" alt="" class="mini-photo"/>` : '';
+      const ph = r.photoUrl
+        ? `<img src="${r.photoUrl}" alt="" class="mini-photo"/>`
+        : `<span class="mini-photo-placeholder">🏃</span>`;
       return `<tr onclick="window.location='/corredor/${r.id}'">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
-        <td style="font-weight:700;">${ph}${r.name}</td>
+        <td style="font-weight:700;"><div style="display:flex;align-items:center;">${ph}${r.name}</div></td>
         <td class="td-bib">#${r.bib}</td>
         <td class="td-time">${fmt(r.finishTime)}</td>
         <td><span class="td-cat">${r.categoryName}</span></td>
@@ -442,7 +446,7 @@ const medals = ['🥇', '🥈', '🥉'];
         <div class="team-members">
           ${t.members.map(m => `
             <a href="/corredor/${m.id}" class="team-member" style="text-decoration:none;color:inherit;">
-              ${m.photoUrl ? `<img src="${m.photoUrl}" alt="" class="mini-photo"/>` : ''}
+              ${m.photoUrl ? `<img src="${m.photoUrl}" alt="" class="mini-photo"/>` : `<span class="mini-photo-placeholder">🏃</span>`}
               <span class="member-name">${m.name}</span>
               <span class="member-bib">#${m.bib}</span>
               <span class="member-time">${fmt(m.finishTime)}</span>
