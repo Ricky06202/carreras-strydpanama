@@ -77,28 +77,28 @@ const raceData = race?.data || {};
               EN VIVO
             </div>
           )}
-          <div class="p-8">
+          <div class="p-4 sm:p-6 md:p-8">
             <h1 class="text-3xl font-bold mb-4 dark:text-white">{raceData.title || race.title}</h1>
             <p class="text-gray-600 dark:text-gray-400 mb-6">{raceData.description || ''}</p>
             
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
-                <div class="text-2xl font-bold text-accent">${raceData.price || 0}</div>
-                <div class="text-sm text-gray-500">Precio</div>
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div class="text-center p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-lg sm:text-2xl font-bold text-accent">${raceData.price || 0}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Precio</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
-                <div class="text-2xl font-bold text-accent">
+              <div class="text-center p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-lg sm:text-2xl font-bold text-accent">
                   {raceData.maxParticipants ? raceData.maxParticipants : '∞'}
                 </div>
-                <div class="text-sm text-gray-500">Cupo Máximo</div>
+                <div class="text-xs sm:text-sm text-gray-500">Cupo</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
-                <div class="text-2xl font-bold text-accent">{formatDate(raceData.date)}</div>
-                <div class="text-sm text-gray-500">Fecha</div>
+              <div class="text-center p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-sm sm:text-2xl font-bold text-accent line-clamp-2">{formatDate(raceData.date)}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Fecha</div>
               </div>
-              <div class="text-center p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
-                <div class="text-2xl font-bold text-accent">{raceData.status === 'accepting' ? 'Abierta' : raceData.status}</div>
-                <div class="text-sm text-gray-500">Estado</div>
+              <div class="text-center p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
+                <div class="text-lg sm:text-2xl font-bold text-accent">{raceData.status === 'accepting' ? 'Abierta' : raceData.status}</div>
+                <div class="text-xs sm:text-sm text-gray-500">Estado</div>
               </div>
             </div>
 
