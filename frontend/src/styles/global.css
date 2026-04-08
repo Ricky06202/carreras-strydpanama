@@ -21,6 +21,7 @@
 
 html {
   scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html.dark {
@@ -49,4 +50,31 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   transition: background-color 0.3s, color 0.3s;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Mobile touch UX */
+a, button, [role="button"], input[type="submit"] {
+  touch-action: manipulation;
+}
+
+/* Prevent iOS zoom on form focus */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="password"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Ensure MUI inputs don't cause iOS zoom */
+@media screen and (max-width: 768px) {
+  .MuiInputBase-input {
+    font-size: 16px !important;
+  }
 }

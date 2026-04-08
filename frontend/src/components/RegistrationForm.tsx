@@ -682,8 +682,8 @@ const handleSubmit = async () => {
   return (
     <ThemeProvider theme={mode === 'dark' ? darkTheme : lightTheme}>
       <CssBaseline />
-      <Paper elevation={3} sx={{ p: { xs: 2, md: 4 }, borderRadius: '32px' }}>
-        <Stepper activeStep={step} sx={{ mb: 4 }}>
+      <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 2, md: 4 }, borderRadius: { xs: '16px', md: '32px' }, mx: { xs: -0.5, sm: 0 } }}>
+        <Stepper activeStep={step} alternativeLabel sx={{ mb: 3, '& .MuiStepLabel-label': { fontSize: { xs: '0.6rem', sm: '0.75rem', md: '0.875rem' }, mt: 0.5 } }}>
           {steps.map((label) => (
             <Step key={label}>
               <StepLabel>{label}</StepLabel>
@@ -711,9 +711,9 @@ const handleSubmit = async () => {
               </Select>
             </FormControl>
 
-            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
               <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" />
-              <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' } }}>
+              <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
                 Validar
               </Button>
             </Box>
@@ -745,9 +745,9 @@ const handleSubmit = async () => {
             </Box>
 
             {registrationType === 'individual' && (
-              <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                 {/* Cédula primero + botón de búsqueda */}
-                <Box sx={{ gridColumn: '1 / -1', display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                <Box sx={{ gridColumn: '1 / -1', display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 1, alignItems: { sm: 'flex-start' } }}>
                   <TextField
                     label="Cédula / Pasaporte *"
                     value={formData.cedula}
@@ -760,7 +760,7 @@ const handleSubmit = async () => {
                     variant="outlined"
                     onClick={lookupByCedula}
                     disabled={!formData.cedula.trim() || runnerLookupStatus === 'loading'}
-                    sx={{ borderColor: ACCENT, color: ACCENT, whiteSpace: 'nowrap', mt: 0.5, px: 2, py: 1.8 }}
+                    sx={{ borderColor: ACCENT, color: ACCENT, whiteSpace: 'nowrap', mt: { xs: 0, sm: 0.5 }, px: 2, py: 1.8, width: { xs: '100%', sm: 'auto' } }}
                   >
                     {runnerLookupStatus === 'loading' ? '...' : 'Buscar Datos'}
                   </Button>
@@ -779,7 +779,7 @@ const handleSubmit = async () => {
 
                 <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, gridColumn: '1 / -1' }}>
                   <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: ACCENT }}>TIPO DE PARTICIPANTE</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                     {[
                       { value: 'general', label: 'Público General' },
                       { value: 'estudiante', label: 'Estudiante (UTP)' },
@@ -793,8 +793,9 @@ const handleSubmit = async () => {
                         size="small"
                         sx={{ 
                           borderRadius: 5,
-                          fontSize: '0.75rem',
+                          fontSize: { xs: '0.65rem', sm: '0.75rem' },
                           py: 0.5,
+                          px: { xs: 1, sm: 1.5 },
                           borderColor: formData.participantType === t.value ? ACCENT : 'divider',
                           bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
                           color: formData.participantType === t.value ? 'white' : 'text.secondary',
@@ -818,26 +819,28 @@ const handleSubmit = async () => {
                 <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }}/>
                 <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 6123-4567" required sx={{ gridColumn: '1 / -1' }}/>
                 
-                <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
-                  <Typography variant="body2" sx={{ alignSelf: 'center', mr: 2 }}>Nacimiento *</Typography>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Día</InputLabel>
-                    <Select value={formData.birthDay} label="Día" onChange={(e) => setFormData({...formData, birthDay: e.target.value})}>
-                      {days.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
-                    </Select>
-                  </FormControl>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Mes</InputLabel>
-                    <Select value={formData.birthMonth} label="Mes" onChange={(e) => setFormData({...formData, birthMonth: e.target.value})}>
-                      {months.map(m => <MenuItem key={m.val} value={m.val}>{m.lab}</MenuItem>)}
-                    </Select>
-                  </FormControl>
-                  <FormControl fullWidth size="small">
-                    <InputLabel>Año</InputLabel>
-                    <Select value={formData.birthYear} label="Año" onChange={(e) => setFormData({...formData, birthYear: e.target.value})}>
-                      {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
-                    </Select>
-                  </FormControl>
+                <Box sx={{ gridColumn: '1 / -1' }}>
+                  <Typography variant="body2" sx={{ mb: 1 }}>Nacimiento *</Typography>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr 1fr', sm: '1fr 1fr 1fr' }, gap: 1 }}>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Día</InputLabel>
+                      <Select value={formData.birthDay} label="Día" onChange={(e) => setFormData({...formData, birthDay: e.target.value})}>
+                        {days.map(d => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Mes</InputLabel>
+                      <Select value={formData.birthMonth} label="Mes" onChange={(e) => setFormData({...formData, birthMonth: e.target.value})}>
+                        {months.map(m => <MenuItem key={m.val} value={m.val}>{m.lab}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                    <FormControl fullWidth size="small">
+                      <InputLabel>Año</InputLabel>
+                      <Select value={formData.birthYear} label="Año" onChange={(e) => setFormData({...formData, birthYear: e.target.value})}>
+                        {years.map(y => <MenuItem key={y} value={y}>{y}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Box>
                 </Box>
 
                 <FormControl fullWidth>
@@ -913,7 +916,7 @@ const handleSubmit = async () => {
             )}
 
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
 
               {categories.length > 0 && (
                 <FormControl fullWidth disabled>
@@ -1058,7 +1061,7 @@ const handleSubmit = async () => {
                     <Typography variant="subtitle2" sx={{ mb: 2, fontWeight: 'bold', color: ACCENT }}>
                       Integrante {index + 1} {index === 0 ? '(Capitán)' : ''}
                     </Typography>
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
+                    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                       <TextField label="Nombre *" value={member.firstName} onChange={(e) => updateTeamMember(index, 'firstName', e.target.value)} placeholder="Ej: Juan" size="small" />
                       <TextField label="Apellido *" value={member.lastName} onChange={(e) => updateTeamMember(index, 'lastName', e.target.value)} placeholder="Ej: Pérez" size="small" />
                       <TextField label="Cédula *" value={member.cedula} onChange={(e) => updateTeamMember(index, 'cedula', e.target.value)} placeholder="Ej: 4-111-1111" size="small" />

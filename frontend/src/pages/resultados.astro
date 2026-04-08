@@ -105,12 +105,12 @@ const medals = ['🥇', '🥈', '🥉'];
   }
   .race-chip:hover, .race-chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; }
 
-  .tabs { display: flex; gap: 0; border-bottom: 2px solid #1f1f1f; margin-bottom: 28px; }
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid #1f1f1f; margin-bottom: 20px; }
   .tab {
-    padding: 12px 28px; cursor: pointer; font-weight: 700; font-size: 14px;
+    padding: 12px 20px; cursor: pointer; font-weight: 700; font-size: 13px;
     color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
     background: none; border-top: none; border-left: none; border-right: none;
-    text-transform: uppercase; letter-spacing: 1px;
+    text-transform: uppercase; letter-spacing: 1px; flex: 1; text-align: center;
   }
   .tab:hover { color: #FF6B00; }
   .tab.active { color: #FF6B00; border-bottom-color: #FF6B00; }
@@ -118,8 +118,8 @@ const medals = ['🥇', '🥈', '🥉'];
   .tab-content.active { display: block; }
 
   /* Podium */
-  .podium-row { display: flex; gap: 40px; justify-content: center; flex-wrap: wrap; margin-bottom: 48px; }
-  .podium-block { flex: 1; min-width: 300px; max-width: 500px; }
+  .podium-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+  .podium-block { flex: 1; min-width: 260px; max-width: 500px; }
   .podium-title { text-align: center; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #FF6B00; font-weight: 700; margin-bottom: 20px; }
   .podium-list { display: flex; flex-direction: column; gap: 12px; }
   .podium-item {
@@ -143,7 +143,7 @@ const medals = ['🥇', '🥈', '🥉'];
   .filter-row { display: flex; flex-direction: column; gap: 12px; }
   .filter-group { display: flex; flex-direction: column; gap: 6px; }
   .filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; font-weight: 600; }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
   .chip {
     background: #1a1a1a; border: 1px solid #333; color: #aaa;
     padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s;
@@ -209,11 +209,30 @@ const medals = ['🥇', '🥈', '🥉'];
 
   @media (max-width: 768px) {
     .results-table thead th:nth-child(5), .results-table tbody td:nth-child(5),
+    .results-table thead th:nth-child(6), .results-table tbody td:nth-child(6),
     .results-table thead th:nth-child(7), .results-table tbody td:nth-child(7) { display: none; }
-    .podium-row { flex-direction: column; gap: 24px; }
+    .podium-row { flex-direction: column; gap: 20px; }
+    .podium-block { min-width: 100%; }
+    .podium-item { padding: 12px 14px; gap: 10px; }
+    .podium-medal { font-size: 24px; min-width: 32px; }
+    .podium-photo { width: 44px; height: 44px; }
+    .podium-photo-placeholder { width: 44px; height: 44px; font-size: 18px; }
+    .podium-name { font-size: 14px; }
+    .podium-time { font-size: 15px; }
+    .podium-sub { font-size: 11px; }
+    .filters-bar { padding: 14px; }
+    .results-table tbody td { padding: 8px 6px; font-size: 12px; }
+    .results-table thead th { padding: 10px 6px; font-size: 10px; }
+    .pos-badge { width: 26px; height: 26px; font-size: 11px; }
+    .td-time { font-size: 13px; }
+    .mini-photo { width: 22px; height: 22px; margin-right: 4px; }
+    .team-card { padding: 16px; }
+    .team-header { flex-direction: column; gap: 8px; }
+    .team-name { font-size: 16px; }
+    .team-avg { font-size: 18px; }
   }
   @media (max-width: 480px) {
-    .results-table thead th:nth-child(6), .results-table tbody td:nth-child(6) { display: none; }
+    .results-table thead th:nth-child(3), .results-table tbody td:nth-child(3) { display: none; }
   }
 </style>
 
