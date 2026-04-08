@@ -256,8 +256,46 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   // Helper for generating initial blank members
   const createEmptyMember = () => ({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
-    birthDay: '', birthMonth: '', birthYear: '', gender: '', size: ''
+    birthDay: '', birthMonth: '', birthYear: '', gender: '', size: '', photoUrl: ''
   });
+
+  const [memberPhotoUploading, setMemberPhotoUploading] = useState<number | null>(null);
+  const [memberPhotoPreviews, setMemberPhotoPreviews] = useState<string[]>(['', '', '', '']);
+  const [memberCropSrc, setMemberCropSrc] = useState<string | null>(null);
+  const [memberCropIndex, setMemberCropIndex] = useState<number>(0);
+
+  const handleMemberPhotoChange = (index: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    const cedula = teamMembers[index]?.cedula;
+    if (!file || !cedula?.trim()) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setMemberCropIndex(index);
+      setMemberCropSrc(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleMemberCropComplete = async (croppedBase64: string) => {
+    setMemberCropSrc(null);
+    const index = memberCropIndex;
+    setMemberPhotoUploading(index);
+    try {
+      const previews = [...memberPhotoPreviews];
+      previews[index] = croppedBase64;
+      setMemberPhotoPreviews(previews);
+      const cedula = teamMembers[index]?.cedula || `member${index}`;
+      const res = await fetch('/api/upload-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: croppedBase64, cedula: `${cedula}_member${index}` })
+      });
+      const data = await res.json();
+      if (data.url) updateTeamMember(index, 'photoUrl', data.url);
+    } catch (e) { console.error('Member photo upload failed', e); }
+    setMemberPhotoUploading(null);
+  };
 
   const [teamMembers, setTeamMembers] = useState([
     createEmptyMember(), createEmptyMember(), createEmptyMember(), createEmptyMember()
@@ -1112,6 +1150,46 @@ const handleSubmit = async () => {
                           </Select>
                         </FormControl>
                       )}
+
+                      {/* Foto individual del miembro */}
+                      <Box sx={{ gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 1.5 }}>
+                        <Box sx={{
+                          width: 60, height: 60, borderRadius: '50%', overflow: 'hidden',
+                          border: `2px solid ${ACCENT}`, flexShrink: 0, bgcolor: 'action.hover',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {memberPhotoPreviews[index]
+                            ? <img src={ensureAbsolute(memberPhotoPreviews[index])} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : <Typography variant="body2">🏃</Typography>
+                          }
+                        </Box>
+                        <Box>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            id={`member-photo-${index}`}
+                            style={{ display: 'none' }}
+                            onChange={handleMemberPhotoChange(index)}
+                            disabled={!member.cedula.trim()}
+                          />
+                          <label htmlFor={`member-photo-${index}`}>
+                            <Button
+                              component="span"
+                              variant="outlined"
+                              size="small"
+                              disabled={!member.cedula.trim() || memberPhotoUploading === index}
+                              sx={{ borderColor: ACCENT, color: ACCENT, fontSize: '0.7rem' }}
+                            >
+                              {memberPhotoUploading === index ? 'Subiendo...' : memberPhotoPreviews[index] ? 'Cambiar Foto' : '📸 Foto'}
+                            </Button>
+                          </label>
+                          {!member.cedula.trim() && (
+                            <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.65rem' }}>
+                              Ingresa la cédula primero
+                            </Typography>
+                          )}
+                        </Box>
+                      </Box>
                     </Box>
                   </Paper>
                 ))}
@@ -1521,6 +1599,15 @@ const handleSubmit = async () => {
             imageSrc={croppingImageSrc}
             onCropCompleteAction={handleCropComplete}
             onClose={() => setCroppingImageSrc(null)}
+          />
+        )}
+
+        {memberCropSrc && (
+          <ImageCropper
+            open={!!memberCropSrc}
+            imageSrc={memberCropSrc}
+            onCropCompleteAction={handleMemberCropComplete}
+            onClose={() => setMemberCropSrc(null)}
           />
         )}
       </Paper>

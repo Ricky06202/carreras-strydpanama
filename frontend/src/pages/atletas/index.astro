@@ -1,0 +1,35 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import AtletasPage from '../../components/AtletasPage';
+import { apiFetch } from '../../lib/api';
+import { env } from 'cloudflare:workers';
+
+let atletas: any[] = [];
+try {
+  const res = await apiFetch('/api/collections/runners/content?limit=1000', env);
+  atletas = (res?.data || [])
+    .filter((r: any) => r.data?.publicProfile === true)
+    .map((r: any) => ({
+      id: r.id,
+      cedula: r.data?.cedula || '',
+      firstName: r.data?.firstName || '',
+      lastName: r.data?.lastName || '',
+      photoUrl: r.data?.photoUrl || '',
+      country: r.data?.country || '',
+      totalRaces: r.data?.totalRaces || 0,
+      bio: r.data?.bio || '',
+      personalRecords: r.data?.personalRecords || '[]',
+      instagram: r.data?.instagram || '',
+      strava: r.data?.strava || '',
+      facebook: r.data?.facebook || '',
+      tiktok: r.data?.tiktok || '',
+      publicFields: r.data?.publicFields || '{}',
+    }));
+} catch (e) {
+  console.error('Error loading atletas:', e);
+}
+---
+
+<Layout title="Atletas — Comunidad STRYD Panama">
+  <AtletasPage client:load initialAtletas={atletas} />
+</Layout>
