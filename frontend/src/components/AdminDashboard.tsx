@@ -66,6 +66,12 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   
   // Estados para Tabs y Códigos
   const [tabIndex, setTabIndex] = useState(0);
+
+  // Modo estudiante: solo muestra retorno/checkpoint
+  const [isCheckpointOnly] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return new URLSearchParams(window.location.search).get('rol') === 'retorno';
+  });
   
   const TABS = [
     { label: 'Cronometraje en Vivo', value: 0 },
@@ -648,6 +654,14 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     const bib = bibInput[key]?.trim();
     if (!bib) return;
 
+    // Prevent duplicate finish entries
+    const alreadyFinished = (recentFinishes[key] || []).some((f: any) => String(f.bibNumber) === String(bib));
+    if (alreadyFinished) {
+      setError(`El dorsal #${bib} ya fue registrado en meta.`);
+      setBibInput(prev => ({ ...prev, [key]: '' }));
+      return;
+    }
+
     setLoading(raceId);
     setError(null);
     const finishTime = Math.floor(Date.now() / 1000) - timerStart;
@@ -682,6 +696,14 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const registerCheckpoint = async (raceId: string, timerStart: number) => {
     const bib = checkpointInput[raceId]?.trim();
     if (!bib) return;
+
+    // Prevent duplicate checkpoint entries
+    const alreadyChecked = (recentCheckpoints[raceId] || []).some((c: any) => String(c.bibNumber) === String(bib));
+    if (alreadyChecked) {
+      setError(`El dorsal #${bib} ya fue registrado en el retorno.`);
+      setCheckpointInput(prev => ({ ...prev, [raceId]: '' }));
+      return;
+    }
 
     setLoading(raceId);
     setError(null);
@@ -786,6 +808,58 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {isCheckpointOnly ? (
+        <Box sx={{ maxWidth: 600, mx: 'auto', pt: 4 }}>
+          <Typography variant="h5" sx={{ fontWeight: 900, color: ACCENT, textAlign: 'center', mb: 3, letterSpacing: 2 }}>
+            🔄 RETORNO / CHECKPOINT
+          </Typography>
+          {races.filter(r => r.data?.timerStart && !r.data?.timerStop).map(race => (
+            <Card key={race.id} sx={{ borderRadius: 4, bgcolor: 'background.paper', border: `1px solid ${ACCENT}`, mb: 3 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>{race.data?.title || race.title}</Typography>
+                <Box component="form" onSubmit={(e) => { e.preventDefault(); if (checkpointInput[race.id]?.trim()) registerCheckpoint(race.id, race.data!.timerStart!); }} sx={{ display: 'flex', gap: 1 }}>
+                  <TextField
+                    fullWidth
+                    placeholder="Dorsal en retorno"
+                    value={checkpointInput[race.id] || ''}
+                    onChange={(e) => setCheckpointInput(prev => ({ ...prev, [race.id]: e.target.value }))}
+                    disabled={!!loading}
+                    autoComplete="off"
+                    InputProps={{ sx: { fontWeight: 'bold', fontSize: '2rem', height: 72 } }}
+                    inputProps={{ style: { textAlign: 'center' }, inputMode: 'numeric' }}
+                  />
+                  <Button type="submit" variant="contained" disabled={!!loading || !checkpointInput[race.id]}
+                    sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, px: 3, fontSize: '1.2rem', fontWeight: 'bold' }}>
+                    OK
+                  </Button>
+                </Box>
+                {recentCheckpoints[race.id]?.length > 0 && (
+                  <Box sx={{ mt: 2, bgcolor: 'background.default', borderRadius: 2, p: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>EN RETORNO</Typography>
+                    <List dense disablePadding>
+                      {recentCheckpoints[race.id].filter((cp: any) => !recentFinishes[race.id]?.some((f: any) => f.bibNumber === cp.bibNumber)).map((cp: any, i: number) => (
+                        <ListItem key={i} disablePadding sx={{ py: 0.5 }}>
+                          <ListItemText primary={
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <Typography variant="body1" sx={{ fontWeight: 'bold' }}>#{cp.bibNumber} {cp.name}</Typography>
+                              <Typography variant="body1" sx={{ color: '#4fc3f7', fontFamily: 'monospace', fontWeight: 'bold' }}>+{formatTime(cp.checkpointTime)}</Typography>
+                            </Box>
+                          } />
+                        </ListItem>
+                      ))}
+                    </List>
+                  </Box>
+                )}
+                {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+              </CardContent>
+            </Card>
+          ))}
+          {races.filter(r => r.data?.timerStart && !r.data?.timerStop).length === 0 && (
+            <Alert severity="info">No hay carreras en curso en este momento.</Alert>
+          )}
+        </Box>
+      ) : (
+      <>
       <Box sx={{ mb: 4, textAlign: 'center' }}>
         <Typography variant="h3" sx={{ fontWeight: 900, mb: 1 }}>
           PANEL DE <Box component="span" sx={{ color: ACCENT }}>CONTROL</Box>
@@ -817,10 +891,12 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
             </Select>
           </FormControl>
         ) : (
-          <Tabs 
-            value={tabIndex} 
-            onChange={(e, v) => setTabIndex(v)} 
-            centered 
+          <Tabs
+            value={tabIndex}
+            onChange={(e, v) => setTabIndex(v)}
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             textColor="inherit"
             TabIndicatorProps={{ style: { backgroundColor: ACCENT } }}
             sx={{
@@ -863,9 +939,9 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                     </Typography>
                     <Typography variant="body2" color="text.secondary">ID: {race.id}</Typography>
                   </Box>
-                  <Chip 
-                    label={race.data?.status?.toUpperCase() || 'INACTIVE'} 
-                    color={race.data?.status === 'active' ? 'success' : 'default'}
+                  <Chip
+                    label={race.data?.timerStop ? 'FINALIZADA' : race.data?.timerStart ? 'EN VIVO 🔴' : (race.data?.status === 'accepting' ? 'INSCRIPCIONES' : race.data?.status?.toUpperCase() || 'INACTIVA')}
+                    color={race.data?.timerStart && !race.data?.timerStop ? 'success' : 'default'}
                     sx={{ fontWeight: 'bold' }}
                   />
                 </Box>
@@ -927,7 +1003,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 </Box>
 
                 {/* --- SECCIÓN META DE LLEGADA --- */}
-                {race.data?.timerStart && !race.data?.timerStop && (
+                {race.data?.timerStart && (
                   <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
                       🏁 Meta de Llegadas
@@ -943,7 +1019,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                         placeholder="Escanear o teclear Dorsal"
                         value={bibInput[race.id] || ''}
                         onChange={(e) => setBibInput(prev => ({ ...prev, [race.id]: e.target.value }))}
-                        disabled={!!loading}
+                        disabled={!!loading || !!race.data?.timerStop}
                         autoComplete="off"
                         InputProps={{ sx: { fontWeight: 'bold', fontSize: '1.5rem', height: 64 } }}
                         inputProps={{ style: { textAlign: 'center' } }}
@@ -951,7 +1027,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                       <Button
                         type="submit"
                         variant="contained"
-                        disabled={!!loading || !bibInput[race.id]}
+                        disabled={!!loading || !bibInput[race.id] || !!race.data?.timerStop}
                         sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, px: 3, fontSize: '1rem', fontWeight: 'bold' }}
                       >
                         OK
@@ -1001,7 +1077,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                           placeholder="Dorsal en retorno"
                           value={checkpointInput[race.id] || ''}
                           onChange={(e) => setCheckpointInput(prev => ({ ...prev, [race.id]: e.target.value }))}
-                          disabled={!!loading}
+                          disabled={!!loading || !!race.data?.timerStop}
                           autoComplete="off"
                           InputProps={{ sx: { fontWeight: 'bold', fontSize: '1.3rem', height: 56 } }}
                           inputProps={{ style: { textAlign: 'center' } }}
@@ -1009,7 +1085,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                         <Button
                           type="submit"
                           variant="outlined"
-                          disabled={!!loading || !checkpointInput[race.id]}
+                          disabled={!!loading || !checkpointInput[race.id] || !!race.data?.timerStop}
                           sx={{ color: '#4fc3f7', borderColor: '#4fc3f7', '&:hover': { borderColor: '#0288d1', bgcolor: 'rgba(79,195,247,0.05)' }, px: 2, fontWeight: 'bold' }}
                         >
                           OK
@@ -1775,6 +1851,8 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
             )}
           </Dialog>
         </Box>
+      )}
+      </>
       )}
     </Container>
   );
