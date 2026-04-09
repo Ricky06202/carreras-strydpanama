@@ -107,6 +107,7 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
 <style>
   :root { --accent: #FF6B00; --accent-dim: rgba(255,107,0,0.1); --card: #161b22; --card2: #1c2128; --border: #21262d; --text: #e6edf3; --muted: #7d8590; }
   .results-page { font-family: 'Inter', -apple-system, sans-serif; color: var(--text); }
+  .results-inner { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
 
   /* Race selector */
   .race-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
@@ -253,6 +254,7 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
 </style>
 
 <div class="results-page">
+<div class="results-inner">
   <!-- Race Selector -->
   {races.length > 0 && (
     <div class="race-selector">
@@ -401,7 +403,8 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
       </div>
     </div>
   )}
-</div>
+</div><!-- results-inner -->
+</div><!-- results-page -->
 
 <script define:vars={{ clientData }}>
   const data = JSON.parse(clientData);
