@@ -196,6 +196,28 @@ export const POST: APIRoute = async ({ request }) => {
             } catch (e) {
                 console.error(`Failed to register team member ${member.firstName}:`, e);
             }
+
+            // Enviar email a cada miembro del equipo con su BIB individual
+            if (member.email) {
+                try {
+                    await sendRegistrationEmail(env, {
+                        email: member.email,
+                        firstName: member.firstName,
+                        lastName: member.lastName,
+                        raceName: raceName,
+                        bibNumber: memberBib,
+                        distance: resolvedCategoryName,
+                        category: resolvedCategoryName,
+                        cedula: member.cedula || '',
+                        size: member.size || '',
+                        paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
+                        confirmationCode: memberConfCode,
+                    });
+                    console.log(`Email sent to team member ${member.email}`);
+                } catch (e) {
+                    console.error(`Failed to send email to team member ${member.email}:`, e);
+                }
+            }
         }
     }
 
