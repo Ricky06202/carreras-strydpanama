@@ -92,149 +92,163 @@ function formatTime(secs: number): string {
 
 const clientData = JSON.stringify({ finishers: allFinishers, distanceNames, categoryNames, teamData });
 const medals = ['🥇', '🥈', '🥉'];
+
+// Stats para el hero
+const totalFinishers = allFinishers.length;
+const males = allFinishers.filter(f => f.gender === 'masculino');
+const females = allFinishers.filter(f => f.gender === 'femenino');
+const fastestM = males[0];
+const fastestF = females[0];
+const avgTime = totalFinishers > 0 ? Math.round(allFinishers.reduce((s,f) => s + f.finishTime, 0) / totalFinishers) : 0;
+const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100) : 50;
 ---
 
 <Layout title={`Resultados — ${raceName || 'STRYD Panama'}`}>
 <style>
-  .results-page { font-family: 'Inter', sans-serif; }
-  .race-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 32px; flex-wrap: wrap; }
-  .race-chip {
-    background: var(--chip-bg, #1a1a1a); border: 1px solid var(--chip-border, #333); color: #aaa;
-    padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600;
-    text-decoration: none; transition: all 0.2s;
-  }
-  .race-chip:hover, .race-chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; }
+  :root { --accent: #FF6B00; --accent-dim: rgba(255,107,0,0.1); --card: #161b22; --card2: #1c2128; --border: #21262d; --text: #e6edf3; --muted: #7d8590; }
+  .results-page { font-family: 'Inter', -apple-system, sans-serif; color: var(--text); }
 
-  .tabs { display: flex; gap: 0; border-bottom: 2px solid #1f1f1f; margin-bottom: 20px; }
-  .tab {
-    padding: 12px 20px; cursor: pointer; font-weight: 700; font-size: 13px;
-    color: #666; border-bottom: 3px solid transparent; transition: all 0.2s;
-    background: none; border-top: none; border-left: none; border-right: none;
-    text-transform: uppercase; letter-spacing: 1px; flex: 1; text-align: center;
-  }
-  .tab:hover { color: #FF6B00; }
-  .tab.active { color: #FF6B00; border-bottom-color: #FF6B00; }
+  /* Race selector */
+  .race-selector { display: flex; gap: 8px; justify-content: center; margin-bottom: 28px; flex-wrap: wrap; }
+  .race-chip { background: var(--card); border: 1px solid var(--border); color: var(--muted); padding: 8px 20px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s; }
+  .race-chip:hover, .race-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* Stats hero */
+  .stats-hero { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 28px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 18px 14px; text-align: center; }
+  .stat-value { font-size: 26px; font-weight: 900; color: var(--accent); font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin-top: 6px; }
+
+  /* Gender split */
+  .gender-split { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px 20px; margin-bottom: 28px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .gender-bar-wrap { flex: 1; min-width: 200px; }
+  .gender-bar { height: 10px; border-radius: 99px; overflow: hidden; background: #ec4899; display: flex; }
+  .gender-bar-m { background: #3b82f6; border-radius: 99px 0 0 99px; transition: width 0.6s; }
+  .gender-legend { display: flex; gap: 16px; margin-top: 8px; }
+  .gender-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+  .tab { padding: 12px 24px; cursor: pointer; font-weight: 700; font-size: 13px; color: var(--muted); border-bottom: 3px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; text-transform: uppercase; letter-spacing: 1px; }
+  .tab:hover { color: var(--accent); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .tab-content { display: none; }
   .tab-content.active { display: block; }
 
   /* Podium */
-  .podium-row { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
-  .podium-block { flex: 1; min-width: 260px; max-width: 500px; }
-  .podium-title { text-align: center; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: #FF6B00; font-weight: 700; margin-bottom: 20px; }
-  .podium-list { display: flex; flex-direction: column; gap: 12px; }
+  .podium-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; margin-bottom: 32px; }
+  .podium-block { flex: 1; min-width: 260px; max-width: 520px; }
+  .podium-title { text-align: center; font-size: 12px; text-transform: uppercase; letter-spacing: 3px; color: var(--muted); font-weight: 700; margin-bottom: 16px; }
+  .podium-list { display: flex; flex-direction: column; gap: 10px; }
   .podium-item {
-    display: flex; align-items: center; gap: 16px;
-    background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 16px 20px; transition: transform 0.2s;
+    display: flex; align-items: center; gap: 14px;
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 14px 18px; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: var(--text);
   }
-  .podium-item:hover { transform: translateX(4px); }
-  .podium-item.gold { border-color: #FFD700; background: linear-gradient(135deg, #1a1500, #111); }
-  .podium-item.silver { border-color: #C0C0C0; }
-  .podium-item.bronze { border-color: #CD7F32; }
-  .podium-medal { font-size: 32px; min-width: 40px; text-align: center; }
-  .podium-photo { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 3px solid #FF6B00; }
-  .podium-photo-placeholder { width: 56px; height: 56px; border-radius: 50%; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 3px solid #333; }
-  .podium-info { flex: 1; }
-  .podium-name { font-weight: 900; font-size: 16px; }
-  .podium-sub { font-size: 12px; color: #888; }
-  .podium-time { font-weight: 900; font-size: 18px; color: #FF6B00; }
+  .podium-item:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .podium-item.gold   { border-color: #c9a227; background: linear-gradient(135deg, #1a1400 0%, var(--card) 100%); box-shadow: 0 0 0 1px #c9a22733; }
+  .podium-item.silver { border-color: #8a9ba8; background: linear-gradient(135deg, #131820 0%, var(--card) 100%); }
+  .podium-item.bronze { border-color: #8b5e3c; background: linear-gradient(135deg, #160e08 0%, var(--card) 100%); }
+  .podium-medal { font-size: 28px; min-width: 36px; text-align: center; }
+  .podium-photo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); flex-shrink: 0; }
+  .podium-photo-placeholder { width: 52px; height: 52px; border-radius: 50%; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 2px solid #333; flex-shrink: 0; }
+  .podium-info { flex: 1; min-width: 0; }
+  .podium-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .podium-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .podium-time { font-weight: 900; font-size: 17px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
   /* Filters */
-  .filters-bar { background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 20px; margin-bottom: 28px; }
-  .filter-row { display: flex; flex-direction: column; gap: 12px; }
+  .filters-bar { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+  .filter-row { display: flex; flex-direction: column; gap: 14px; }
   .filter-group { display: flex; flex-direction: column; gap: 6px; }
-  .filter-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; font-weight: 600; }
-  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .chip {
-    background: #1a1a1a; border: 1px solid #333; color: #aaa;
-    padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s;
-    font-weight: 500; border-top: none; border-left: none; border-right: none;
-    border: 1px solid #333;
-  }
-  .chip:hover { border-color: #FF6B00; color: #FF6B00; }
-  .chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; font-weight: 700; }
-  .search-box {
-    background: #1a1a1a; border: 1px solid #333; color: #fff;
-    padding: 10px 16px; border-radius: 12px; font-size: 14px; width: 100%; max-width: 400px;
-  }
-  .search-box:focus { outline: none; border-color: #FF6B00; }
-  .result-count { font-size: 13px; color: #FF6B00; font-weight: 600; }
+  .filter-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); font-weight: 700; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--card2); border: 1px solid var(--border); color: var(--muted); padding: 5px 14px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.15s; }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; pointer-events: none; }
+  .search-box { background: var(--card2); border: 1px solid var(--border); color: var(--text); padding: 10px 16px 10px 40px; border-radius: 12px; font-size: 14px; width: 100%; transition: border-color 0.2s; }
+  .search-box:focus { outline: none; border-color: var(--accent); }
+  .filter-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; flex-wrap: wrap; gap: 8px; }
+  .result-count { font-size: 13px; color: var(--accent); font-weight: 700; }
 
   /* Results Table */
-  .results-wrap { background: #111; border: 1px solid #1f1f1f; border-radius: 16px; overflow: hidden; }
+  .results-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
   .results-table { width: 100%; border-collapse: collapse; }
-  .results-table thead th {
-    background: #0f0f0f; padding: 14px 12px; text-align: left;
-    font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #666; font-weight: 700;
-    border-bottom: 1px solid #1f1f1f; position: sticky; top: 0;
-  }
-  .results-table tbody tr { border-bottom: 1px solid #1a1a1a; transition: background 0.15s; cursor: pointer; }
-  .results-table tbody tr:hover { background: rgba(255,107,0,0.04); }
-  .results-table tbody td { padding: 10px 12px; font-size: 13px; }
+  .results-table thead th { background: var(--card2); padding: 13px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent); font-weight: 800; border-bottom: 1px solid var(--border); position: sticky; top: 0; }
+  .results-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.12s; cursor: pointer; }
+  .results-table tbody tr:hover { background: var(--accent-dim); }
+  .results-table tbody tr.tr-top1 { background: rgba(255,215,0,0.05); }
+  .results-table tbody tr.tr-top2 { background: rgba(180,180,180,0.04); }
+  .results-table tbody tr.tr-top3 { background: rgba(180,100,40,0.05); }
+  .results-table tbody td { padding: 11px 14px; font-size: 13px; }
   .pos-badge { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; font-weight: 900; font-size: 12px; }
   .pos-1 { background: rgba(255,215,0,0.15); color: #FFD700; }
   .pos-2 { background: rgba(192,192,192,0.15); color: #C0C0C0; }
   .pos-3 { background: rgba(205,127,50,0.15); color: #CD7F32; }
-  .pos-n { background: #1a1a1a; color: #888; }
-  .td-bib { color: #FF6B00; font-weight: 700; }
-  .td-time { font-weight: 900; font-variant-numeric: tabular-nums; }
-  .td-cat { font-size: 11px; color: #888; background: #1a1a1a; padding: 2px 8px; border-radius: 10px; display: inline-block; }
-  .mini-photo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid #FF6B00; vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
+  .pos-n { background: var(--card2); color: var(--muted); }
+  .td-bib { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+  .td-time { font-weight: 900; font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
+  .td-cat { font-size: 11px; color: var(--muted); background: var(--card2); padding: 3px 9px; border-radius: 10px; display: inline-block; border: 1px solid var(--border); }
+  .mini-photo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
   .mini-photo-placeholder { width: 34px; height: 34px; border-radius: 50%; background: #2a2a2a; border: 2px solid #333; vertical-align: middle; margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
 
-  /* Team Section */
-  .team-card {
-    background: #111; border: 1px solid #1f1f1f; border-radius: 16px; padding: 24px; margin-bottom: 16px;
-    transition: border-color 0.2s;
-  }
-  .team-card:hover { border-color: #FF6B00; }
-  .team-card.gold { border-color: #FFD700; }
-  .team-card.silver { border-color: #C0C0C0; }
-  .team-card.bronze { border-color: #CD7F32; }
-  .team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .team-name { font-weight: 900; font-size: 18px; }
-  .team-avg { font-weight: 900; font-size: 20px; color: #FF6B00; }
-  .team-avg-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; }
-  .team-members { display: flex; flex-direction: column; gap: 8px; }
-  .team-member {
-    display: flex; align-items: center; gap: 12px; padding: 8px 12px;
-    background: #0f0f0f; border-radius: 10px;
-  }
-  .member-name { flex: 1; font-weight: 600; font-size: 14px; }
-  .member-time { font-weight: 900; font-size: 14px; color: #FF6B00; }
-  .member-bib { font-size: 12px; color: #888; }
+  /* Mobile card list (hidden on desktop) */
+  .card-list { display: none; }
+  .result-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; gap: 12px; cursor: pointer; transition: border-color 0.15s, transform 0.15s; margin-bottom: 8px; text-decoration: none; color: var(--text); }
+  .result-card:hover { border-color: var(--accent); transform: translateX(2px); }
+  .result-card.rc-top1 { border-left: 3px solid #FFD700; }
+  .result-card.rc-top2 { border-left: 3px solid #C0C0C0; }
+  .result-card.rc-top3 { border-left: 3px solid #CD7F32; }
+  .rc-pos { font-size: 11px; font-weight: 900; color: var(--muted); min-width: 24px; text-align: center; }
+  .rc-info { flex: 1; min-width: 0; }
+  .rc-name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .rc-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .rc-time { font-weight: 900; font-size: 15px; color: var(--accent); font-family: ui-monospace, monospace; white-space: nowrap; }
+  .rc-bib { font-size: 11px; color: var(--accent); font-weight: 700; }
 
-  .empty-state { text-align: center; padding: 80px 20px; color: #555; }
+  /* Teams */
+  .team-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 12px; transition: border-color 0.2s; }
+  .team-card:hover { border-color: var(--accent); }
+  .team-card.gold { border-color: #c9a227; }
+  .team-card.silver { border-color: #8a9ba8; }
+  .team-card.bronze { border-color: #8b5e3c; }
+  .team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
+  .team-name { font-weight: 900; font-size: 17px; }
+  .team-avg { font-weight: 900; font-size: 20px; color: var(--accent); font-family: ui-monospace, monospace; }
+  .team-avg-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .team-members { display: flex; flex-direction: column; gap: 6px; }
+  .team-member { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card2); border-radius: 10px; text-decoration: none; color: var(--text); transition: background 0.15s; }
+  .team-member:hover { background: var(--accent-dim); }
+  .member-name { flex: 1; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-time { font-weight: 900; font-size: 13px; color: var(--accent); font-family: ui-monospace, monospace; }
+  .member-bib { font-size: 11px; color: var(--muted); }
+
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
   .empty-icon { font-size: 60px; margin-bottom: 16px; }
-  .section-divider { border: none; border-top: 1px solid #1f1f1f; margin: 32px 0; }
+  .section-divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
   .hidden { display: none; }
 
   @media (max-width: 768px) {
-    .results-table thead th:nth-child(5), .results-table tbody td:nth-child(5),
-    .results-table thead th:nth-child(6), .results-table tbody td:nth-child(6),
-    .results-table thead th:nth-child(7), .results-table tbody td:nth-child(7) { display: none; }
-    .podium-row { flex-direction: column; gap: 20px; }
+    .stats-hero { grid-template-columns: repeat(2, 1fr); }
+    .podium-row { flex-direction: column; gap: 16px; }
     .podium-block { min-width: 100%; }
     .podium-item { padding: 12px 14px; gap: 10px; }
-    .podium-medal { font-size: 24px; min-width: 32px; }
-    .podium-photo { width: 44px; height: 44px; }
-    .podium-photo-placeholder { width: 44px; height: 44px; font-size: 18px; }
+    .podium-medal { font-size: 22px; min-width: 28px; }
+    .podium-photo, .podium-photo-placeholder { width: 44px; height: 44px; font-size: 18px; }
     .podium-name { font-size: 14px; }
     .podium-time { font-size: 15px; }
-    .podium-sub { font-size: 11px; }
+    /* Table hidden on mobile, cards shown */
+    .results-wrap { display: none; }
+    .card-list { display: block; }
     .filters-bar { padding: 14px; }
-    .results-table tbody td { padding: 8px 6px; font-size: 12px; }
-    .results-table thead th { padding: 10px 6px; font-size: 10px; }
-    .pos-badge { width: 26px; height: 26px; font-size: 11px; }
-    .td-time { font-size: 13px; }
-    .mini-photo { width: 26px; height: 26px; margin-right: 6px; }
-    .mini-photo-placeholder { width: 26px; height: 26px; margin-right: 6px; font-size: 12px; }
-    .team-card { padding: 16px; }
-    .team-header { flex-direction: column; gap: 8px; }
-    .team-name { font-size: 16px; }
-    .team-avg { font-size: 18px; }
+    .tab { padding: 10px 16px; font-size: 11px; }
+    .team-card { padding: 14px; }
+    .team-header { flex-direction: column; align-items: flex-start; gap: 4px; }
   }
-  @media (max-width: 480px) {
-    .results-table thead th:nth-child(3), .results-table tbody td:nth-child(3) { display: none; }
+  @media (min-width: 769px) {
+    .card-list { display: none !important; }
   }
 </style>
 
@@ -256,6 +270,45 @@ const medals = ['🥇', '🥈', '🥉'];
         🏆 Ver Informe de Premiación
       </a>
     </div>
+  )}
+
+  {allFinishers.length > 0 && (
+    <>
+      <!-- Stats Hero -->
+      <div class="stats-hero">
+        <div class="stat-card">
+          <div class="stat-value">{totalFinishers}</div>
+          <div class="stat-label">Finishers</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{fastestM ? formatTime(fastestM.finishTime) : '—'}</div>
+          <div class="stat-label">Mejor Masculino</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{fastestF ? formatTime(fastestF.finishTime) : '—'}</div>
+          <div class="stat-label">Mejor Femenino</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{avgTime ? formatTime(avgTime) : '—'}</div>
+          <div class="stat-label">Tiempo Promedio</div>
+        </div>
+      </div>
+
+      <!-- Gender Split -->
+      <div class="gender-split">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;white-space:nowrap;">Distribución</div>
+        <div class="gender-bar-wrap">
+          <div class="gender-bar">
+            <div class="gender-bar-m" style={`width:${mPct}%`}></div>
+          </div>
+          <div class="gender-legend">
+            <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#3b82f6;"></span>Masculino {mPct}%</span>
+            <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#ec4899;"></span>Femenino {100-mPct}%</span>
+          </div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);white-space:nowrap;">{males.length}M · {females.length}F</div>
+      </div>
+    </>
   )}
 
   {allFinishers.length === 0 ? (
@@ -295,7 +348,10 @@ const medals = ['🥇', '🥈', '🥉'];
             <span class="result-count" id="result-count"></span>
           </div>
           <div class="filter-row">
-            <input type="text" class="search-box" id="search-input" placeholder="Buscar por nombre, dorsal o equipo..." />
+            <div class="search-wrap">
+              <span class="search-icon">🔍</span>
+              <input type="text" class="search-box" id="search-input" placeholder="Buscar por nombre, dorsal o equipo..." />
+            </div>
             {distanceNames.length > 0 && (
               <div class="filter-group">
                 <span class="filter-label">Distancia</span>
@@ -325,7 +381,7 @@ const medals = ['🥇', '🥈', '🥉'];
           </div>
         </div>
 
-        <!-- Results Table -->
+        <!-- Results Table (desktop) -->
         <div class="results-wrap">
           <table class="results-table">
             <thead><tr>
@@ -334,6 +390,9 @@ const medals = ['🥇', '🥈', '🥉'];
             <tbody id="results-body"></tbody>
           </table>
         </div>
+
+        <!-- Results Cards (mobile) -->
+        <div class="card-list" id="card-list"></div>
       </div>
 
       <!-- TAB: Equipos -->
@@ -414,10 +473,11 @@ const medals = ['🥇', '🥈', '🥉'];
 
     tbody.innerHTML = filtered.map(r => {
       const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
+      const trCls = r.fPos === 1 ? 'tr-top1' : r.fPos === 2 ? 'tr-top2' : r.fPos === 3 ? 'tr-top3' : '';
       const ph = r.photoUrl
         ? `<img src="${r.photoUrl}" alt="" class="mini-photo"/>`
         : `<span class="mini-photo-placeholder">🏃</span>`;
-      return `<tr onclick="window.location='/corredor/${r.id}'">
+      return `<tr class="${trCls}" onclick="window.location='/corredor/${r.id}'">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
         <td style="font-weight:700;"><div style="display:flex;align-items:center;">${ph}${r.name}</div></td>
         <td class="td-bib">#${r.bib}</td>
@@ -426,6 +486,28 @@ const medals = ['🥇', '🥈', '🥉'];
         <td style="color:#888;font-size:12px;">${r.distanceName}</td>
         <td style="color:#888;font-size:12px;">${r.teamName || '—'}</td>
       </tr>`;
+    }).join('');
+  }
+
+  function renderCards(filtered) {
+    const list = document.getElementById('card-list');
+    if (!list) return;
+    if (filtered.length === 0) { list.innerHTML = ''; return; }
+    list.innerHTML = filtered.map(r => {
+      const rcCls = r.fPos === 1 ? 'rc-top1' : r.fPos === 2 ? 'rc-top2' : r.fPos === 3 ? 'rc-top3' : '';
+      const ph = r.photoUrl
+        ? `<img src="${r.photoUrl}" alt="" class="mini-photo" style="margin-right:0;"/>`
+        : `<span class="mini-photo-placeholder" style="margin-right:0;">🏃</span>`;
+      return `<a href="/corredor/${r.id}" class="result-card ${rcCls}">
+        <div class="rc-pos">${r.fPos <= 3 ? medals[r.fPos-1] : r.fPos}</div>
+        ${ph}
+        <div class="rc-info">
+          <div class="rc-name">${r.name}</div>
+          <div class="rc-meta">${r.categoryName} · ${r.distanceName}${r.teamName ? ' · ' + r.teamName : ''}</div>
+          <div class="rc-bib">#${r.bib}</div>
+        </div>
+        <div class="rc-time">${fmt(r.finishTime)}</div>
+      </a>`;
     }).join('');
   }
 
@@ -468,6 +550,7 @@ const medals = ['🥇', '🥈', '🥉'];
   function render() {
     const filtered = getFiltered();
     renderTable(filtered);
+    renderCards(filtered);
   }
 
   // Tab switching
