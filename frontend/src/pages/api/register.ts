@@ -31,24 +31,19 @@ export const POST: APIRoute = async ({ request }) => {
     const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
     const raceName = raceFields.title || raceRes.title || 'Carrera';
     
-    // 2. Obtener participantes actuales para calcular el siguiente dorsal
-    const participantsRes = await api.getParticipants(env, body.raceId);
-    const allParticipants = participantsRes?.data || [];
-    
-    // Filtramos manualmente por si SonicJS no aplica el filtro en la query
-    const raceParticipants = allParticipants.filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
-    
-    let nextBib = startingBib;
-    if (raceParticipants.length > 0) {
-      const highestBib = raceParticipants.reduce((max: number, p: any) => {
+    // 2. Helper para obtener el siguiente BIB disponible (re-lee la BD cada vez para evitar duplicados)
+    const getNextBib = async (): Promise<number> => {
+      const res = await api.getParticipants(env, body.raceId);
+      const parts = (res?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
+      if (parts.length === 0) return startingBib;
+      const highest = parts.reduce((max: number, p: any) => {
         const bib = p.data?.bibNumber ? Number(p.data.bibNumber) : 0;
         return bib > max ? bib : max;
       }, 0);
-      
-      if (highestBib >= startingBib) {
-        nextBib = highestBib + 1;
-      }
-    }
+      return highest >= startingBib ? highest + 1 : startingBib;
+    };
+
+    const nextBib = await getNextBib();
     
     // 3. ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA POR EDAD Y GÉNERO
     // Calculamos edad al día de la carrera
@@ -149,13 +144,15 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
         // Registrar cada miembro del equipo (todos, incluyendo el capitán en índice 0)
-        let memberBib = nextBib - 1; // Se incrementa antes de usar
+        let isFirstMember = true;
         for (const member of body.teamMembers) {
             if (!member.firstName || !member.lastName) continue; // Ignorar slots vacíos
 
-            memberBib++;
+            // Re-leer el BIB más alto antes de cada miembro para evitar duplicados concurrentes
+            const memberBib = await getNextBib();
             teamMemberBibs.push(memberBib);
-            const isCapitan = memberBib === nextBib; // El primero válido es el capitán
+            const isCapitan = isFirstMember;
+            isFirstMember = false;
             const memberConfCode = isCapitan ? confCode : ('STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase());
             const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib}`;
             const memberData = {
