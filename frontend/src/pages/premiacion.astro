@@ -79,6 +79,14 @@ if (selectedRaceId) {
   } catch(e) {}
 }
 
+// Agrupar podium por distancia (en frontmatter para evitar error de TypeScript genéricos en template)
+const byDistance: Record<string, typeof podiumByCategory> = {};
+for (const group of podiumByCategory) {
+  if (!byDistance[group.distance]) byDistance[group.distance] = [];
+  byDistance[group.distance].push(group);
+}
+const distanceEntries = Object.entries(byDistance);
+
 function formatTime(secs: number): string {
   const s = Number(secs);
   const h = Math.floor(s / 3600);
@@ -265,44 +273,37 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
         </div>
 
         <!-- Agrupar por distancia -->
-        {(() => {
-          const byDistance: Record<string, typeof podiumByCategory> = {};
-          for (const group of podiumByCategory) {
-            if (!byDistance[group.distance]) byDistance[group.distance] = [];
-            byDistance[group.distance].push(group);
-          }
-          return Object.entries(byDistance).map(([distance, groups]) => (
-            <div class="distance-section">
-              <div class="distance-title">📏 {distance}</div>
-              <div class="categories-grid">
-                {groups.map(({ category, top }) => (
-                  <div class="category-card">
-                    <div class="category-title">{category}</div>
-                    <div class="podium-list">
-                      {top.map((runner, i) => (
-                        <div class={`podium-row p${i + 1}`}>
-                          <span class="medal-icon">{medals[i]}</span>
-                          {runner.photoUrl
-                            ? <img src={runner.photoUrl} alt="" class="runner-photo" />
-                            : <div class="runner-placeholder">🏃</div>
-                          }
-                          <div class="runner-info">
-                            <div class="runner-name">{runner.name}</div>
-                            <div class="runner-bib">#{runner.bib}</div>
-                          </div>
-                          <div class="runner-time">{formatTime(runner.finishTime)}</div>
+        {distanceEntries.map(([distance, groups]) => (
+          <div class="distance-section">
+            <div class="distance-title">📏 {distance}</div>
+            <div class="categories-grid">
+              {groups.map(({ category, top }) => (
+                <div class="category-card">
+                  <div class="category-title">{category}</div>
+                  <div class="podium-list">
+                    {top.map((runner, i) => (
+                      <div class={`podium-row p${i + 1}`}>
+                        <span class="medal-icon">{medals[i]}</span>
+                        {runner.photoUrl
+                          ? <img src={runner.photoUrl} alt="" class="runner-photo" />
+                          : <div class="runner-placeholder">🏃</div>
+                        }
+                        <div class="runner-info">
+                          <div class="runner-name">{runner.name}</div>
+                          <div class="runner-bib">#{runner.bib}</div>
                         </div>
-                      ))}
-                      {top.length === 0 && (
-                        <div style="color:#555;font-size:12px;padding:12px;text-align:center;">Sin clasificados</div>
-                      )}
-                    </div>
+                        <div class="runner-time">{formatTime(runner.finishTime)}</div>
+                      </div>
+                    ))}
+                    {top.length === 0 && (
+                      <div style="color:#555;font-size:12px;padding:12px;text-align:center;">Sin clasificados</div>
+                    )}
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
-          ));
-        })()}
+          </div>
+        ))}
       </>
     )}
   </div>
