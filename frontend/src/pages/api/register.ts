@@ -253,7 +253,7 @@ export const POST: APIRoute = async ({ request }) => {
           const colId = runnersCol?.id || existing.collectionId;
           await apiFetch(`/api/content/${existing.id}`, env, {
             method: 'PUT',
-            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerTitle, status: 'published', data: runnerData })
+            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerTitle, status: 'published', data: { ...existing.data, ...runnerData } })
           });
         } else {
           const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
