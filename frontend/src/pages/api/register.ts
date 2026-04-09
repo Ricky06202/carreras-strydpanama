@@ -139,30 +139,24 @@ export const POST: APIRoute = async ({ request }) => {
     const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
     body.confirmationCode = confCode;
 
-    // 4. Registrar al participante principal (capitán) con un título único
-    const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib}`;
-    
-    const registrationData = {
-        ...body,
-        title: participantTitle,
-        confirmationCode: confCode
-    };
-    
-    const result = await api.registerParticipant(env, registrationData);
+    // 4. Registrar participantes
+    // Para equipos: todos los miembros vienen en teamMembers (índice 0 = capitán).
+    // NO se registra el body principal como participante para evitar entradas fantasma.
+    // Para individuales: se registra el body principal normalmente.
 
-    // 4b. Si es equipo, registrar a cada miembro adicional como participante individual
-    const teamMemberBibs: number[] = [nextBib]; // Guardar dorsales del equipo
+    const teamMemberBibs: number[] = [];
+    let result: any = null;
+
     if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
-        let memberBib = nextBib;
+        // Registrar cada miembro del equipo (todos, incluyendo el capitán en índice 0)
+        let memberBib = nextBib - 1; // Se incrementa antes de usar
         for (const member of body.teamMembers) {
-            // Saltamos si no tiene nombre (campos vacíos)
-            if (!member.firstName || !member.lastName) continue;
-            // Saltamos al capitán (mismo nombre/cédula que el registro principal)
-            if (member.cedula === body.cedula && member.firstName === body.firstName) continue;
+            if (!member.firstName || !member.lastName) continue; // Ignorar slots vacíos
 
             memberBib++;
             teamMemberBibs.push(memberBib);
-            const memberConfCode = 'STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+            const isCapitan = memberBib === nextBib; // El primero válido es el capitán
+            const memberConfCode = isCapitan ? confCode : ('STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase());
             const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib}`;
             const memberData = {
                 firstName: member.firstName,
@@ -191,17 +185,19 @@ export const POST: APIRoute = async ({ request }) => {
                 title: memberTitle,
             };
             try {
-                await api.registerParticipant(env, memberData);
+                const regResult = await api.registerParticipant(env, memberData);
+                if (isCapitan) result = regResult;
                 console.log(`Team member registered: ${member.firstName} ${member.lastName} - BIB ${memberBib}`);
             } catch (e) {
                 console.error(`Failed to register team member ${member.firstName}:`, e);
             }
 
-            // Enviar email a cada miembro del equipo con su BIB individual
-            if (member.email) {
+            // Enviar email a cada miembro con su BIB y código
+            const emailAddr = member.email || (isCapitan ? body.email : null);
+            if (emailAddr) {
                 try {
                     await sendRegistrationEmail(env, {
-                        email: member.email,
+                        email: emailAddr,
                         firstName: member.firstName,
                         lastName: member.lastName,
                         raceName: raceName,
@@ -213,12 +209,18 @@ export const POST: APIRoute = async ({ request }) => {
                         paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
                         confirmationCode: memberConfCode,
                     });
-                    console.log(`Email sent to team member ${member.email}`);
+                    console.log(`Email sent to ${emailAddr}`);
                 } catch (e) {
-                    console.error(`Failed to send email to team member ${member.email}:`, e);
+                    console.error(`Failed to send email to ${emailAddr}:`, e);
                 }
             }
         }
+    } else {
+        // Inscripción individual normal
+        const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib}`;
+        const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
+        result = await api.registerParticipant(env, registrationData);
+        teamMemberBibs.push(nextBib);
     }
 
     // 4. Marcar Código como canjeado si se usó
@@ -292,7 +294,11 @@ export const POST: APIRoute = async ({ request }) => {
       }
     }
 
-    // 6. Enviar correo de confirmación
+    // 6. Enviar correo de confirmación (solo para inscripciones individuales;
+    //    los equipos ya enviaron email a cada miembro en el paso anterior)
+    if (body.registrationType === 'team') {
+      // Ya enviado por miembro arriba, no hacer nada
+    } else
     try {
       // 6a. Obtener el nombre de la distancia para el correo
       let resolvedDistance = 'General';
