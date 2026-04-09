@@ -144,19 +144,29 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
   .podium-item {
     display: flex; align-items: center; gap: 14px;
     background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    padding: 14px 18px; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: var(--text);
+    padding: 16px 18px; transition: transform 0.2s, box-shadow 0.2s; text-decoration: none; color: var(--text);
   }
   .podium-item:hover { transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
   .podium-item.gold   { border-color: #c9a227; background: linear-gradient(135deg, #1a1400 0%, var(--card) 100%); box-shadow: 0 0 0 1px #c9a22733; }
   .podium-item.silver { border-color: #8a9ba8; background: linear-gradient(135deg, #131820 0%, var(--card) 100%); }
-  .podium-item.bronze { border-color: #8b5e3c; background: linear-gradient(135deg, #160e08 0%, var(--card) 100%); }
-  .podium-medal { font-size: 28px; min-width: 36px; text-align: center; }
-  .podium-photo { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); flex-shrink: 0; }
-  .podium-photo-placeholder { width: 52px; height: 52px; border-radius: 50%; background: #2a2a2a; display: flex; align-items: center; justify-content: center; font-size: 22px; border: 2px solid #333; flex-shrink: 0; }
+  .podium-item.bronze { border-color: #cd7f32; background: linear-gradient(135deg, #160e08 0%, var(--card) 100%); }
+  .podium-badge { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 15px; flex-shrink: 0; }
+  .podium-badge.b1 { background: rgba(255,215,0,0.15); color: #FFD700; border: 2px solid #c9a227; }
+  .podium-badge.b2 { background: rgba(192,192,192,0.15); color: #C0C0C0; border: 2px solid #8a9ba8; }
+  .podium-badge.b3 { background: rgba(205,127,50,0.15); color: #cd7f32; border: 2px solid #cd7f32; }
   .podium-info { flex: 1; min-width: 0; }
+  .podium-rank-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 3px; display: flex; align-items: center; gap: 5px; }
+  .podium-rank-label.lbl1 { color: #FFD700; }
+  .podium-rank-label.lbl2 { color: #C0C0C0; }
+  .podium-rank-label.lbl3 { color: #cd7f32; }
   .podium-name { font-weight: 800; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .podium-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .podium-time { font-weight: 900; font-size: 17px; color: var(--accent); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .podium-bib { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .podium-right { text-align: right; flex-shrink: 0; }
+  .podium-time { font-weight: 900; font-size: 17px; font-variant-numeric: tabular-nums; white-space: nowrap; font-family: ui-monospace, monospace; }
+  .podium-time.t1 { color: #FFD700; }
+  .podium-time.t2 { color: #C0C0C0; }
+  .podium-time.t3 { color: #cd7f32; }
+  .podium-cat { font-size: 10px; color: var(--muted); margin-top: 3px; }
 
   /* Filters */
   .filters-bar { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
@@ -445,15 +455,21 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
 
     [{ el: maleList, data: males }, { el: femaleList, data: females }].forEach(({ el, data: list }) => {
       if (list.length === 0) { el.innerHTML = '<div style="text-align:center;color:#555;padding:20px;">Sin resultados</div>'; return; }
+      const rankLabels = ['1ER LUGAR', '2DO LUGAR', '3ER LUGAR'];
       el.innerHTML = list.map((r, i) => {
         const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze';
+        const n = i + 1;
         return `<a href="/corredor/${r.id}" style="text-decoration:none;color:inherit;" class="podium-item ${cls}">
-          <div class="podium-medal">${medals[i]}</div>
+          <div class="podium-badge b${n}">${n}</div>
           <div class="podium-info">
+            <div class="podium-rank-label lbl${n}">${medals[i]} ${rankLabels[i]}</div>
             <div class="podium-name">${r.name}</div>
-            <div class="podium-sub">#${r.bib} • ${r.categoryName}</div>
+            <div class="podium-bib">BIB: ${r.bib}</div>
           </div>
-          <div class="podium-time">${fmt(r.finishTime)}</div>
+          <div class="podium-right">
+            <div class="podium-time t${n}">${fmt(r.finishTime)}</div>
+            <div class="podium-cat">${r.gender === 'masculino' ? 'M' : 'F'} ${r.categoryName}</div>
+          </div>
         </a>`;
       }).join('');
     });
