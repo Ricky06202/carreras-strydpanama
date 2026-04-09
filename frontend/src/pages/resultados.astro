@@ -250,6 +250,14 @@ const medals = ['🥇', '🥈', '🥉'];
     </div>
   )}
 
+  {allFinishers.length > 0 && (
+    <div style="text-align:center;margin-bottom:24px;">
+      <a href={`/premiacion?raceId=${selectedRaceId}`} style="display:inline-flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #FF6B00;color:#FF6B00;padding:10px 22px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#FF6B00';this.style.color='#fff'" onmouseout="this.style.background='#1a1a1a';this.style.color='#FF6B00'">
+        🏆 Ver Informe de Premiación
+      </a>
+    </div>
+  )}
+
   {allFinishers.length === 0 ? (
     <div class="empty-state">
       <div class="empty-icon">🏁</div>

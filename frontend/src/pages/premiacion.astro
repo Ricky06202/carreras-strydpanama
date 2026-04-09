@@ -1,0 +1,310 @@
+---
+import { env } from 'cloudflare:workers';
+import { apiFetch } from '../lib/api';
+
+let races: any[] = [];
+let selectedRaceId = Astro.url.searchParams.get('raceId') || '';
+
+try {
+  const res = await apiFetch('/api/collections/races/content?limit=50', env, { method: 'GET' });
+  races = (res?.data || []).filter((r: any) => ['active', 'finished'].includes(r.data?.status));
+  if (!selectedRaceId && races.length > 0) {
+    const finished = races.find((r: any) => r.data?.status === 'finished');
+    selectedRaceId = finished?.id || races[0].id;
+  }
+} catch(e) {}
+
+let raceName = '';
+let raceDate = '';
+let podiumByCategory: Array<{ category: string; distance: string; top: any[] }> = [];
+
+if (selectedRaceId) {
+  try {
+    const selectedRace = races.find(r => r.id === selectedRaceId);
+    raceName = selectedRace?.data?.title || selectedRace?.title || 'Carrera STRYD';
+    raceDate = selectedRace?.data?.date || '';
+
+    const [partsRes, distsRes, catsRes] = await Promise.all([
+      apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/distances/content?limit=200`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/categories/content?limit=200`, env, { method: 'GET' }),
+    ]);
+
+    const distanceMap: Record<string, string> = {};
+    for (const d of (distsRes?.data || []).filter((d: any) => d.data?.race === selectedRaceId)) {
+      distanceMap[d.id] = d.data?.title || d.title;
+    }
+
+    const categoryMap: Record<string, string> = {};
+    for (const c of (catsRes?.data || [])) {
+      categoryMap[c.id] = c.data?.title || c.title;
+    }
+
+    const finishers = (partsRes?.data || [])
+      .filter((p: any) =>
+        (p.data?.race === selectedRaceId || p.data?.raceId === selectedRaceId) &&
+        p.data?.finishTime && p.data?.registrationType !== 'team'
+      )
+      .map((p: any) => ({
+        id: p.id,
+        name: `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim(),
+        bib: p.data?.bibNumber,
+        finishTime: Number(p.data?.finishTime),
+        photoUrl: p.data?.photoUrl || '',
+        country: p.data?.country || '',
+        categoryName: p.data?.categoryName || categoryMap[p.data?.category || ''] || 'General',
+        distanceName: p.data?.distanceName || distanceMap[p.data?.distance || ''] || 'General',
+        gender: (p.data?.gender || '').toLowerCase(),
+      }))
+      .sort((a: any, b: any) => a.finishTime - b.finishTime);
+
+    // Group by distance+category
+    const groups: Record<string, any[]> = {};
+    for (const f of finishers) {
+      const key = `${f.distanceName}|||${f.categoryName}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(f);
+    }
+
+    podiumByCategory = Object.entries(groups)
+      .map(([key, members]) => {
+        const [distance, category] = key.split('|||');
+        return { distance, category, top: members.slice(0, 3) };
+      })
+      .sort((a, b) => {
+        if (a.distance !== b.distance) return a.distance.localeCompare(b.distance);
+        return a.category.localeCompare(b.category);
+      });
+
+  } catch(e) {}
+}
+
+function formatTime(secs: number): string {
+  const s = Number(secs);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = Math.floor(s % 60);
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+const medals = ['🥇', '🥈', '🥉'];
+const medalLabels = ['1er Lugar', '2do Lugar', '3er Lugar'];
+const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
+---
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Premiación — {raceName}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f0f0f; color: #fff; min-height: 100vh;
+    }
+
+    .screen-header {
+      background: #000; border-bottom: 3px solid #FF6B00;
+      padding: 16px 24px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .screen-logo { color: #FF6B00; font-size: 18px; font-weight: 900; letter-spacing: 2px; }
+    .screen-actions { display: flex; gap: 10px; align-items: center; }
+    .btn-print {
+      background: #FF6B00; color: #fff; border: none; padding: 10px 20px;
+      border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-print:hover { background: #E55A00; }
+
+    .race-selector { display: flex; gap: 8px; justify-content: center; padding: 24px; flex-wrap: wrap; }
+    .race-chip {
+      background: #1a1a1a; border: 1px solid #333; color: #aaa;
+      padding: 8px 20px; border-radius: 20px; cursor: pointer;
+      font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s;
+    }
+    .race-chip:hover, .race-chip.active { background: #FF6B00; border-color: #FF6B00; color: #fff; }
+
+    .page-container { max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+
+    .report-header {
+      text-align: center; margin-bottom: 40px; padding: 30px 0 20px;
+      border-bottom: 2px solid #1f1f1f;
+    }
+    .report-title { font-size: 28px; font-weight: 900; color: #FF6B00; letter-spacing: 2px; text-transform: uppercase; }
+    .report-race { font-size: 20px; font-weight: 700; margin-top: 8px; }
+    .report-date { font-size: 13px; color: #666; margin-top: 4px; }
+    .report-generated { font-size: 11px; color: #444; margin-top: 6px; }
+
+    .distance-section { margin-bottom: 40px; }
+    .distance-title {
+      font-size: 13px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase;
+      color: #FF6B00; background: #1a1a1a; border-left: 4px solid #FF6B00;
+      padding: 10px 16px; margin-bottom: 16px; border-radius: 0 8px 8px 0;
+    }
+
+    .categories-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+    }
+
+    .category-card {
+      background: #111; border: 1px solid #1f1f1f; border-radius: 16px;
+      overflow: hidden; break-inside: avoid;
+    }
+    .category-title {
+      background: #1a1a1a; padding: 12px 16px; font-weight: 800;
+      font-size: 14px; border-bottom: 1px solid #1f1f1f; color: #fff;
+    }
+
+    .podium-list { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+
+    .podium-row {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 10px; border: 1px solid #1f1f1f;
+      transition: background 0.15s;
+    }
+    .podium-row.p1 { background: rgba(255,215,0,0.06); border-color: rgba(255,215,0,0.25); }
+    .podium-row.p2 { background: rgba(192,192,192,0.05); border-color: rgba(192,192,192,0.2); }
+    .podium-row.p3 { background: rgba(205,127,50,0.05); border-color: rgba(205,127,50,0.2); }
+
+    .medal-icon { font-size: 22px; min-width: 28px; text-align: center; }
+    .runner-photo {
+      width: 38px; height: 38px; border-radius: 50%; object-fit: cover;
+      border: 2px solid #FF6B00; flex-shrink: 0;
+    }
+    .runner-placeholder {
+      width: 38px; height: 38px; border-radius: 50%; background: #2a2a2a;
+      border: 2px solid #333; flex-shrink: 0; display: flex;
+      align-items: center; justify-content: center; font-size: 16px;
+    }
+    .runner-info { flex: 1; min-width: 0; }
+    .runner-name { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .runner-bib { font-size: 11px; color: #FF6B00; font-weight: 600; }
+    .runner-time { font-family: monospace; font-weight: 900; font-size: 15px; color: #fff; white-space: nowrap; }
+
+    .no-results { text-align: center; color: #555; padding: 60px 20px; font-size: 16px; }
+
+    /* ===================== PRINT STYLES ===================== */
+    @media print {
+      body { background: #fff !important; color: #000 !important; }
+      .screen-header, .race-selector, .btn-print { display: none !important; }
+      .page-container { max-width: 100%; padding: 0 16px; }
+
+      .report-header { padding: 20px 0 16px; border-bottom: 2px solid #000; }
+      .report-title { color: #000 !important; font-size: 22px; }
+      .report-race { font-size: 17px; }
+      .report-date, .report-generated { color: #555 !important; }
+
+      .distance-title {
+        background: #eee !important; color: #000 !important;
+        border-left: 4px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact;
+      }
+      .category-card { background: #fff !important; border: 1px solid #ccc !important; border-radius: 8px; }
+      .category-title { background: #f5f5f5 !important; color: #000 !important; border-bottom: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      .podium-row { border: 1px solid #ddd !important; background: #fff !important; }
+      .podium-row.p1 { background: #fffbea !important; border-color: #e6c300 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .podium-row.p2 { background: #f9f9f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .podium-row.p3 { background: #fff8f2 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+      .runner-name { color: #000 !important; }
+      .runner-bib { color: #e55a00 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .runner-time { color: #000 !important; }
+      .runner-placeholder { background: #eee !important; border-color: #ccc !important; }
+
+      .categories-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .distance-section { margin-bottom: 28px; page-break-inside: avoid; }
+      .category-card { page-break-inside: avoid; }
+
+      @page { margin: 18mm 14mm; size: letter portrait; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header solo pantalla -->
+  <header class="screen-header">
+    <span class="screen-logo">STRYD PANAMA</span>
+    <div class="screen-actions">
+      <a href="/resultados" style="color:#aaa;font-size:13px;text-decoration:none;">← Resultados</a>
+      <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+    </div>
+  </header>
+
+  <!-- Selector de carrera (solo pantalla) -->
+  {races.length > 1 && (
+    <div class="race-selector">
+      {races.map(r => (
+        <a
+          href={`/premiacion?raceId=${r.id}`}
+          class={`race-chip${r.id === selectedRaceId ? ' active' : ''}`}
+        >
+          {r.data?.title || r.title}
+        </a>
+      ))}
+    </div>
+  )}
+
+  <div class="page-container">
+    {podiumByCategory.length === 0 ? (
+      <div class="no-results">
+        <div style="font-size:48px;margin-bottom:16px;">🏆</div>
+        <p>No hay resultados disponibles aún para esta carrera.</p>
+        <p style="font-size:13px;color:#444;margin-top:8px;">Los tiempos aparecerán aquí una vez que los corredores crucen la meta.</p>
+      </div>
+    ) : (
+      <>
+        <!-- Encabezado del informe -->
+        <div class="report-header">
+          <div class="report-title">🏆 Informe de Premiación</div>
+          <div class="report-race">{raceName}</div>
+          {raceDate && <div class="report-date">{new Date(raceDate + 'T12:00:00').toLocaleDateString('es-PA', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>}
+          <div class="report-generated">Generado el {new Date().toLocaleString('es-PA')}</div>
+        </div>
+
+        <!-- Agrupar por distancia -->
+        {(() => {
+          const byDistance: Record<string, typeof podiumByCategory> = {};
+          for (const group of podiumByCategory) {
+            if (!byDistance[group.distance]) byDistance[group.distance] = [];
+            byDistance[group.distance].push(group);
+          }
+          return Object.entries(byDistance).map(([distance, groups]) => (
+            <div class="distance-section">
+              <div class="distance-title">📏 {distance}</div>
+              <div class="categories-grid">
+                {groups.map(({ category, top }) => (
+                  <div class="category-card">
+                    <div class="category-title">{category}</div>
+                    <div class="podium-list">
+                      {top.map((runner, i) => (
+                        <div class={`podium-row p${i + 1}`}>
+                          <span class="medal-icon">{medals[i]}</span>
+                          {runner.photoUrl
+                            ? <img src={runner.photoUrl} alt="" class="runner-photo" />
+                            : <div class="runner-placeholder">🏃</div>
+                          }
+                          <div class="runner-info">
+                            <div class="runner-name">{runner.name}</div>
+                            <div class="runner-bib">#{runner.bib}</div>
+                          </div>
+                          <div class="runner-time">{formatTime(runner.finishTime)}</div>
+                        </div>
+                      ))}
+                      {top.length === 0 && (
+                        <div style="color:#555;font-size:12px;padding:12px;text-align:center;">Sin clasificados</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ));
+        })()}
+      </>
+    )}
+  </div>
+</body>
+</html>
