@@ -66,7 +66,7 @@ export default function RaceTimer({ timerStart, timerStop, raceName, raceStatus 
     >
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, mb: 2 }}>
         <TimerIcon sx={{ fontSize: 32 }} />
-        <Typography variant="h6">Cronómetro en Vivo</Typography>
+        <Typography variant="h6">{timerStop ? 'Tiempo Final' : 'Cronómetro en Vivo'}</Typography>
       </Box>
       <Typography 
         variant="h2" 
