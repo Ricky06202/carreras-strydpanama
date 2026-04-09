@@ -444,12 +444,8 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
       if (list.length === 0) { el.innerHTML = '<div style="text-align:center;color:#555;padding:20px;">Sin resultados</div>'; return; }
       el.innerHTML = list.map((r, i) => {
         const cls = i === 0 ? 'gold' : i === 1 ? 'silver' : 'bronze';
-        const photo = r.photoUrl
-          ? `<img src="${r.photoUrl}" alt="" class="podium-photo" />`
-          : `<div class="podium-photo-placeholder">🏃</div>`;
         return `<a href="/corredor/${r.id}" style="text-decoration:none;color:inherit;" class="podium-item ${cls}">
           <div class="podium-medal">${medals[i]}</div>
-          ${photo}
           <div class="podium-info">
             <div class="podium-name">${r.name}</div>
             <div class="podium-sub">#${r.bib} • ${r.categoryName}</div>
@@ -474,12 +470,9 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
     tbody.innerHTML = filtered.map(r => {
       const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
       const trCls = r.fPos === 1 ? 'tr-top1' : r.fPos === 2 ? 'tr-top2' : r.fPos === 3 ? 'tr-top3' : '';
-      const ph = r.photoUrl
-        ? `<img src="${r.photoUrl}" alt="" class="mini-photo"/>`
-        : `<span class="mini-photo-placeholder">🏃</span>`;
       return `<tr class="${trCls}" onclick="window.location='/corredor/${r.id}'">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
-        <td style="font-weight:700;"><div style="display:flex;align-items:center;">${ph}${r.name}</div></td>
+        <td style="font-weight:700;">${r.name}</td>
         <td class="td-bib">#${r.bib}</td>
         <td class="td-time">${fmt(r.finishTime)}</td>
         <td><span class="td-cat">${r.categoryName}</span></td>
@@ -495,12 +488,8 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
     if (filtered.length === 0) { list.innerHTML = ''; return; }
     list.innerHTML = filtered.map(r => {
       const rcCls = r.fPos === 1 ? 'rc-top1' : r.fPos === 2 ? 'rc-top2' : r.fPos === 3 ? 'rc-top3' : '';
-      const ph = r.photoUrl
-        ? `<img src="${r.photoUrl}" alt="" class="mini-photo" style="margin-right:0;"/>`
-        : `<span class="mini-photo-placeholder" style="margin-right:0;">🏃</span>`;
       return `<a href="/corredor/${r.id}" class="result-card ${rcCls}">
         <div class="rc-pos">${r.fPos <= 3 ? medals[r.fPos-1] : r.fPos}</div>
-        ${ph}
         <div class="rc-info">
           <div class="rc-name">${r.name}</div>
           <div class="rc-meta">${r.categoryName} · ${r.distanceName}${r.teamName ? ' · ' + r.teamName : ''}</div>
@@ -536,7 +525,6 @@ const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100
         <div class="team-members">
           ${t.members.map(m => `
             <a href="/corredor/${m.id}" class="team-member" style="text-decoration:none;color:inherit;">
-              ${m.photoUrl ? `<img src="${m.photoUrl}" alt="" class="mini-photo"/>` : `<span class="mini-photo-placeholder">🏃</span>`}
               <span class="member-name">${m.name}</span>
               <span class="member-bib">#${m.bib}</span>
               <span class="member-time">${fmt(m.finishTime)}</span>
