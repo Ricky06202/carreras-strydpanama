@@ -337,9 +337,14 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isTeamMembersValid = () => {
     if (registrationType !== 'team') return true;
     if (!teamName || (teamName === 'Agregar manualmente' && !manualTeamNameGroup)) return false;
-    return teamMembers.every(m => 
+    const allFilled = teamMembers.every(m =>
       m.firstName && m.lastName && m.email && m.cedula && m.country && m.birthDay && m.birthMonth && m.birthYear
     );
+    if (!allFilled) return false;
+    // Validar composición: exactamente 2 hombres y 2 mujeres
+    const males = teamMembers.filter(m => m.gender === 'M').length;
+    const females = teamMembers.filter(m => m.gender === 'F').length;
+    return males === 2 && females === 2;
   };
 
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -1090,9 +1095,23 @@ const handleSubmit = async () => {
                   />
                 </Box>
                 
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'bold' }}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
                   Datos de los 4 integrantes del equipo:
                 </Typography>
+                <Box sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(255,107,0,0.08)', borderRadius: 2, border: '1px solid rgba(255,107,0,0.3)' }}>
+                  <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 700 }}>
+                    ⚠️ El equipo debe estar compuesto por exactamente 2 hombres y 2 mujeres.
+                  </Typography>
+                  {(() => {
+                    const males = teamMembers.filter(m => m.gender === 'M').length;
+                    const females = teamMembers.filter(m => m.gender === 'F').length;
+                    return (
+                      <Typography variant="caption" sx={{ display: 'block', mt: 0.5, color: males === 2 && females === 2 ? 'success.main' : 'text.secondary' }}>
+                        {males === 2 && females === 2 ? '✅ Composición correcta' : `Actualmente: ${males} hombre${males !== 1 ? 's' : ''} · ${females} mujer${females !== 1 ? 'es' : ''}`}
+                      </Typography>
+                    );
+                  })()}
+                </Box>
 
                 {teamMembers.map((member, index) => (
                   <Paper key={index} sx={{ p: 2, mb: 2, bgcolor: 'action.hover', borderRadius: '16px' }}>
