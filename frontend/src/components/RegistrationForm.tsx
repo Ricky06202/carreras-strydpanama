@@ -347,6 +347,47 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     return males === 2 && females === 2;
   };
 
+  const [showErrors, setShowErrors] = useState(false);
+
+  const getIndividualErrors = (): string[] => {
+    const errors: string[] = [];
+    if (!formData.cedula) errors.push('Cédula / Pasaporte');
+    if (!formData.firstName) errors.push('Nombre');
+    if (!formData.lastName) errors.push('Apellido');
+    if (!formData.country) errors.push('Nacionalidad');
+    if (!formData.email) errors.push('Correo electrónico');
+    if (!formData.phone) errors.push('Celular o teléfono');
+    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) errors.push('Fecha de nacimiento');
+    if (distances.length > 0 && !formData.distance) errors.push('Distancia');
+    if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) errors.push('Nombre del equipo');
+    if (isStudentCategorySelected() && !formData.studentIdUrl) errors.push('Foto del carnet estudiantil');
+    if (isStudentCategorySelected() && !formData.matriculaUrl) errors.push('Foto de matrícula');
+    if (raceInfo?.data?.termsAndConditions && !termsAccepted) errors.push('Aceptar términos y condiciones');
+    return errors;
+  };
+
+  const getTeamErrors = (): string[] => {
+    const errors: string[] = [];
+    if (!teamName || (teamName === 'Agregar manualmente' && !manualTeamNameGroup)) errors.push('Nombre del equipo');
+    if (distances.length > 0 && !formData.distance) errors.push('Distancia');
+    const memberLabels = ['Capitán', 'Miembro 2', 'Miembro 3', 'Miembro 4'];
+    teamMembers.forEach((m, i) => {
+      const label = memberLabels[i];
+      if (!m.firstName) errors.push(`${label}: Nombre`);
+      if (!m.lastName) errors.push(`${label}: Apellido`);
+      if (!m.cedula) errors.push(`${label}: Cédula`);
+      if (!m.email) errors.push(`${label}: Email`);
+      if (!m.country) errors.push(`${label}: País`);
+      if (!m.birthDay || !m.birthMonth || !m.birthYear) errors.push(`${label}: Fecha de nacimiento`);
+      if (!m.gender) errors.push(`${label}: Género`);
+    });
+    const males = teamMembers.filter(m => m.gender === 'M').length;
+    const females = teamMembers.filter(m => m.gender === 'F').length;
+    if (males !== 2 || females !== 2) errors.push('El equipo debe tener exactamente 2 hombres y 2 mujeres');
+    if (raceInfo?.data?.termsAndConditions && !termsAccepted) errors.push('Aceptar términos y condiciones');
+    return errors;
+  };
+
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -798,6 +839,8 @@ const handleSubmit = async () => {
                     placeholder="Ej: 4-111-1111"
                     required
                     fullWidth
+                    error={showErrors && !formData.cedula}
+                    helperText={showErrors && !formData.cedula ? 'Campo requerido' : ''}
                   />
                   <Button
                     variant="outlined"
@@ -851,19 +894,21 @@ const handleSubmit = async () => {
                   </Box>
                 </Box>
 
-                <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required />
-                <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required />
+                <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required error={showErrors && !formData.firstName} helperText={showErrors && !formData.firstName ? 'Campo requerido' : ''} />
+                <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required error={showErrors && !formData.lastName} helperText={showErrors && !formData.lastName ? 'Campo requerido' : ''} />
                 <Autocomplete
                   options={countriesList}
                   value={formData.country}
                   onChange={(_, newValue) => setFormData({...formData, country: newValue || ''})}
-                  renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" required />}
+                  renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" required error={showErrors && !formData.country} helperText={showErrors && !formData.country ? 'Campo requerido' : ''} />}
                 />
-                <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }}/>
-                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 6123-4567" required sx={{ gridColumn: '1 / -1' }}/>
+                <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.email} helperText={showErrors && !formData.email ? 'Campo requerido' : ''} />
+                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 6123-4567" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.phone} helperText={showErrors && !formData.phone ? 'Campo requerido' : ''} />
                 
                 <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Typography variant="body2" sx={{ mb: 1 }}>Nacimiento *</Typography>
+                  <Typography variant="body2" sx={{ mb: 1, color: showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) ? 'error.main' : 'inherit' }}>
+                    Nacimiento * {showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) && <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>— Selecciona día, mes y año</span>}
+                  </Typography>
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr 1fr', sm: '1fr 1fr 1fr' }, gap: 1 }}>
                     <FormControl fullWidth size="small">
                       <InputLabel>Día</InputLabel>
@@ -1277,24 +1322,35 @@ const handleSubmit = async () => {
               </Box>
             )}
 
+            {showErrors && (() => {
+              const errors = registrationType === 'team' ? getTeamErrors() : getIndividualErrors();
+              return errors.length > 0 ? (
+                <Alert severity="error" sx={{ mt: 1 }}>
+                  <strong>Por favor completa los siguientes campos antes de continuar:</strong>
+                  <ul style={{ margin: '6px 0 0', paddingLeft: 20 }}>
+                    {errors.map((e, i) => <li key={i}>{e}</li>)}
+                  </ul>
+                </Alert>
+              ) : null;
+            })()}
+
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-              <Button variant="outlined" onClick={() => setStep(0)} startIcon={<ArrowBackIcon />}>Atrás</Button>
+              <Button variant="outlined" onClick={() => { setStep(0); setShowErrors(false); }} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Button
                 variant="contained"
                 onClick={() => {
-                   if (codeValid && codeValid.valid) {
-                      handleSubmit();
-                   } else {
-                      setStep(2);
-                   }
+                  setShowErrors(true);
+                  const valid = registrationType === 'team' ? isTeamMembersValid() : isIndividualValid();
+                  const distOk = distances.length === 0 || !!formData.distance;
+                  const termsOk = !raceInfo?.data?.termsAndConditions || termsAccepted;
+                  if (!valid || !distOk || !termsOk) return;
+                  if (codeValid && codeValid.valid) {
+                    handleSubmit();
+                  } else {
+                    setStep(2);
+                  }
                 }}
-                disabled={
-                  (registrationType === 'individual' && !isIndividualValid()) ||
-                  (registrationType === 'team' && !isTeamMembersValid()) ||
-                  (distances.length > 0 && !formData.distance) ||
-                  !!((raceInfo?.data?.termsAndConditions) && !termsAccepted) ||
-                  loading
-                }
+                disabled={loading}
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
