@@ -1371,15 +1371,43 @@ const handleSubmit = async () => {
               </Select>
             </FormControl>
 
-            <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2, mt: 2 }}>
-              <Typography variant="body2" color="text.secondary">
-                {formData.paymentMethod === 'yappy' && 'Recibirás un enlace de pago por Yappy al confirmar.'}
-                {formData.paymentMethod === 'transfer' && 'Los datos de transferencia se mostrarán al finalizar.'}
-                {formData.paymentMethod === 'card' && 'Serás redirigido a la pasarela de pago segura.'}
-                {formData.paymentMethod === 'cash' && 'Deberás acercar a nuestras oficinas para completar el pago.'}
-                {!formData.paymentMethod && 'Selecciona un método de pago para continuar.'}
-              </Typography>
-            </Box>
+            {formData.paymentMethod === 'transfer' ? (
+              <Box sx={{ bgcolor: 'rgba(255,107,0,0.08)', border: `1.5px solid ${ACCENT}`, p: 2.5, borderRadius: 2, mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: ACCENT, fontWeight: 'bold', mb: 1.5 }}>
+                  🏦 Datos para Transferencia Bancaria
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255,107,0,0.3)', pb: 0.75 }}>
+                    <Typography variant="body2" color="text.secondary">Banco:</Typography>
+                    <Typography variant="body2" fontWeight="bold">Banco General</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255,107,0,0.3)', pb: 0.75 }}>
+                    <Typography variant="body2" color="text.secondary">Tipo de cuenta:</Typography>
+                    <Typography variant="body2" fontWeight="bold">Cuenta Corriente</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed rgba(255,107,0,0.3)', pb: 0.75 }}>
+                    <Typography variant="body2" color="text.secondary">Número de cuenta:</Typography>
+                    <Typography variant="body2" fontWeight="bold" sx={{ fontFamily: 'monospace', letterSpacing: 1 }}>03-30-01-125532-9</Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <Typography variant="body2" color="text.secondary">A nombre de:</Typography>
+                    <Typography variant="body2" fontWeight="bold" textAlign="right">TOPOGRAFIA ESPECIALIZADA, S.A.</Typography>
+                  </Box>
+                </Box>
+                <Alert severity="info" sx={{ mt: 2, fontSize: '0.75rem' }}>
+                  Envía tu comprobante de pago al WhatsApp o correo de la organización para confirmar tu inscripción.
+                </Alert>
+              </Box>
+            ) : (
+              <Box sx={{ bgcolor: 'action.hover', p: 2, borderRadius: 2, mt: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  {formData.paymentMethod === 'yappy' && 'Recibirás un enlace de pago por Yappy al confirmar.'}
+                  {formData.paymentMethod === 'card' && 'Serás redirigido a la pasarela de pago segura.'}
+                  {formData.paymentMethod === 'cash' && 'Deberás acercarte a nuestras oficinas para completar el pago.'}
+                  {!formData.paymentMethod && 'Selecciona un método de pago para continuar.'}
+                </Typography>
+              </Box>
+            )}
 
             <Box sx={{ bgcolor: 'background.default', p: 2, borderRadius: 2, border: 1, borderColor: 'divider' }}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
