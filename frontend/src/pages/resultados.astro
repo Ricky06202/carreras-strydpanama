@@ -216,21 +216,26 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   .rc-bib { font-size: 11px; color: var(--accent); font-weight: 700; }
 
   /* Teams */
-  .team-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 12px; transition: border-color 0.2s; }
-  .team-card:hover { border-color: var(--accent); }
-  .team-card.gold { border-color: #c9a227; }
-  .team-card.silver { border-color: #8a9ba8; }
-  .team-card.bronze { border-color: #8b5e3c; }
-  .team-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px; }
-  .team-name { font-weight: 900; font-size: 17px; }
-  .team-avg { font-weight: 900; font-size: 20px; color: var(--accent); font-family: ui-monospace, monospace; }
-  .team-avg-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
-  .team-members { display: flex; flex-direction: column; gap: 6px; }
-  .team-member { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--card2); border-radius: 10px; text-decoration: none; color: var(--text); transition: background 0.15s; }
-  .team-member:hover { background: var(--accent-dim); }
-  .member-name { flex: 1; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .member-time { font-weight: 900; font-size: 13px; color: var(--accent); font-family: ui-monospace, monospace; }
-  .member-bib { font-size: 11px; color: var(--muted); }
+  .teams-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+  .team-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; transition: border-color 0.2s, transform 0.15s; }
+  .team-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .team-card.gold { border-left: 4px solid #c9a227; }
+  .team-card.silver { border-left: 4px solid #8a9ba8; }
+  .team-card.bronze { border-left: 4px solid #8b5e3c; }
+  .team-rank { font-size: 22px; margin-bottom: 4px; }
+  .team-name { font-weight: 900; font-size: 16px; color: var(--text); margin-bottom: 2px; }
+  .team-total-label { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .team-total-time { font-weight: 900; color: var(--accent); font-family: ui-monospace, monospace; }
+  .team-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .team-members-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 700; }
+  .team-members { display: flex; flex-direction: column; gap: 5px; }
+  .team-member { display: flex; align-items: center; gap: 0; text-decoration: none; color: var(--text); padding: 4px 0; border-bottom: 1px dashed var(--border); }
+  .team-member:last-child { border-bottom: none; }
+  .team-member:hover .member-name { color: var(--accent); }
+  .member-bib { font-size: 12px; color: var(--accent); font-weight: 800; font-family: ui-monospace, monospace; min-width: 38px; }
+  .member-name { flex: 1; font-size: 13px; font-weight: 600; }
+  .member-sep { color: var(--muted); margin: 0 6px; font-size: 11px; }
+  .member-time { font-weight: 800; font-size: 13px; font-family: ui-monospace, monospace; color: var(--muted); }
 
   .empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
   .empty-icon { font-size: 60px; margin-bottom: 16px; }
@@ -251,8 +256,8 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     .card-list { display: block; }
     .filters-bar { padding: 14px; }
     .tab { padding: 10px 16px; font-size: 11px; }
-    .team-card { padding: 14px; }
-    .team-header { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .teams-grid { grid-template-columns: 1fr; }
+    .team-card { padding: 16px; }
   }
   @media (min-width: 769px) {
     .card-list { display: none !important; }
@@ -524,34 +529,33 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     const incompleteTeams = teams.filter(t => !t.complete);
     const ranked = [...completeTeams, ...incompleteTeams];
 
-    container.innerHTML = ranked.map((t, i) => {
+    container.innerHTML = `<div class="teams-grid">${ranked.map((t) => {
       const isComplete = t.complete;
       const rank = isComplete ? completeTeams.indexOf(t) : -1;
       const cls = rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : '';
       const medal = isComplete && rank < 3 ? medals[rank] : isComplete ? `#${rank+1}` : '⏳';
-      return `<div class="team-card ${cls}" style="${!isComplete ? 'opacity:0.6;' : ''}">
-        <div class="team-header">
-          <div>
-            <span style="font-size:28px;margin-right:12px;">${medal}</span>
-            <span class="team-name">${t.name}</span>
-            <span style="font-size:12px;color:#888;margin-left:8px;">${isComplete ? '✅ Completo' : `${t.totalMembers}/4 en meta`}</span>
-          </div>
-          <div style="text-align:right;">
-            <div class="team-avg-label">${isComplete ? 'Tiempo Total (suma)' : 'Parcial'}</div>
-            <div class="team-avg" style="color:${isComplete ? 'var(--accent)' : '#888'};">${fmt(t.totalTime)}</div>
-          </div>
+      return `<div class="team-card ${cls}" style="${!isComplete ? 'opacity:0.55;' : ''}">
+        <div class="team-rank">${medal}</div>
+        <div class="team-name">${t.name}</div>
+        <div class="team-total-label">
+          ${isComplete
+            ? `Tiempo total (suma): <span class="team-total-time">${fmt(t.totalTime)}</span>`
+            : `En progreso: ${t.totalMembers}/4 en meta`}
         </div>
+        <hr class="team-divider"/>
+        <div class="team-members-label">Integrantes</div>
         <div class="team-members">
-          ${t.members.map(m => `
-            <a href="/corredor/${m.id}" class="team-member" style="text-decoration:none;color:inherit;">
-              <span class="member-name">${m.name}</span>
+          ${t.members.sort((a,b) => a.finishTime - b.finishTime).map(m => `
+            <a href="/corredor/${m.id}" class="team-member">
               <span class="member-bib">#${m.bib}</span>
+              <span class="member-name">${m.name}</span>
+              <span class="member-sep">—</span>
               <span class="member-time">${fmt(m.finishTime)}</span>
             </a>
           `).join('')}
         </div>
       </div>`;
-    }).join('');
+    }).join('')}</div>`;
   }
 
   function render() {
