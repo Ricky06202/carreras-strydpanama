@@ -324,6 +324,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isIndividualValid = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.cedula || !formData.country) return false;
     if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) return false;
+    if (!formData.gender) return false;
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) return false;
     
     // Mandatory docs for students in Step 1
@@ -358,6 +359,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     if (!formData.email) errors.push('Correo electrónico');
     if (!formData.phone) errors.push('Celular o teléfono');
     if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) errors.push('Fecha de nacimiento');
+    if (!formData.gender) errors.push('Género');
     if (distances.length > 0 && !formData.distance) errors.push('Distancia');
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) errors.push('Nombre del equipo');
     if (isStudentCategorySelected() && !formData.studentIdUrl) errors.push('Foto del carnet estudiantil');
@@ -931,12 +933,13 @@ const handleSubmit = async () => {
                   </Box>
                 </Box>
 
-                <FormControl fullWidth>
-                  <InputLabel>Género</InputLabel>
-                  <Select value={formData.gender} label="Género" onChange={(e) => setFormData({...formData, gender: e.target.value})}>
+                <FormControl fullWidth error={showErrors && !formData.gender}>
+                  <InputLabel>Género *</InputLabel>
+                  <Select value={formData.gender} label="Género *" onChange={(e) => setFormData({...formData, gender: e.target.value})}>
                     <MenuItem value="M">Masculino</MenuItem>
                     <MenuItem value="F">Femenino</MenuItem>
                   </Select>
+                  {showErrors && !formData.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>Campo requerido</Typography>}
                 </FormControl>
                 
                 <Box sx={{ gridColumn: '1 / -1' }}>
