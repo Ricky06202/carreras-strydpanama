@@ -1489,7 +1489,7 @@ const handleSubmit = async () => {
                 <Grid container spacing={2}>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Participante</Typography>
-                    <Typography variant="body2" fontWeight="bold">{formData.firstName} {formData.lastName}</Typography>
+                    <Typography variant="body2" fontWeight="bold">{registrationType === 'team' ? `${teamMembers[0]?.firstName || ''} ${teamMembers[0]?.lastName || ''}`.trim() || `${formData.firstName} ${formData.lastName}` : `${formData.firstName} ${formData.lastName}`}</Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Dorsal Asignado</Typography>
@@ -1523,12 +1523,12 @@ const handleSubmit = async () => {
               
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
-                  <Typography variant="body2" color="text.secondary">Corredor Principal:</Typography>
-                  <Typography variant="body1" fontWeight="bold">{formData.firstName} {formData.lastName}</Typography>
+                  <Typography variant="body2" color="text.secondary">{registrationType === 'team' ? 'Capitán:' : 'Corredor Principal:'}</Typography>
+                  <Typography variant="body1" fontWeight="bold">{registrationType === 'team' ? `${teamMembers[0]?.firstName || ''} ${teamMembers[0]?.lastName || ''}`.trim() || `${formData.firstName} ${formData.lastName}` : `${formData.firstName} ${formData.lastName}`}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Cédula/Pasaporte:</Typography>
-                  <Typography variant="body1">{formData.cedula}</Typography>
+                  <Typography variant="body1">{registrationType === 'team' ? (teamMembers[0]?.cedula || formData.cedula) : formData.cedula}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Carrera:</Typography>
@@ -1581,9 +1581,9 @@ const handleSubmit = async () => {
                     <Typography variant="body1" fontWeight="bold" sx={{ mb: 1 }}>
                       {teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? 'Sin equipo' : teamName)}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">Resto de integrantes:</Typography>
+                    <Typography variant="body2" color="text.secondary">Integrantes del equipo:</Typography>
                     <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      {teamMembers.slice(1).map((m, idx) => (
+                      {teamMembers.map((m, idx) => (
                         m.firstName ? (
                           <Typography key={idx} variant="body2">
                             • {m.firstName} {m.lastName} <span style={{opacity: 0.7}}>({m.cedula})</span>
