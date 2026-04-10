@@ -24,9 +24,7 @@ export const GET: APIRoute = async ({ request }) => {
       p.status === 'published' &&
       (
         (p.data?.cedula || '').toLowerCase().trim() === query ||
-        (p.data?.confirmationCode || '').toLowerCase().trim() === query ||
-        // Fallback for legacy
-        ('STRYD-' + (p.id || '').replace(/-/g, '').slice(0, 8).toUpperCase()).toLowerCase() === query
+        (p.data?.confirmationCode || '').toLowerCase().trim() === query
       )
     );
 
@@ -66,9 +64,8 @@ export const GET: APIRoute = async ({ request }) => {
     } catch {}
 
     const registrations = mine.map((p: any) => {
-      // Generate short confirmation code from participant ID (first 8 hex chars, uppercase)
-      const rawId = (p.id || '').replace(/-/g, '');
-      const confirmationCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
+      // Usar el código de confirmación real guardado en el participante
+      const confirmationCode = p.data?.confirmationCode || '';
 
       // Resolve distance name
       const distanceId = p.data?.distance || '';
