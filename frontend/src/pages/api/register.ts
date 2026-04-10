@@ -31,8 +31,8 @@ export const POST: APIRoute = async ({ request }) => {
     const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
     const raceName = raceFields.title || raceRes.title || 'Carrera';
     
-    // 2. Obtener el siguiente BIB disponible (una sola lectura, luego asignación secuencial local)
-    const participantsRes = await api.getParticipants(env, body.raceId);
+    // 2. Obtener el siguiente BIB disponible (una sola lectura con límite alto, luego asignación secuencial local)
+    const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
     const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
 
     let nextBib = startingBib;
@@ -222,7 +222,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 4a. Verificar y reparar BIBs duplicados post-registro
     try {
-      const postCheck = await api.getParticipants(env, body.raceId);
+      const postCheck = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
       const allParts = (postCheck?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
       const bibCounts: Record<number, any[]> = {};
       for (const p of allParts) {

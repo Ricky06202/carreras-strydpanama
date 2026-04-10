@@ -110,7 +110,7 @@ export const api = {
   
   getCategories: (env: any, raceId: string) => api.getCollectionContent(env, 'categories', { limit: '500' }).then((r: any) => ({ ...r, _raceId: raceId })),
   getDistances: (env: any, raceId?: string) => api.getCollectionContent(env, 'distances', { limit: '500' }),
-  getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, 'participants', { race: raceId }),
+  getParticipants: (env: any, raceId: string) => api.getCollectionContent(env, 'participants', { race: raceId, limit: '5000' }),
   
   createContent: (env: any, collectionId: string, title: string, data: any) => 
     apiFetch('/api/content', env, {
