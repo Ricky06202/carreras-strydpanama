@@ -31,19 +31,18 @@ export const POST: APIRoute = async ({ request }) => {
     const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
     const raceName = raceFields.title || raceRes.title || 'Carrera';
     
-    // 2. Helper para obtener el siguiente BIB disponible (re-lee la BD cada vez para evitar duplicados)
-    const getNextBib = async (): Promise<number> => {
-      const res = await api.getParticipants(env, body.raceId);
-      const parts = (res?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
-      if (parts.length === 0) return startingBib;
-      const highest = parts.reduce((max: number, p: any) => {
+    // 2. Obtener el siguiente BIB disponible (una sola lectura, luego asignación secuencial local)
+    const participantsRes = await api.getParticipants(env, body.raceId);
+    const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
+
+    let nextBib = startingBib;
+    if (raceParticipants.length > 0) {
+      const highestBib = raceParticipants.reduce((max: number, p: any) => {
         const bib = p.data?.bibNumber ? Number(p.data.bibNumber) : 0;
         return bib > max ? bib : max;
       }, 0);
-      return highest >= startingBib ? highest + 1 : startingBib;
-    };
-
-    const nextBib = await getNextBib();
+      if (highestBib >= startingBib) nextBib = highestBib + 1;
+    }
     
     // 3. ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA POR EDAD Y GÉNERO
     // Calculamos edad al día de la carrera
@@ -144,12 +143,13 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
         // Registrar cada miembro del equipo (todos, incluyendo el capitán en índice 0)
+        // BIBs asignados secuencialmente: nextBib, nextBib+1, nextBib+2, ...
+        let memberBib = nextBib - 1;
         let isFirstMember = true;
         for (const member of body.teamMembers) {
             if (!member.firstName || !member.lastName) continue; // Ignorar slots vacíos
 
-            // Re-leer el BIB más alto antes de cada miembro para evitar duplicados concurrentes
-            const memberBib = await getNextBib();
+            memberBib++;
             teamMemberBibs.push(memberBib);
             const isCapitan = isFirstMember;
             isFirstMember = false;
@@ -218,6 +218,38 @@ export const POST: APIRoute = async ({ request }) => {
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
         teamMemberBibs.push(nextBib);
+    }
+
+    // 4a. Verificar y reparar BIBs duplicados post-registro
+    try {
+      const postCheck = await api.getParticipants(env, body.raceId);
+      const allParts = (postCheck?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
+      const bibCounts: Record<number, any[]> = {};
+      for (const p of allParts) {
+        const bib = Number(p.data?.bibNumber || 0);
+        if (!bibCounts[bib]) bibCounts[bib] = [];
+        bibCounts[bib].push(p);
+      }
+      // Encontrar el BIB más alto para reasignar
+      let maxBib = Math.max(...Object.keys(bibCounts).map(Number));
+      for (const [bibStr, entries] of Object.entries(bibCounts)) {
+        if (entries.length <= 1) continue;
+        // Hay duplicados: mantener el primero (por createdOn), reasignar los demás
+        entries.sort((a: any, b: any) => (a.createdOn || '').localeCompare(b.createdOn || ''));
+        for (let i = 1; i < entries.length; i++) {
+          maxBib++;
+          const dup = entries[i];
+          const colId = dup.collectionId || 'col-participants-93d1ac21';
+          const newTitle = (dup.title || '').replace(/Dorsal \d+/, `Dorsal ${maxBib}`);
+          await apiFetch(`/api/content/${dup.id}`, env, {
+            method: 'PUT',
+            body: JSON.stringify({ id: dup.id, collectionId: colId, collection_id: colId, title: newTitle, status: 'published', data: { ...dup.data, bibNumber: maxBib } })
+          });
+          console.log(`Fixed duplicate BIB: ${bibStr} → ${maxBib} for ${dup.data?.firstName} ${dup.data?.lastName}`);
+        }
+      }
+    } catch (e) {
+      console.error('Post-registration BIB dedup check failed:', e);
     }
 
     // 4. Marcar Código como canjeado si se usó
