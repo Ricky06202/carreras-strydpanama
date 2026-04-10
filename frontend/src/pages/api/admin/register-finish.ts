@@ -51,10 +51,48 @@ export const POST: APIRoute = async ({ request }) => {
     };
 
     // 4. Enviar actualización a SonicJS
-    const updateRes = await apiFetch(`/api/content/${participant.id}`, env, {
+    await apiFetch(`/api/content/${participant.id}`, env, {
       method: 'PUT',
       body: JSON.stringify(payload)
     });
+
+    // 5. Detectar si este corredor pertenece a un equipo y si completó el equipo
+    let teamCompleted = null;
+    const teamName = currentData.teamName || '';
+    if (teamName && currentData.registrationType === 'team') {
+      // Buscar todos los miembros del equipo en esta carrera
+      const teamMembers = allParticipants.filter((p: any) => {
+        const belongsToRace = p.data?.race === raceId || p.data?.raceId === raceId;
+        const sameTeam = p.data?.teamName === teamName && p.data?.registrationType === 'team';
+        return belongsToRace && sameTeam;
+      });
+
+      // Incluir el tiempo que acabamos de registrar (aún no guardado en DB al hacer el GET)
+      const timesWithCurrent = teamMembers.map((m: any) => {
+        if (m.id === participant.id) return finishTime; // usar el tiempo recién registrado
+        return m.data?.finishTime ? Number(m.data.finishTime) : null;
+      });
+
+      const allFinished = timesWithCurrent.every((t: any) => t !== null);
+      const completedCount = timesWithCurrent.filter((t: any) => t !== null).length;
+
+      if (allFinished && teamMembers.length === 4) {
+        const totalTime = timesWithCurrent.reduce((s: number, t: number) => s + t, 0);
+        teamCompleted = {
+          teamName,
+          totalTime,
+          memberCount: teamMembers.length,
+          members: teamMembers.map((m: any) => ({
+            name: `${m.data?.firstName || ''} ${m.data?.lastName || ''}`.trim(),
+            bib: m.data?.bibNumber,
+            finishTime: m.id === participant.id ? finishTime : Number(m.data.finishTime),
+          }))
+        };
+      } else {
+        // Informar cuántos van completados aunque no estén todos
+        teamCompleted = { teamName, completedCount, totalMembers: teamMembers.length, partial: true };
+      }
+    }
 
     return new Response(JSON.stringify({
       success: true,
@@ -63,7 +101,8 @@ export const POST: APIRoute = async ({ request }) => {
         name: participant.title,
         bibNumber: targetBib,
         finishTime: finishTime
-      }
+      },
+      teamCompleted
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
