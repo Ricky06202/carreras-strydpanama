@@ -32,8 +32,12 @@ export default {
         title: 'Ubicación',
       },
       routeGpxUrl: {
-        type: 'string',
-        title: 'URL del GPX de la Ruta',
+        type: 'media',
+        title: 'Archivo GPX de la Ruta',
+      },
+      routeEmbedCode: {
+        type: 'textarea',
+        title: 'Código Embed de la Ruta (iframe de Garmin, Strava, etc.)',
       },
       imageUrl: {
         type: 'media',
