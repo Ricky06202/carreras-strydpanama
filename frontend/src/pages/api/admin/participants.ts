@@ -55,6 +55,8 @@ export const GET: APIRoute = async ({ request }) => {
       receiptUrl: item.data?.receiptUrl || '',
       studentIdUrl: item.data?.studentIdUrl || '',
       matriculaUrl: item.data?.matriculaUrl || '',
+      confirmationCode: item.data?.confirmationCode || '',
+      size: item.data?.size || '',
     }));
 
     return new Response(JSON.stringify({ success: true, participants }), {
