@@ -509,6 +509,8 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   const [participants, setParticipants] = useState<any[]>([]);
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
+  const [participantPage, setParticipantPage] = useState(0);
+  const PARTICIPANTS_PER_PAGE = 15;
   const [participantRaceFilter, setParticipantRaceFilter] = useState('');
 
   const fetchParticipants = async (raceId: string) => {
@@ -1587,7 +1589,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 size="small"
                 placeholder="Buscar por nombre, dorsal o equipo..."
                 value={participantSearch}
-                onChange={e => setParticipantSearch(e.target.value)}
+                onChange={e => { setParticipantSearch(e.target.value); setParticipantPage(0); }}
                 sx={{
                   '& .MuiOutlinedInput-root': {
                     color: 'white',
@@ -1612,7 +1614,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                 <Select
                   value={participantRaceFilter}
                   label="Filtrar por Carrera"
-                  onChange={e => setParticipantRaceFilter(e.target.value)}
+                  onChange={e => { setParticipantRaceFilter(e.target.value); setParticipantPage(0); }}
                   sx={{
                     color: 'white',
                     '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
@@ -1697,14 +1699,16 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                       No se encontraron participantes para esta carrera
                     </TableCell>
                   </TableRow>
-                ) : (
-                  participants
+                ) : (() => {
+                  const filtered = participants
                     .filter(p => {
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
-                    .sort((a,b) => (Number(a.bibNumber) || 0) - (Number(b.bibNumber) || 0))
-                    .map((p) => {
+                    .sort((a,b) => (Number(a.bibNumber) || 0) - (Number(b.bibNumber) || 0));
+                  const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
+                  const paginated = filtered.slice(participantPage * PARTICIPANTS_PER_PAGE, (participantPage + 1) * PARTICIPANTS_PER_PAGE);
+                  return paginated.map((p) => {
                       const race = races.find(r => r.id === p.race);
                       const isConfirmed = p.paymentStatus === 'Confirmado';
                       
@@ -1769,11 +1773,42 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
                           </TableCell>
                         </TableRow>
                       );
-                    })
-                )}
+                    });
+                })()}
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Paginación */}
+          {(() => {
+            const filtered = participants.filter(p =>
+              (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase())
+            );
+            const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
+            if (totalPages <= 1) return null;
+            return (
+              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mt: 2, flexWrap: 'wrap' }}>
+                <Button size="small" variant="outlined" onClick={() => setParticipantPage(0)} disabled={participantPage === 0} sx={{ minWidth: 36, px: 1 }}>«</Button>
+                <Button size="small" variant="outlined" onClick={() => setParticipantPage(p => Math.max(0, p - 1))} disabled={participantPage === 0} sx={{ minWidth: 36, px: 1 }}>‹</Button>
+                {Array.from({ length: totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    size="small"
+                    variant={i === participantPage ? 'contained' : 'outlined'}
+                    onClick={() => setParticipantPage(i)}
+                    sx={{ minWidth: 36, px: 1, ...(i === participantPage ? { bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } } : {}) }}
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+                <Button size="small" variant="outlined" onClick={() => setParticipantPage(p => Math.min(totalPages - 1, p + 1))} disabled={participantPage === totalPages - 1} sx={{ minWidth: 36, px: 1 }}>›</Button>
+                <Button size="small" variant="outlined" onClick={() => setParticipantPage(totalPages - 1)} disabled={participantPage === totalPages - 1} sx={{ minWidth: 36, px: 1 }}>»</Button>
+                <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                  {participantPage * PARTICIPANTS_PER_PAGE + 1}–{Math.min((participantPage + 1) * PARTICIPANTS_PER_PAGE, filtered.length)} de {filtered.length}
+                </Typography>
+              </Box>
+            );
+          })()}
 
           <Dialog open={!!selectedParticipant} onClose={() => setSelectedParticipant(null)} maxWidth="sm" fullWidth>
             {selectedParticipant && (
