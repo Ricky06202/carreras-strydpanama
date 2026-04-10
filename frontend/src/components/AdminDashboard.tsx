@@ -681,7 +681,31 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         ...prev,
         [key]: [data.participant, ...(prev[key] || [])].slice(0, 10),
       }));
-      
+
+      // Notificación de equipo
+      if (data.teamCompleted) {
+        const tc = data.teamCompleted;
+        if (!tc.partial) {
+          // Equipo completo — mostrar alerta especial
+          const totalSecs = tc.totalTime;
+          const h = Math.floor(totalSecs / 3600);
+          const m = Math.floor((totalSecs % 3600) / 60);
+          const s = Math.floor(totalSecs % 60);
+          const timeStr = h > 0
+            ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`
+            : `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+          alert(`🏆 ¡EQUIPO COMPLETADO!\n\n${tc.teamName}\nTiempo total (suma): ${timeStr}\n\nIntegrantes:\n${tc.members.map((mb: any) => {
+            const ms = mb.finishTime;
+            const mh = Math.floor(ms/3600), mm = Math.floor((ms%3600)/60), msec = Math.floor(ms%60);
+            const t = mh > 0 ? `${mh}:${String(mm).padStart(2,'0')}:${String(msec).padStart(2,'0')}` : `${String(mm).padStart(2,'0')}:${String(msec).padStart(2,'0')}`;
+            return `  #${mb.bib} ${mb.name} — ${t}`;
+          }).join('\n')}`);
+        } else {
+          // Progreso parcial — informar cuántos van
+          setError(`⚽ Equipo "${tc.teamName}": ${tc.completedCount} de ${tc.totalMembers} integrantes en meta`);
+        }
+      }
+
       // Feedback visual opcional
       const beep = new Audio('data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU');
       beep.play().catch(() => {}); // Intentar sonido tipo scanner
