@@ -119,7 +119,6 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
             <Typography variant="h2" sx={{ fontWeight: 900, color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
               BIENVENIDO A<br />
               <Box component="span" sx={{ color: ACCENT }}>CARRERAS BY STRYD PANAMA</Box>
-              <Box component="span" sx={{ display: 'block', fontSize: '1rem', color: '#aaa', mt: 1 }}>TEST DEPLOY v2 - SI VES ESTO, EL DEPLOY FUNCIONA</Box>
             </Typography>
             <Typography variant="h5" sx={{ color: 'white', mb: 4, maxWidth: 600 }}>
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá
@@ -140,27 +139,28 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
               >
                 VER EVENTOS
               </Button>
-              {(() => {
-                const openRace = upcomingRaces.find((r: any) => r.data?.status === 'accepting');
-                return openRace ? (
-                  <Button
-                    component="a"
-                    href={`/register?race=${openRace.id}`}
-                    variant="contained"
-                    size="large"
-                    sx={{
-                      bgcolor: '#FFFFFF',
-                      color: '#000',
-                      fontWeight: 'bold',
-                      px: 4,
-                      py: 1.5,
-                      '&:hover': { bgcolor: '#f0f0f0' }
-                    }}
-                  >
-                    🏃 INSCRÍBETE AHORA
-                  </Button>
-                ) : null;
-              })()}
+              {upcomingRaces.length > 0 && (
+                <Button
+                  component="a"
+                  href={(() => {
+                    const accepting = upcomingRaces.find((r: any) => r.data?.status === 'accepting');
+                    const target = accepting || upcomingRaces[0];
+                    return accepting ? `/register?race=${target.id}` : `/race/${target.id}`;
+                  })()}
+                  variant="contained"
+                  size="large"
+                  sx={{
+                    bgcolor: '#FFFFFF',
+                    color: '#000',
+                    fontWeight: 'bold',
+                    px: 4,
+                    py: 1.5,
+                    '&:hover': { bgcolor: '#f0f0f0' }
+                  }}
+                >
+                  🏃 INSCRÍBETE AHORA
+                </Button>
+              )}
               <Button
                 href="/mis-inscripciones"
                 variant="outlined"
@@ -266,22 +266,20 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                         >
                           VER MÁS
                         </Button>
-                        {race.data?.status === 'accepting' && (
-                          <Button
-                            component="a"
-                            href={`/register?race=${race.id}`}
-                            variant="contained"
-                            sx={{
-                              flex: 1,
-                              textDecoration: 'none',
-                              bgcolor: ACCENT,
-                              fontWeight: 'bold',
-                              '&:hover': { bgcolor: '#E55A00' }
-                            }}
-                          >
-                            INSCRIBIRSE
-                          </Button>
-                        )}
+                        <Button
+                          component="a"
+                          href={race.data?.status === 'accepting' ? `/register?race=${race.id}` : `/race/${race.id}`}
+                          variant="contained"
+                          sx={{
+                            flex: 1,
+                            textDecoration: 'none',
+                            bgcolor: ACCENT,
+                            fontWeight: 'bold',
+                            '&:hover': { bgcolor: '#E55A00' }
+                          }}
+                        >
+                          INSCRIBIRSE
+                        </Button>
                       </Box>
                     </CardContent>
                   </Card>
