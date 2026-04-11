@@ -78,7 +78,14 @@ const raceData = race?.data || {};
             </div>
           )}
           <div class="p-4 sm:p-6 md:p-8">
-            <h1 class="text-3xl font-bold mb-4 dark:text-white">{raceData.title || race.title}</h1>
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <h1 class="text-3xl font-bold dark:text-white">{raceData.title || race.title}</h1>
+              {raceData.status === 'accepting' && (
+                <a href={`/register?race=${raceId}`} class="cta-top shrink-0">
+                  🏃 INSCRIBIRSE AHORA
+                </a>
+              )}
+            </div>
             <p class="text-gray-600 dark:text-gray-400 mb-6">{raceData.description || ''}</p>
             
             <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -181,7 +188,92 @@ const raceData = race?.data || {};
       </div>
     </div>
   </div>
+  <!-- Barra sticky mobile (solo visible en móvil cuando inscripciones abiertas) -->
+  {raceData.status === 'accepting' && (
+    <div class="sticky-cta">
+      <div class="sticky-cta-info">
+        <span class="sticky-cta-name">{raceData.title || race.title}</span>
+        <span class="sticky-cta-price">${raceData.price || 0}</span>
+      </div>
+      <a href={`/register?race=${raceId}`} class="sticky-cta-btn">
+        INSCRIBIRSE
+      </a>
+    </div>
+  )}
+
   <style>
+    .text-accent { color: #FF6B00; }
+    .bg-accent { background-color: #FF6B00; }
+
+    /* Botón CTA arriba del título */
+    .cta-top {
+      display: inline-flex;
+      align-items: center;
+      background: #FF6B00;
+      color: white;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 10px 20px;
+      border-radius: 50px;
+      text-decoration: none;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 14px rgba(255,107,0,0.4);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .cta-top:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* Barra sticky — solo en móvil */
+    .sticky-cta {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: #111;
+      border-top: 1px solid #333;
+      padding: 12px 16px;
+      z-index: 100;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+    }
+    .sticky-cta-info { flex: 1; min-width: 0; }
+    .sticky-cta-name {
+      display: block;
+      font-weight: 700;
+      font-size: 13px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sticky-cta-price {
+      display: block;
+      font-size: 12px;
+      color: #FF6B00;
+      font-weight: 600;
+    }
+    .sticky-cta-btn {
+      background: #FF6B00;
+      color: white;
+      font-weight: 800;
+      font-size: 14px;
+      padding: 12px 24px;
+      border-radius: 50px;
+      text-decoration: none;
+      white-space: nowrap;
+      letter-spacing: 0.5px;
+      box-shadow: 0 4px 14px rgba(255,107,0,0.4);
+    }
+    .sticky-cta-btn:active { opacity: 0.85; }
+
+    @media (max-width: 767px) {
+      .sticky-cta { display: flex; }
+      /* Espacio para que el contenido no quede tapado por la barra */
+      body { padding-bottom: 80px; }
+      /* Ocultar el CTA del título en mobile para no duplicar */
+      .cta-top { display: none; }
+    }
+
     .route-embed :global(iframe) {
       width: 100%;
       max-width: 100%;
