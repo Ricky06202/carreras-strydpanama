@@ -154,7 +154,8 @@ export const POST: APIRoute = async ({ request }) => {
             const isCapitan = isFirstMember;
             isFirstMember = false;
             const memberConfCode = isCapitan ? confCode : ('STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase());
-            const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib}`;
+            const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres únicos
+            const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
             const memberData = {
                 firstName: member.firstName,
                 lastName: member.lastName,
@@ -217,7 +218,8 @@ export const POST: APIRoute = async ({ request }) => {
         }
     } else {
         // Inscripción individual normal
-        const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib}`;
+        const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres únicos
+        const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
         teamMemberBibs.push(nextBib);
