@@ -60,8 +60,10 @@ export const POST: APIRoute = async ({ request }) => {
 
     const uploadData = await uploadRes.json();
     // /api/media/upload devuelve el media record con id y url
+    console.log('Upload response from /api/media/upload:', JSON.stringify(uploadData, null, 2));
     const mediaId = uploadData?.id || uploadData?.data?.id;
     const finalUrl = uploadData?.url || uploadData?.data?.url || uploadData?.data?.file;
+    console.log('Extracted mediaId:', mediaId, 'finalUrl:', finalUrl);
 
     return new Response(JSON.stringify({ success: true, url: finalUrl, mediaId }), {
       status: 200,
