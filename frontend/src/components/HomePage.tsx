@@ -119,6 +119,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
             <Typography variant="h2" sx={{ fontWeight: 900, color: 'white', mb: 2, fontSize: { xs: '2.5rem', md: '4rem' } }}>
               BIENVENIDO A<br />
               <Box component="span" sx={{ color: ACCENT }}>CARRERAS BY STRYD PANAMA</Box>
+              <Box component="span" sx={{ display: 'block', fontSize: '1rem', color: '#aaa', mt: 1 }}>TEST DEPLOY v2 - SI VES ESTO, EL DEPLOY FUNCIONA</Box>
             </Typography>
             <Typography variant="h5" sx={{ color: 'white', mb: 4, maxWidth: 600 }}>
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá
