@@ -218,8 +218,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         body: JSON.stringify({ imageBase64: croppedBase64, cedula: identifier })
       });
       const data = await res.json();
-      const mediaValue = data.mediaId || data.url;
-      if (mediaValue) setFormData(prev => ({ ...prev, photoUrl: mediaValue }));
+      if (data.mediaId) setFormData(prev => ({ ...prev, photoUrl: data.mediaId }));
     } catch (e) { console.error('Photo upload failed', e); }
     setPhotoUploading(false);
   };
@@ -293,8 +292,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         body: JSON.stringify({ imageBase64: croppedBase64, cedula: `${cedula}_member${index}` })
       });
       const data = await res.json();
-      const mediaValue = data.mediaId || data.url;
-      if (mediaValue) updateTeamMember(index, 'photoUrl', mediaValue);
+      if (data.mediaId) updateTeamMember(index, 'photoUrl', data.mediaId);
     } catch (e) { console.error('Member photo upload failed', e); }
     setMemberPhotoUploading(null);
   };
@@ -1086,8 +1084,7 @@ const handleSubmit = async () => {
                               body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_cedula' })
                             });
                             const data = await res.json();
-                            const mediaValue = data.mediaId || data.url;
-                            if (mediaValue) setFormData(prev => ({ ...prev, studentIdUrl: mediaValue }));
+                            if (data.mediaId) setFormData(prev => ({ ...prev, studentIdUrl: data.mediaId }));
                           } catch (e) {}
                           setPhotoUploading(false);
                         }} />
@@ -1112,8 +1109,7 @@ const handleSubmit = async () => {
                               body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_matricula' })
                             });
                             const data = await res.json();
-                            const mediaValue = data.mediaId || data.url;
-                            if (mediaValue) setFormData(prev => ({ ...prev, matriculaUrl: mediaValue }));
+                            if (data.mediaId) setFormData(prev => ({ ...prev, matriculaUrl: data.mediaId }));
                           } catch (e) {}
                           setPhotoUploading(false);
                         }} />
@@ -1528,9 +1524,8 @@ const handleSubmit = async () => {
                         body: JSON.stringify({ imageBase64: base64, cedula: formData.cedula + '_receipt' })
                       });
                       const data = await res.json();
-                      const mediaValue = data.mediaId || data.url;
-                      if (mediaValue) {
-                        setFormData(prev => ({ ...prev, receiptUrl: mediaValue }));
+                      if (data.mediaId) {
+                        setFormData(prev => ({ ...prev, receiptUrl: data.mediaId }));
                         setNotification({ message: 'Comprobante subido', type: 'success' });
                       }
                     } catch (e) {
