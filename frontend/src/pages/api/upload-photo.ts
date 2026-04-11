@@ -47,7 +47,7 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
 
-    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, {
+    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, {
       method: 'POST',
       headers: uploadHeaders,
       body: formData,
@@ -59,11 +59,11 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const uploadData = await uploadRes.json();
-    // Usamos el campo 'url' (URL completa) para la respuesta al frontend
-    // y el campo 'file' (relativo) para consistencia interna si fuera necesario
-    const finalUrl = uploadData?.url || uploadData?.data?.file;
-    
-    return new Response(JSON.stringify({ success: true, url: finalUrl }), {
+    // /api/media/upload devuelve el media record con id y url
+    const mediaId = uploadData?.id || uploadData?.data?.id;
+    const finalUrl = uploadData?.url || uploadData?.data?.url || uploadData?.data?.file;
+
+    return new Response(JSON.stringify({ success: true, url: finalUrl, mediaId }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
