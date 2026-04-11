@@ -19,7 +19,7 @@ export default {
       birthDate: { type: 'string', title: 'Fecha de Nacimiento' },
       gender: { type: 'string', title: 'Género' },
       country: { type: 'string', title: 'País' },
-      photoUrl: { type: 'string', title: 'URL de Foto' },
+      photoUrl: { type: 'media', title: 'Foto de Perfil' },
       totalRaces: { type: 'number', title: 'Total de Carreras Completadas' },
       // Perfil público
       bio: { type: 'textarea', title: 'Bio como Corredor' },
@@ -31,7 +31,7 @@ export default {
       facebook: { type: 'string', title: 'Facebook (@usuario)' },
       tiktok: { type: 'string', title: 'TikTok (@usuario)' },
       // Fotos adicionales
-      bannerUrl: { type: 'string', title: 'URL Foto de Portada/Banner' },
+      bannerUrl: { type: 'media', title: 'Foto de Portada/Banner' },
       galleryPhotos: { type: 'textarea', title: 'Galería de Fotos (JSON array de URLs)' },
       // Marcas y logros
       personalRecords: { type: 'textarea', title: 'Marcas Personales (JSON: [{distance,time,date}])' },
