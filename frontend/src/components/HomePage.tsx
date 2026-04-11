@@ -17,7 +17,7 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
 
-const ACCENT = '#FF6B00'; // Naranja STRYD - NO CAMBIAR
+const ACCENT = '#FF6B00'; // Naranja STRYD - NO CAMBIAR - v2
 
 interface Distance {
   id: string;
