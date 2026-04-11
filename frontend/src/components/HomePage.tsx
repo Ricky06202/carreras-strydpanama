@@ -137,8 +137,29 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                   '&:hover': { bgcolor: '#E55A00' }
                 }}
               >
-                VER CALENDARIO DE EVENTOS
+                VER EVENTOS
               </Button>
+              {(() => {
+                const openRace = upcomingRaces.find((r: any) => r.data?.status === 'accepting');
+                return openRace ? (
+                  <Button
+                    component="a"
+                    href={`/register?race=${openRace.id}`}
+                    variant="contained"
+                    size="large"
+                    sx={{
+                      bgcolor: '#FFFFFF',
+                      color: '#000',
+                      fontWeight: 'bold',
+                      px: 4,
+                      py: 1.5,
+                      '&:hover': { bgcolor: '#f0f0f0' }
+                    }}
+                  >
+                    🏃 INSCRÍBETE AHORA
+                  </Button>
+                ) : null;
+              })()}
               <Button
                 href="/mis-inscripciones"
                 variant="outlined"
@@ -229,19 +250,38 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           </Typography>
                         )}
                       </Box>
-                      <Button
-                        component="a"
-                        href={`/race/${race.id}`}
-                        variant="contained"
-                        fullWidth
-                        sx={{ 
-                          bgcolor: ACCENT, 
-                          textDecoration: 'none',
-                          '&:hover': { bgcolor: '#E55A00' } 
-                        }}
-                      >
-                        VER MÁS
-                      </Button>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          component="a"
+                          href={`/race/${race.id}`}
+                          variant="outlined"
+                          sx={{
+                            flex: 1,
+                            textDecoration: 'none',
+                            borderColor: ACCENT,
+                            color: ACCENT,
+                            '&:hover': { bgcolor: 'rgba(255,107,0,0.08)', borderColor: ACCENT }
+                          }}
+                        >
+                          VER MÁS
+                        </Button>
+                        {race.data?.status === 'accepting' && (
+                          <Button
+                            component="a"
+                            href={`/register?race=${race.id}`}
+                            variant="contained"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              bgcolor: ACCENT,
+                              fontWeight: 'bold',
+                              '&:hover': { bgcolor: '#E55A00' }
+                            }}
+                          >
+                            INSCRIBIRSE
+                          </Button>
+                        )}
+                      </Box>
                     </CardContent>
                   </Card>
                 </Grid>
