@@ -171,6 +171,12 @@ import Layout from '../layouts/Layout.astro';
     // Si ya es de R2 corregido, no tocar
     if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
 
+    // Si es un ID de medio (uuid de SonicJS) sin /uploads ni extensión
+    if (url.length === 36 && !url.includes('.') && !url.includes('/')) {
+      const apiUrl = 'https://api.carreras.strydpanama.com';
+      return `${apiUrl}/media/${url}`;
+    }
+
     // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
     if (url.includes('/uploads/')) {
       const parts = url.split('/uploads/');
