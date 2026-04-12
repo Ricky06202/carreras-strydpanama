@@ -1084,7 +1084,7 @@ const handleSubmit = async () => {
                               body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_cedula' })
                             });
                             const data = await res.json();
-                            if (data.url || data.mediaId) setFormData(prev => ({ ...prev, studentIdUrl: data.url || data.mediaId }));
+                            if (data.mediaId) setFormData(prev => ({ ...prev, studentIdUrl: data.mediaId }));
                             else throw new Error(data.error || 'Error subiendo cédula');
                           } catch (e: any) {
                             setNotification({ message: e.message || 'Error subiendo cédula', type: 'error' });
@@ -1112,7 +1112,7 @@ const handleSubmit = async () => {
                               body: JSON.stringify({ imageBase64: base64, cedula: (formData.cedula || 'estudiante') + '_matricula' })
                             });
                             const data = await res.json();
-                            if (data.url || data.mediaId) setFormData(prev => ({ ...prev, matriculaUrl: data.url || data.mediaId }));
+                            if (data.mediaId) setFormData(prev => ({ ...prev, matriculaUrl: data.mediaId }));
                             else throw new Error(data.error || 'Error subiendo matrícula');
                           } catch (e: any) {
                             setNotification({ message: e.message || 'Error subiendo matrícula', type: 'error' });

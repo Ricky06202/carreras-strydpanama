@@ -42,12 +42,13 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
 
-    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, { method: 'POST', headers: uploadHeaders, body: formData });
+    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
 
     const uploadData = await uploadRes.json();
-    // Usar siempre la URL completa de R2 para consistencia en la DB y el frontend
-    const photoUrl = uploadData?.url || uploadData?.file || `/uploads/${filename}`;
+    // Guardar el mediaId para que SonicJS pueda vincularlo internamente en el CMS
+    const extractedMediaId = uploadData?.id || uploadData?.data?.id;
+    if (!extractedMediaId) throw new Error('No se recibió mediaId de SonicJS');
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
@@ -62,7 +63,7 @@ export const POST: APIRoute = async ({ request }) => {
         collection_id: part.collectionId,
         title: part.title,
         status: part.status || 'published',
-        data: { ...part.data, photoUrl }
+        data: { ...part.data, photoUrl: extractedMediaId }
       })
     });
 
@@ -82,14 +83,14 @@ export const POST: APIRoute = async ({ request }) => {
             body: JSON.stringify({
               id: runner.id, collectionId: colId, collection_id: colId,
               title: runner.title, status: 'published',
-              data: { ...runner.data, photoUrl }
+              data: { ...runner.data, photoUrl: extractedMediaId }
             })
           });
         }
       } catch {}
     }
 
-    return new Response(JSON.stringify({ success: true, photoUrl }), {
+    return new Response(JSON.stringify({ success: true, photoUrl: extractedMediaId }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
