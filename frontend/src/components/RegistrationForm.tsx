@@ -27,23 +27,12 @@ const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 const ensureAbsolute = (url: string) => {
   if (!url) return '';
   if (url.startsWith('data:')) return url;
-  
-  // Si ya es de R2 corregido, no tocar
-  if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
-
-  // Extraer el path de /uploads/ si existe en la URL (para URLs de la API o R2 viejo)
-  if (url.includes('/uploads/')) {
-    const parts = url.split('/uploads/');
-    return `${R2_BASE}/uploads/${parts[parts.length - 1]}`;
+  if (/^https?:\/\//.test(url)) return url;
+  // If it's a raw UUID from SonicJS media
+  if (url.length === 36 && !url.includes('.') && !url.includes('/')) {
+    return `https://api.carreras.strydpanama.com/media/${url}`;
   }
-
-  // Si es ruta relativa pura
-  if (url.startsWith('/')) return `${R2_BASE}${url}`;
-  
-  // Si no tiene protocolo, asumir que es path relativo
-  if (!url.startsWith('http')) return `${R2_BASE}/${url}`;
-
-  return url;
+  return url.startsWith('/') ? `${R2_BASE}${url}` : `${R2_BASE}/${url}`;
 };
 
 // Eliminamos API_BASE y el uso directo de variables de entorno en el cliente

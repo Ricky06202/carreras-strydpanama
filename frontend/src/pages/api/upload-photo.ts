@@ -26,8 +26,9 @@ export const POST: APIRoute = async ({ request }) => {
     const filename = `runner-${cedula.replace(/\//g, '-')}.${ext}`;
 
     // Subir usando el endpoint de SonicJS /api/media/upload como multipart
+    const fileToUpload = new File([bytes], filename, { type: mimeType, lastModified: Date.now() });
     const formData = new FormData();
-    formData.append('file', new Blob([bytes], { type: mimeType }), filename);
+    formData.append('file', fileToUpload);
 
     // Authenticate with SonicJS (media upload requires auth)
     let authToken = '';
