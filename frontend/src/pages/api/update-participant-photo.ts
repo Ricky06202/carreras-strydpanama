@@ -48,8 +48,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     const uploadData = await uploadRes.json();
     // Guardar el mediaId para que SonicJS pueda vincularlo internamente en el CMS
-    const extractedMediaId = uploadData?.id || uploadData?.data?.id;
-    if (!extractedMediaId) throw new Error('No se recibió mediaId de SonicJS');
+    const extractedMediaId = uploadData?.id || uploadData?.data?.id || uploadData?.data?.[0]?.id || uploadData?.[0]?.id;
+    if (!extractedMediaId) throw new Error(`SonicJS Payload: ${JSON.stringify(uploadData)}`);
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
