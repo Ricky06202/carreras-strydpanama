@@ -46,11 +46,8 @@ export const POST: APIRoute = async ({ request }) => {
     if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
 
     const uploadData = await uploadRes.json();
-    // serverPath tendrá el valor exacto del hash (ej: "/uploads/hash.ext")
-    const serverPath = uploadData?.file;
-
-    // Usamos el path real del servidor que contiene el hash para guardarlo en la DB
-    const relativePath = serverPath || `/uploads/${filename}`;
+    // Usar siempre la URL completa de R2 para consistencia en la DB y el frontend
+    const photoUrl = uploadData?.url || uploadData?.file || `/uploads/${filename}`;
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
@@ -65,7 +62,7 @@ export const POST: APIRoute = async ({ request }) => {
         collection_id: part.collectionId,
         title: part.title,
         status: part.status || 'published',
-        data: { ...part.data, photoUrl: relativePath }
+        data: { ...part.data, photoUrl }
       })
     });
 
@@ -85,14 +82,14 @@ export const POST: APIRoute = async ({ request }) => {
             body: JSON.stringify({
               id: runner.id, collectionId: colId, collection_id: colId,
               title: runner.title, status: 'published',
-              data: { ...runner.data, photoUrl: relativePath }
+              data: { ...runner.data, photoUrl }
             })
           });
         }
       } catch {}
     }
 
-    return new Response(JSON.stringify({ success: true, photoUrl: relativePath }), {
+    return new Response(JSON.stringify({ success: true, photoUrl }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
