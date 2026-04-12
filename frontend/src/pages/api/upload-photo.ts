@@ -68,10 +68,9 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     // Construir la URL pública del media en SonicJS
-    const sonicBaseUrl = sonicUrl.replace(/\/$/, '');
-    const mediaUrl = `${sonicBaseUrl}/media/${mediaId}`;
+    const publicUrl = `/uploads/${mediaId}.${ext}`;
 
-    return new Response(JSON.stringify({ success: true, url: mediaUrl, mediaId }), {
+    return new Response(JSON.stringify({ success: true, url: publicUrl, mediaId: publicUrl }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
