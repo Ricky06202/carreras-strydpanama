@@ -21,8 +21,9 @@ export const POST: APIRoute = async ({ request }) => {
     for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
     const filename = `runner-${(cedula || participantId).replace(/\//g, '-')}-${Date.now()}.${ext}`;
+    const fileToUpload = new File([bytes], filename, { type: mimeType, lastModified: Date.now() });
     const formData = new FormData();
-    formData.append('file', new Blob([bytes], { type: mimeType }), filename);
+    formData.append('file', fileToUpload);
 
     // Authenticate with SonicJS first (media upload requires auth)
     let authToken = '';
