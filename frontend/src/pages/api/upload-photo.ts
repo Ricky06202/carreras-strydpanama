@@ -60,11 +60,11 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const uploadData = await uploadRes.json();
-    // /api/media/upload devuelve { id, filename }
-    const mediaId = uploadData?.id || uploadData?.data?.id;
+    // /api/media/upload devuelve payload variable en SonicJS
+    const mediaId = uploadData?.id || uploadData?.data?.id || uploadData?.data?.[0]?.id || uploadData?.[0]?.id;
 
     if (!mediaId) {
-      throw new Error(`No mediaId en respuesta de /api/media/upload: ${JSON.stringify(uploadData)}`);
+      throw new Error(`No mediaId en payload: ${JSON.stringify(uploadData)}`);
     }
 
     // Construir la URL pública del media en SonicJS
