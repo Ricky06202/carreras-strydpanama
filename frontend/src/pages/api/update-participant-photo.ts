@@ -64,7 +64,7 @@ export const POST: APIRoute = async ({ request }) => {
         collection_id: part.collectionId,
         title: part.title,
         status: part.status || 'published',
-        data: { ...part.data, photoUrl: extractedMediaId }
+        data: { ...part.data, photoUrl: `/uploads/${extractedMediaId}.${ext}` }
       })
     });
 
@@ -84,14 +84,14 @@ export const POST: APIRoute = async ({ request }) => {
             body: JSON.stringify({
               id: runner.id, collectionId: colId, collection_id: colId,
               title: runner.title, status: 'published',
-              data: { ...runner.data, photoUrl: extractedMediaId }
+              data: { ...runner.data, photoUrl: `/uploads/${extractedMediaId}.${ext}` }
             })
           });
         }
       } catch {}
     }
 
-    return new Response(JSON.stringify({ success: true, photoUrl: extractedMediaId }), {
+    return new Response(JSON.stringify({ success: true, photoUrl: `/uploads/${extractedMediaId}.${ext}` }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
