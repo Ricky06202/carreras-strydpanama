@@ -75,7 +75,7 @@ function absolutizeUrls(obj: any, baseUrl: string) {
     obj.forEach(item => absolutizeUrls(item, baseUrl));
   } else {
     for (const key in obj) {
-      if (typeof obj[key] === 'string' && obj[key].startsWith('/files/')) {
+      if (typeof obj[key] === 'string' && (obj[key].startsWith('/files/') || obj[key].startsWith('/uploads/'))) {
         obj[key] = `${baseUrl}${obj[key]}`;
       } else if (typeof obj[key] === 'object' && obj[key] !== null) {
         absolutizeUrls(obj[key], baseUrl);
