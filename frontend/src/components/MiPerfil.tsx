@@ -437,8 +437,7 @@ export default function MiPerfil() {
             </Button>
           </Box>
 
-          {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
-          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
+          {/* Top Feedback Messages */}
 
           {/* Visibilidad */}
           <Box sx={sectionSx}>
@@ -520,7 +519,7 @@ export default function MiPerfil() {
               <Box key={i} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '2fr 2fr 2fr auto' }, gap: 1.5, mb: 1.5, alignItems: 'center' }}>
                 <TextField size="small" label="Distancia" placeholder="5K" value={pr.distance} onChange={(e) => setPrs(p => p.map((x, j) => j === i ? { ...x, distance: e.target.value } : x))} />
                 <TextField size="small" label="Tiempo" placeholder="25:30" value={pr.time} onChange={(e) => setPrs(p => p.map((x, j) => j === i ? { ...x, time: e.target.value } : x))} />
-                <TextField size="small" label="Fecha" placeholder="2025-01" value={pr.date} onChange={(e) => setPrs(p => p.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} />
+                <TextField size="small" type="date" InputLabelProps={{ shrink: true }} label="Fecha" placeholder="2025-01-01" value={pr.date} onChange={(e) => setPrs(p => p.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} />
                 <IconButton size="small" onClick={() => setPrs(p => p.filter((_, j) => j !== i))} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
               </Box>
             ))}
@@ -551,7 +550,7 @@ export default function MiPerfil() {
             {plannedRaces.map((race, i) => (
               <Box key={i} sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '3fr 2fr auto' }, gap: 1.5, mb: 1.5, alignItems: 'center' }}>
                 <TextField size="small" label="Nombre" placeholder="Carrera STRYD 2026" value={race.name} onChange={(e) => setPlannedRaces(p => p.map((x, j) => j === i ? { ...x, name: e.target.value } : x))} />
-                <TextField size="small" label="Fecha" placeholder="2026-06-15" value={race.date} onChange={(e) => setPlannedRaces(p => p.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} />
+                <TextField size="small" type="date" InputLabelProps={{ shrink: true }} label="Fecha" placeholder="2026-06-15" value={race.date} onChange={(e) => setPlannedRaces(p => p.map((x, j) => j === i ? { ...x, date: e.target.value } : x))} />
                 <IconButton size="small" onClick={() => setPlannedRaces(p => p.filter((_, j) => j !== i))} sx={{ color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
               </Box>
             ))}
@@ -597,6 +596,9 @@ export default function MiPerfil() {
           </Box>
 
           <Divider sx={{ mb: 3 }} />
+
+          {success && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess('')}>{success}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
 
           <Button
             fullWidth variant="contained" onClick={handleSave} disabled={loading}
