@@ -1784,12 +1784,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             <Table stickyHeader>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'black' }}>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Dorsal</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Participante / Categoría</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Equipo</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Carrera / Distancia</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Pago</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Nombre Completo</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Categoría / Equipo</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Inscripción</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1834,60 +1834,56 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                             if ((e.target as HTMLElement).closest('button')) return; // Avoid opening if clicking confirm button
                             setSelectedParticipant(p);
                         }}>
-                          <TableCell sx={{ minWidth: 160 }}>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              {!isConfirmed ? (
-                                <Button
-                                  variant="contained"
-                                  size="small"
-                                  onClick={() => confirmPayment(p.id)}
-                                  sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontSize: '0.7rem', fontWeight: 'bold' }}
-                                >
-                                  CONFIRMAR
-                                </Button>
-                              ) : (
-                                <Chip 
-                                  icon={<CheckCircleIcon style={{ color: 'white', fontSize: '1rem' }} />}
-                                  label="PAGADO" 
-                                  size="small"
-                                  sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 'bold' }}
-                                />
-                              )}
-                              <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button size="small" variant="outlined" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); setEditParticipantObj(p); }}>EDITAR</Button>
-                                <Button size="small" variant="outlined" color="error" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); deleteParticipant(p.id, p.title); }}>BORRAR</Button>
-                              </Box>
-                            </Box>
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: ACCENT }}>
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: ACCENT }}>
                             #{p.bibNumber || '---'}
                           </TableCell>
+                          
                           <TableCell>
-                            <Typography sx={{ fontWeight: 'bold' }}>{p.title}</Typography>
-                            <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold', display: 'block' }}>
-                              🏷️ {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'Sin categoría'}
-                            </Typography>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{p.firstName} {p.lastName}</Typography>
                             <Typography variant="caption" color="text.secondary">{p.email}</Typography>
                           </TableCell>
+                          
                           <TableCell>
-                            {p.teamName ? <Chip label={p.teamName} size="small" variant="outlined" /> : '-'}
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                              {race?.data?.title || race?.title || 'Carrera ID: ' + p.race}
+                            <Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>
+                              {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
                             </Typography>
-                            <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-                              {allDistances.find(d => d.id === p.distance)?.name || p.distance || '---'}
-                            </Typography>
+                            {p.teamName && <Chip label={p.teamName} size="small" variant="outlined" sx={{ mt: 0.5 }} />}
                           </TableCell>
+                          
                           <TableCell>
-                            <Chip 
-                              label={p.paymentStatus} 
-                              size="small"
-                              variant={isConfirmed ? "filled" : "outlined"}
-                              color={isConfirmed ? "success" : "warning"}
-                              sx={{ fontWeight: 'bold' }}
-                            />
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{p.cedula || '---'}</Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2">{p.created_at ? new Date(p.created_at).toLocaleDateString() : (p.createdOn ? new Date(p.createdOn).toLocaleDateString() : 'N/A')}</Typography>
+                          </TableCell>
+                          
+                          <TableCell sx={{ minWidth: 150 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
+                                  {!isConfirmed ? (
+                                    <Button
+                                      variant="contained"
+                                      size="small"
+                                      onClick={() => confirmPayment(p.id)}
+                                      sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontSize: '0.7rem', fontWeight: 'bold', width: '100%' }}
+                                    >
+                                      CONFIRMAR
+                                    </Button>
+                                  ) : (
+                                    <Chip 
+                                      icon={<CheckCircleIcon style={{ color: 'white', fontSize: '1rem' }} />}
+                                      label="PAGADO" 
+                                      size="small"
+                                      sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 'bold', width: '100%' }}
+                                    />
+                                  )}
+                               </Box>
+                               <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button size="small" variant="outlined" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); setEditParticipantObj(p); }}>EDITAR</Button>
+                                  <Button size="small" variant="outlined" color="error" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); deleteParticipant(p.id, p.title); }}>BORRAR</Button>
+                               </Box>
+                            </Box>
                           </TableCell>
                         </TableRow>
                       );
@@ -2025,6 +2021,26 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   )}
                 </DialogActions>
               </>
+            )}
+          </Dialog>
+
+          <Dialog open={!!editParticipantObj} onClose={() => setEditParticipantObj(null)} maxWidth="sm" fullWidth>
+            {editParticipantObj && (
+               <>
+                 <DialogTitle sx={{ fontWeight: 'bold' }}>Editar Corredor #{editParticipantObj.bibNumber}</DialogTitle>
+                 <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                    <Typography variant="body2" color="text.secondary">Edita el nombre o cédula del corredor en caso de errores tipográficos en el registro.</Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <TextField label="Nombre" value={editParticipantObj.firstName} onChange={e => setEditParticipantObj({...editParticipantObj, firstName: e.target.value})} fullWidth />
+                        <TextField label="Apellido" value={editParticipantObj.lastName} onChange={e => setEditParticipantObj({...editParticipantObj, lastName: e.target.value})} fullWidth />
+                    </Box>
+                    <TextField label="Cédula" value={editParticipantObj.cedula} onChange={e => setEditParticipantObj({...editParticipantObj, cedula: e.target.value})} fullWidth />
+                 </DialogContent>
+                 <DialogActions sx={{ p: 2 }}>
+                   <Button onClick={() => setEditParticipantObj(null)} color="inherit">Cancelar</Button>
+                   <Button variant="contained" onClick={handleSaveEdit} disabled={participantsLoading} sx={{ bgcolor: ACCENT, fontWeight: 'bold' }}>{participantsLoading ? 'Guardando...' : 'Guardar Cambios'}</Button>
+                 </DialogActions>
+               </>
             )}
           </Dialog>
         </Box>
