@@ -489,16 +489,13 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         }
       }
 
-      // 2. FALLBACK (solo para Público General): Match por Edad y Género
-      if (formData.participantType === 'general' && formData.birthDay && formData.birthMonth && formData.birthYear && runnerGender && raceInfo?.data?.date) {
+      // 2. FALLBACK (solo para Público General / Niño): Match por Edad y Género (Edad Competitiva Internacional)
+      if ((formData.participantType === 'general' || formData.participantType === 'niño') && formData.birthDay && formData.birthMonth && formData.birthYear && runnerGender && raceInfo?.data?.date) {
         const raceDate = new Date(raceInfo.data.date);
         const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
         
-        let age = raceDate.getFullYear() - birthDate.getFullYear();
-        const m = raceDate.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
-          age--;
-        }
+        // Estándar internacional: Año de Carrera - Año de Nacimiento
+        const age = raceDate.getFullYear() - birthDate.getFullYear();
         
         // Excluir categorías de tipos especiales para que el público general no caiga ahí
         const specialTypes = Object.values(TYPE_SEARCH_TERMS);
