@@ -571,6 +571,62 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const [editParticipantObj, setEditParticipantObj] = useState<any>(null);
+  
+  const handleSaveEdit = async () => {
+    if (!editParticipantObj) return;
+    try {
+       setParticipantsLoading(true);
+       const titlePrefix = `${editParticipantObj.firstName?.trim() || ''} ${editParticipantObj.lastName?.trim() || ''}`.trim();
+       let newTitle = titlePrefix;
+       if (editParticipantObj.bibNumber) {
+           newTitle += ` - Dorsal ${editParticipantObj.bibNumber}`;
+       } else if (editParticipantObj.title) {
+           newTitle = editParticipantObj.title; 
+       }
+       
+       const res = await fetch('/api/admin/update-participant', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+           id: editParticipantObj.id,
+           updates: {
+             firstName: editParticipantObj.firstName,
+             lastName: editParticipantObj.lastName,
+             cedula: editParticipantObj.cedula,
+             title: titlePrefix ? newTitle : editParticipantObj.title
+           }
+         })
+       });
+       if (res.ok) {
+         setParticipants(prev => prev.map(p => p.id === editParticipantObj.id ? {...p, ...editParticipantObj, title: titlePrefix ? newTitle : editParticipantObj.title} : p));
+         setEditParticipantObj(null);
+       } else alert('Error al guardar datos modificados');
+    } catch(e) { alert('Error de conexión al editar'); }
+    finally { setParticipantsLoading(false); }
+  };
+
+  const deleteParticipant = async (id: string, name: string) => {
+    if (!confirm(`🚨 ¿ESTÁS SEGURO?\n\nVas a eliminar irreversiblemente la inscripción de: ${name}.\nEste dorsal quedará libre y el registro será borrado. NO se puede deshacer.`)) return;
+    try {
+      setParticipantsLoading(true);
+      const res = await fetch('/api/admin/delete-participant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if (res.ok) {
+        setParticipants(prev => prev.filter(p => p.id !== id));
+      } else {
+        alert('Error al eliminar inscripción en el servidor');
+      }
+    } catch(e) {
+      alert('Error de conexión');
+    } finally {
+      setParticipantsLoading(false);
+    }
+  };
+
   const exportParticipantsCSV = () => {
     const filtered = participants.filter(p => {
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
@@ -1750,29 +1806,30 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                             if ((e.target as HTMLElement).closest('button')) return; // Avoid opening if clicking confirm button
                             setSelectedParticipant(p);
                         }}>
-                          <TableCell sx={{ minWidth: 150 }}>
-                            {!isConfirmed ? (
-                              <Button
-                                variant="contained"
-                                size="small"
-                                onClick={() => confirmPayment(p.id)}
-                                sx={{ 
-                                  bgcolor: ACCENT, 
-                                  '&:hover': { bgcolor: '#E55A00' },
-                                  fontSize: '0.7rem',
-                                  fontWeight: 'bold'
-                                }}
-                              >
-                                CONFIRMAR
-                              </Button>
-                            ) : (
-                              <Chip 
-                                icon={<CheckCircleIcon style={{ color: 'white', fontSize: '1rem' }} />}
-                                label="PAGADO" 
-                                size="small"
-                                sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 'bold' }}
-                              />
-                            )}
+                          <TableCell sx={{ minWidth: 160 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                              {!isConfirmed ? (
+                                <Button
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => confirmPayment(p.id)}
+                                  sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontSize: '0.7rem', fontWeight: 'bold' }}
+                                >
+                                  CONFIRMAR
+                                </Button>
+                              ) : (
+                                <Chip 
+                                  icon={<CheckCircleIcon style={{ color: 'white', fontSize: '1rem' }} />}
+                                  label="PAGADO" 
+                                  size="small"
+                                  sx={{ bgcolor: 'success.main', color: 'white', fontWeight: 'bold' }}
+                                />
+                              )}
+                              <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button size="small" variant="outlined" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); setEditParticipantObj(p); }}>EDITAR</Button>
+                                <Button size="small" variant="outlined" color="error" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); deleteParticipant(p.id, p.title); }}>BORRAR</Button>
+                              </Box>
+                            </Box>
                           </TableCell>
                           <TableCell sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: ACCENT }}>
                             #{p.bibNumber || '---'}
