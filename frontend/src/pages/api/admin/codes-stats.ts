@@ -22,7 +22,7 @@ export const GET: APIRoute = async ({ request }) => {
         const key = `${vendor}___${batchId}`;
         
         if (!stats[key]) {
-            stats[key] = { vendor, batchId, generated: 0, sold: 0, redeemed: 0, total: 0 };
+            stats[key] = { vendor, batchId, generated: 0, sold: 0, redeemed: 0, total: 0, allowedType: d.allowedType || 'all' };
         }
         
         stats[key].total++;

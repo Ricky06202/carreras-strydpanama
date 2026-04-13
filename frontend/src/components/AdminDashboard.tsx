@@ -248,22 +248,38 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
          ticketDiv.style.color = '#000';
          ticketDiv.style.backgroundColor = '#fff';
 
+         const stubBox = document.createElement('div');
+         stubBox.style.width = '22%';
+         stubBox.style.height = '100%';
+         stubBox.style.borderRight = '2px dashed #ccc';
+         stubBox.style.paddingRight = '10px';
+         stubBox.style.display = 'flex';
+         stubBox.style.flexDirection = 'column';
+         stubBox.style.justifyContent = 'center';
+         stubBox.innerHTML = `
+            <div style="font-size:11px; font-weight:bold; text-align:center; margin-bottom:10px; color:#555;">TALONARIO VENDEDOR</div>
+            <div style="font-size:13px; margin-bottom:15px;"><strong>Nombre:</strong><div style="border-bottom:1px solid #000; height:16px; margin-top:2px;"></div></div>
+            <div style="font-size:13px; margin-bottom:15px;"><strong>Tel / Cédula:</strong><div style="border-bottom:1px solid #000; height:16px; margin-top:2px;"></div></div>
+            <div style="font-size:12px; text-align:center; font-weight:bold; color:${ACCENT}; margin-top:auto;">Boleto: <span>${codeObj.code}</span></div>
+         `;
+
          const leftBox = document.createElement('div');
-         leftBox.style.width = '20%';
+         leftBox.style.width = '18%';
          leftBox.style.textAlign = 'center';
+         leftBox.style.paddingLeft = '10px';
          if (raceLogo) {
-             const imgPath = raceLogo.startsWith('http') ? raceLogo : `https://api.carreras.strydpanama.com${raceLogo}`;
-             leftBox.innerHTML = `<img src="${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />`;
+             const imgPath = raceLogo.startsWith('http') ? raceLogo : \`https://api.carreras.strydpanama.com\${raceLogo}\`;
+             leftBox.innerHTML = \`<img src="\${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />\`;
          } else {
-             leftBox.innerHTML = `<h2 style="color:${ACCENT}; margin:0; line-height:1.2; font-size:20px;">${raceTitle}</h2>`;
+             leftBox.innerHTML = \`<h2 style="color:\${ACCENT}; margin:0; line-height:1.2; font-size:20px;">\${raceTitle}</h2>\`;
          }
 
          const centerBox = document.createElement('div');
-         centerBox.style.width = '55%';
+         centerBox.style.width = '38%';
          centerBox.style.padding = '0 15px';
          centerBox.innerHTML = `
-            <h3 style="margin:0 0 10px 0; font-size:22px; text-transform:uppercase;">${raceTitle}</h3>
-            <div style="display:flex; flex-direction:column; gap:12px; font-size:16px;">
+            <h3 style="margin:0 0 15px 0; font-size:20px; text-transform:uppercase; line-height: 1.1;">${raceTitle}</h3>
+            <div style="display:flex; flex-direction:column; gap:20px; font-size:15px;">
                 <div style="display:flex; align-items:flex-end;">
                   <span style="font-weight:bold; width:80px;">Nombre:</span> 
                   <div style="border-bottom:1px solid #000; flex:1; height:20px;"></div>
@@ -271,15 +287,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <div style="display:flex; align-items:flex-end;">
                   <span style="font-weight:bold; width:80px;">Cédula:</span> 
                   <div style="border-bottom:1px solid #000; flex:1; height:20px; margin-right: 15px;"></div>
-                  <span style="font-weight:bold; width:80px;">Telf:</span> 
+                  <span style="font-weight:bold; width:60px;">Telf:</span> 
                   <div style="border-bottom:1px solid #000; flex:1; height:20px;"></div>
                 </div>
-            </div>
-            <div style="margin-top:20px; font-size:15px; display:flex; gap:15px; align-items:center;">
-               <strong>Modalidad:</strong>
-               ${distances.length > 0 
-                  ? distances.map((d: any) => `<div style="display:flex; align-items:center; gap:5px;"><div style="width:14px; height:14px; border:1px solid #000; border-radius:3px;"></div><span>${d.name}</span></div>`).join('') 
-                  : '<div style="border-bottom:1px solid #000; width:150px; height:20px;"></div>'}
             </div>
          `;
 
@@ -300,7 +310,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
          }
 
          const rightBox = document.createElement('div');
-         rightBox.style.width = '25%';
+         rightBox.style.width = '22%';
          rightBox.style.textAlign = 'right';
          rightBox.innerHTML = `
             ${displayPrice ? `<div style="text-align:center; font-weight:900; font-size:16px; margin-bottom:5px; color:${ACCENT}; text-transform:uppercase;">${displayTitle} <span style="color:#000;">${displayPrice}</span></div>` : ''}
@@ -311,6 +321,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             <div style="font-size:13px; color:#333; font-weight:bold; text-align:center; font-family:Arial, sans-serif;">carreras.strydpanama.com</div>
          `;
 
+         ticketDiv.appendChild(stubBox);
          ticketDiv.appendChild(leftBox);
          ticketDiv.appendChild(centerBox);
          ticketDiv.appendChild(rightBox);
@@ -1440,6 +1451,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   <TableRow key={i}>
                     <TableCell sx={{ fontWeight: 'bold' }}>{stat.vendor}</TableCell>
                     <TableCell><Chip label={stat.batchId} size="small" /></TableCell>
+                    <TableCell>
+                      <Chip label={stat.allowedType === 'estudiante' ? 'Estudiantes' : (stat.allowedType === 'team' ? 'Equipos' : (stat.allowedType === 'general' ? 'Público General' : 'Libre'))} size="small" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                    </TableCell>
                     <TableCell align="center">{stat.total}</TableCell>
                     <TableCell align="center"><Typography color="success.main" fontWeight="bold">{stat.generated}</Typography></TableCell>
                     <TableCell align="center">{stat.sold}</TableCell>
