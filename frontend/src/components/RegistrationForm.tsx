@@ -717,7 +717,8 @@ const handleSubmit = async () => {
         // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
         // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
         const totalAmount = 0.25; 
-        const telYappy = formData.phone.replace(/\D/g, ''); // Limpiamos guiones o caracteres especiales para Yappy
+        const selectedPhone = registrationType === 'team' ? (teamMembers[0]?.phone || '') : formData.phone;
+        const telYappy = selectedPhone.replace(/\D/g, ''); // Limpiamos guiones o caracteres especiales para Yappy
 
         // 2. Llamar al endpoint de checkout backend
         const resCheck = await fetch('/api/yappy/checkout', {
