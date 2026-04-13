@@ -120,8 +120,8 @@ export const POST: APIRoute = async ({ request }) => {
     };
 
     const mainCat = resolveCategoryForPerson(body.birthDate, body.gender, body.participantType);
-    let assignedCategoryId = mainCat.catId;
-    let resolvedCategoryName = mainCat.catName;
+    assignedCategoryId = mainCat.catId;
+    resolvedCategoryName = mainCat.catName;
 
     // Asignar el dorsal y la categoría calculada
     body.bibNumber = nextBib;
