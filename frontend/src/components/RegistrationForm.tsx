@@ -13,7 +13,7 @@ declare global {
 import { 
   TextField, Button, Select, MenuItem, FormControl, InputLabel, 
   Box, Typography, Stepper, Step, StepLabel, Alert, Paper, Snackbar,
-  ThemeProvider, createTheme, CssBaseline, Autocomplete, Grid
+  ThemeProvider, createTheme, CssBaseline, Autocomplete, Grid, Checkbox
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
