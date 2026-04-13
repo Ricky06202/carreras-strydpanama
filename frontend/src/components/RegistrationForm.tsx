@@ -712,7 +712,7 @@ const handleSubmit = async () => {
         // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
         // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
         const totalAmount = 0.25; 
-        const telYappy = formData.phone; // Usamos el num del form temporalmente
+        const telYappy = formData.phone.replace(/\D/g, ''); // Limpiamos guiones o caracteres especiales para Yappy
 
         // 2. Llamar al endpoint de checkout backend
         const resCheck = await fetch('/api/yappy/checkout', {
@@ -915,7 +915,7 @@ const handleSubmit = async () => {
                   renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" required error={showErrors && !formData.country} helperText={showErrors && !formData.country ? 'Campo requerido' : ''} />}
                 />
                 <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.email} helperText={showErrors && !formData.email ? 'Campo requerido' : ''} />
-                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 6123-4567" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.phone} helperText={showErrors && !formData.phone ? 'Campo requerido' : ''} />
+                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 61234567" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.phone} helperText={showErrors && !formData.phone ? 'Campo requerido' : 'Preferiblemente sin guiones o espacios'} />
                 
                 <Box sx={{ gridColumn: '1 / -1' }}>
                   <Typography variant="body2" sx={{ mb: 1, color: showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) ? 'error.main' : 'inherit' }}>
