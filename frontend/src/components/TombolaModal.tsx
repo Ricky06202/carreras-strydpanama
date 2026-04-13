@@ -41,24 +41,22 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
     await onUpdateRace({ raffleWinners: JSON.stringify([]) });
   };
 
-  const startRaffle = () => {
-    // 1. Filtrar Participantes viables
+  // Cálculo en vivo del pool para dar retroalimentación visual
+  const getActivePool = () => {
     const winnerIds = winnersCache.map(w => w.id);
-    let pool = participants.filter((p: any) => {
-        // Excluir si ya ganó
+    return participants.filter((p: any) => {
         if (winnerIds.includes(p.id)) return false;
-        
-        // Excluir si no cumple pago efectivo o cortesía (Confirmado)
-        // Puedes relajar esto según tu preferencia, pero por seguridad general solo confirmados juegan.
-        const isPaid = ['Confirmado', 'Completado', 'Yappy'].includes(p.paymentStatus);
-        if (!isPaid) return false;
-
-        // Filtro demográfico
         if (filter === 'm') return p.gender === 'M' || p.gender === 'Masculino';
         if (filter === 'f') return p.gender === 'F' || p.gender === 'Femenino';
         if (filter === 'kids') return p.categoryName && p.categoryName.toLowerCase().includes('niñ');
         return true;
     });
+  };
+
+  const poolSize = getActivePool().length;
+
+  const startRaffle = () => {
+    const pool = getActivePool();
 
     if (pool.length === 0) {
       alert('No hay participantes válidos o habilitados para este filtro (o todos ya ganaron).');
@@ -189,11 +187,14 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
            <Button 
              variant="contained" 
              onClick={startRaffle} 
-             disabled={isSpinning}
+             disabled={isSpinning || poolSize === 0}
              sx={{ py: 3, borderRadius: 10, bgcolor: ACCENT, color: '#fff', '&:hover': { bgcolor: '#E55A00' }, fontWeight: 900, fontSize: '1.5rem', letterSpacing: 2, boxShadow: `0 0 30px ${ACCENT}55` }}
            >
              {isSpinning ? 'GIRANDO...' : '¡SORTEAR GANADOR AHORA!'}
            </Button>
+           <Typography variant="body2" sx={{ textAlign: 'center', color: poolSize > 0 ? '#69f0ae' : '#f44336', fontWeight: 'bold' }}>
+             {poolSize} finalistas dentro del bombo bajo este filtro
+           </Typography>
         </Box>
 
         {/* Historial Memory */}
