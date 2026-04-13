@@ -705,8 +705,8 @@ const handleSubmit = async () => {
         const selectedDistanceObj = distances.find(d => d.id === formData.distance);
         const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
         
-        // Sumar cargo de servicio de plataforma (Yappy: 0.45, otros: 0)
-        const platformFee = formData.paymentMethod === 'yappy' ? 0.45 : 0;
+        // Sumar cargo de servicio de plataforma (Yappy: fee dinámico, otros: 0)
+        const platformFee = formData.paymentMethod === 'yappy' ? (raceInfo?.data?.platformFee ?? 0.45) : 0;
         const fullPrice = basePrice + platformFee;
 
         // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
@@ -1418,15 +1418,17 @@ const handleSubmit = async () => {
 {(() => {
   const selectedDistanceObj = distances.find(d => d.id === formData.distance);
   const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
+  const platformFee = raceInfo?.data?.platformFee ?? 0.45;
+
   return (
     <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
       <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>
       {formData.paymentMethod === 'yappy' ? (
-        <Typography variant="body2" color="text.secondary">Cargo de plataforma Yappy: +$0.45 (costos de procesamiento y desarrollo)</Typography>
+        <Typography variant="body2" color="text.secondary">Cargo de plataforma Yappy: +${platformFee.toFixed(2)} (costos de procesamiento y desarrollo)</Typography>
       ) : formData.paymentMethod === 'transfer' ? (
         <Typography variant="body2" color="text.secondary">Cargo de plataforma Transferencia: +$0.00</Typography>
       ) : (
-        <Typography variant="body2" color="text.secondary">Cargo de plataforma: +$0.50</Typography>
+        <Typography variant="body2" color="text.secondary">Cargo de plataforma genérico: +$0.50</Typography>
       )}
       {isStudentCategorySelected() && (
         <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
@@ -1434,7 +1436,7 @@ const handleSubmit = async () => {
         </Typography>
       )}
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
-        Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? 0.45 : (formData.paymentMethod === 'transfer' ? 0 : 0.50))).toFixed(2)}
+        Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? platformFee : (formData.paymentMethod === 'transfer' ? 0 : 0.50))).toFixed(2)}
       </Typography>
       {formData.paymentMethod === 'yappy' && (
         <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1, fontWeight: 'bold' }}>

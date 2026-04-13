@@ -57,6 +57,9 @@ export const GET: APIRoute = async ({ request }) => {
       matriculaUrl: item.data?.matriculaUrl || '',
       confirmationCode: item.data?.confirmationCode || '',
       size: item.data?.size || '',
+      gender: item.data?.gender || '',
+      registrationType: item.data?.registrationType || 'individual',
+      createdAt: item.created_at || item.createdOn || item.data?.createdAt || 0,
     }));
 
     return new Response(JSON.stringify({ success: true, participants }), {

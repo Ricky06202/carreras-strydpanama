@@ -53,7 +53,11 @@ export default {
       },
       price: {
         type: 'number',
-        title: 'Precio',
+        title: 'Precio (Opcional, sobrescribe el precio base si no se configuran distancias)',
+      },
+      platformFee: {
+        type: 'number',
+        title: 'Tarifa de Plataforma de Recaudo (Ej: 0.45 de Yappy/Stripe)',
       },
       maxParticipants: {
         type: 'number',
