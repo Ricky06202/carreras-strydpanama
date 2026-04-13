@@ -6,6 +6,9 @@ import { env } from 'cloudflare:workers';
 
 let atletas: any[] = [];
 try {
+  const apiBase = env.SONICJS_API_URL || 'https://api.carreras.strydpanama.com';
+  const resolveUrl = (url: string) => url && url.startsWith('/') ? `${apiBase}${url}` : url;
+
   const res = await apiFetch('/api/collections/runners/content?limit=1000', env);
   atletas = (res?.data || [])
     .filter((r: any) => r.data?.publicProfile === true)
@@ -14,7 +17,7 @@ try {
       cedula: r.data?.cedula || '',
       firstName: r.data?.firstName || '',
       lastName: r.data?.lastName || '',
-      photoUrl: r.data?.photoUrl || '',
+      photoUrl: resolveUrl(r.data?.photoUrl || ''),
       country: r.data?.country || '',
       totalRaces: r.data?.totalRaces || 0,
       bio: r.data?.bio || '',

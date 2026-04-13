@@ -16,6 +16,12 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import ImageCropper from './ImageCropper';
 import { parseSafe } from '../lib/runner-utils';
 
+const getFullImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `https://api.carreras.strydpanama.com${url}`;
+};
+
 const ACCENT = '#FF6B00';
 
 const darkTheme = createTheme({
@@ -255,9 +261,13 @@ export default function MiPerfil() {
     setPrs(parseSafe<PR[]>(r.personalRecords, [{ distance: '', time: '', date: '' }]));
     setFavoriteRaces(parseSafe<FavoriteRace[]>(r.favoriteRaces, [{ name: '', year: '', time: '' }]));
     setPlannedRaces(parseSafe<PlannedRace[]>(r.plannedRaces, [{ name: '', date: '' }]));
-    setGallery(parseSafe<string[]>(r.galleryPhotos, []));
-    setPhotoPreview(r.photoUrl || '');
-    setBannerPreview(r.bannerUrl || '');
+    
+    // Parse gallery and map to full URLs
+    const rawGallery = parseSafe<string[]>(r.galleryPhotos, []);
+    setGallery(rawGallery.map(url => getFullImageUrl(url)));
+    
+    setPhotoPreview(getFullImageUrl(r.photoUrl || ''));
+    setBannerPreview(getFullImageUrl(r.bannerUrl || ''));
   };
 
   const handleLogout = () => {
@@ -320,9 +330,10 @@ export default function MiPerfil() {
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      if (type === 'profile') setPhotoPreview(data.url);
-      else if (type === 'banner') setBannerPreview(data.url);
-      else setGallery(prev => [...prev, data.url]);
+      const newUrl = getFullImageUrl(data.url);
+      if (type === 'profile') setPhotoPreview(newUrl);
+      else if (type === 'banner') setBannerPreview(newUrl);
+      else setGallery(prev => [...prev, newUrl]);
       setSuccess('Foto subida correctamente');
     } catch (e: any) {
       setError(e.message || 'Error al subir foto');
