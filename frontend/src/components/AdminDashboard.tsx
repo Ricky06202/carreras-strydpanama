@@ -17,6 +17,12 @@ import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
+import GroupsIcon from '@mui/icons-material/Groups';
+import LocalActivityIcon from '@mui/icons-material/LocalActivity';
+import DashboardView from './DashboardView';
 
 const ACCENT = '#FF6B00';
 const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
@@ -63,11 +69,12 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   });
   
   const TABS = [
-    { label: 'Cronometraje en Vivo', value: 0 },
-    { label: 'Gestión de Códigos', value: 1 },
-    { label: 'Configurar Modalidades', value: 2 },
-    { label: 'Configurar Categorías', value: 3 },
-    { label: 'Lista de Inscritos', value: 4 },
+    { label: 'Visión General (Dashboard)', value: 0, icon: <DashboardIcon sx={{ mr: 2 }} /> },
+    { label: 'Cronometraje en Vivo', value: 1, icon: <TimerIcon sx={{ mr: 2 }} /> },
+    { label: 'Gestión de Códigos', value: 2, icon: <LocalActivityIcon sx={{ mr: 2 }} /> },
+    { label: 'Mapeo de Modalidades', value: 3, icon: <EditLocationAltIcon sx={{ mr: 2 }} /> },
+    { label: 'Gestión de Categorías', value: 4, icon: <GroupsIcon sx={{ mr: 2 }} /> },
+    { label: 'Directorio de Inscritos', value: 5, icon: <ReceiptLongIcon sx={{ mr: 2 }} /> },
   ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
@@ -93,7 +100,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   useEffect(() => {
-    if (tabIndex === 1) fetchCodeStats();
+    if (tabIndex === 2) fetchCodeStats();
   }, [tabIndex]);
 
   const generateCodes = async () => {
@@ -400,8 +407,8 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   useEffect(() => {
-    if (tabIndex === 2) loadAllDistances();
-    if (tabIndex === 3) loadAllCategories();
+    if (tabIndex === 3) loadAllDistances();
+    if (tabIndex === 4) loadAllCategories();
   }, [tabIndex]);
 
   useEffect(() => {
@@ -527,7 +534,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
   };
 
   useEffect(() => {
-    if (tabIndex === 4) {
+    if (tabIndex === 0 || tabIndex === 5) {
       if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
@@ -936,6 +943,16 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       </Box>
 
       {tabIndex === 0 && (
+        <DashboardView 
+          races={races} 
+          allDistances={allDistances} 
+          participants={participants} 
+          selectedRace={participantRaceFilter}
+          onFetchRaceData={setParticipantRaceFilter}
+        />
+      )}
+
+      {tabIndex === 1 && (
       <Grid container spacing={3}>
         {races.map((race) => (
           <Grid key={race.id} size={{ xs: 12, md: 6 }}>
@@ -1269,7 +1286,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       </Grid>
       )}
 
-      {tabIndex === 1 && (
+      {tabIndex === 2 && (
         <Box>
           <Card sx={{ mb: 4, p: 2, borderRadius: 4 }}>
             <CardContent>
@@ -1384,7 +1401,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
 
         </Box>
       )}
-      {tabIndex === 2 && (
+      {tabIndex === 3 && (
         <Box>
           <Typography variant="h5" sx={{ mb: 1, fontWeight: 'bold' }}>Configurar Modalidades por Carrera</Typography>
           <Typography color="text.secondary" sx={{ mb: 3 }}>Selecciona una carrera y elige cuáles distancias del sistema estarán disponibles para ella.</Typography>
@@ -1502,7 +1519,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         </Box>
       )}
 
-      {tabIndex === 3 && (
+      {tabIndex === 4 && (
         <Box>
           <Card sx={{ p: 1, mb: 4, borderRadius: 4 }}>
             <CardContent>
@@ -1569,7 +1586,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
         </Box>
       )}
 
-      {tabIndex === 4 && (
+      {tabIndex === 5 && (
         <Box>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ display: 'flex', gap: 2, flex: 1, minWidth: 300 }}>
