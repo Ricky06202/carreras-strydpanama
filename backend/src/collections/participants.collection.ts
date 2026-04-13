@@ -38,11 +38,13 @@ export default {
       distanceName: { type: 'string', title: 'Nombre de Distancia' },
       registrationType: { type: 'string', title: 'Tipo de Registro (individual/team)' },
       checkpointTime: { type: 'number', title: 'Tiempo en Retorno (s)' },
+      isPadrino: { type: 'boolean', title: 'Es Padrino UTP' },
+      donatedTickets: { type: 'number', title: 'Cupos Donados' },
     },
     required: ['title', 'firstName', 'lastName', 'email'],
   },
 
-  listFields: ['title', 'email', 'race', 'paymentStatus'],
+  listFields: ['title', 'email', 'race', 'paymentStatus', 'isPadrino'],
   searchFields: ['title', 'email', 'teamName'],
 
   managed: true,
