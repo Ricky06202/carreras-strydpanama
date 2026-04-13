@@ -124,21 +124,6 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
               Te damos la bienvenida a nuestro sitio web con información sobre los eventos de running que realizamos en Panamá
             </Typography>
             <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-              <Button
-                href="#proximos-eventos"
-                variant="contained"
-                size="large"
-                sx={{
-                  bgcolor: ACCENT,
-                  color: '#FFFFFF',
-                  fontWeight: 'bold',
-                  px: 4,
-                  py: 1.5,
-                  '&:hover': { bgcolor: '#E55A00' }
-                }}
-              >
-                VER EVENTOS
-              </Button>
               {upcomingRaces.length > 0 && (
                 <Button
                   component="a"
