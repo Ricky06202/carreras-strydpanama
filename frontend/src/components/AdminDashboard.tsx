@@ -949,6 +949,7 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
           participants={participants} 
           selectedRace={participantRaceFilter}
           onFetchRaceData={setParticipantRaceFilter}
+          onUpdateRace={updateRace}
         />
       )}
 
