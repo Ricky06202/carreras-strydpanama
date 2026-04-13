@@ -23,6 +23,7 @@ import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
 import DashboardView from './DashboardView';
+import MUIThemeProvider from './MUIThemeProvider';
 
 const ACCENT = '#FF6B00';
 const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
@@ -52,7 +53,7 @@ interface Race {
   };
 }
 
-export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Race[] }) {
+function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) {
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1921,5 +1922,13 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
       </>
       )}
     </Container>
+  );
+}
+
+export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Race[] }) {
+  return (
+    <MUIThemeProvider>
+      <AdminDashboardContent initialRaces={initialRaces} />
+    </MUIThemeProvider>
   );
 }
