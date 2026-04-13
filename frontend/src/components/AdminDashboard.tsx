@@ -615,20 +615,21 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
     
     let y = 40;
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setFont('', 'bold');
     doc.text('Dorsal', 14, y);
     doc.text('Nombre Completo', 28, y);
-    doc.text('Cédula', 95, y);
-    doc.text('Fecha', 130, y);
-    doc.text('Estado de Pago', 160, y);
+    doc.text('Categoría', 70, y);
+    doc.text('Cédula', 113, y);
+    doc.text('Fecha', 142, y);
+    doc.text('Estado de Pago', 168, y);
     
     y += 2;
     doc.line(14, y, 196, y);
     y += 7;
     
     doc.setFont('', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8.5); // Ligeramente más pequeño para asegurar que 6 columnas entren relajadas
     filtered.forEach((p, index) => {
         if (y > 280) {
             doc.addPage();
@@ -636,10 +637,14 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         }
         
         const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || 'Sin nombre';
-        // Truncate to avoid horizontal overlap
-        const truncName = fullName.length > 38 ? fullName.substring(0, 36) + '..' : fullName;
+        const truncName = fullName.length > 28 ? fullName.substring(0, 26) + '..' : fullName;
         
+        // La categoría suele estar como el segundo segmento en el title "Nombre - Categoria - Dorsal" o en property
+        let cat = p.categoryName || (p.title && p.title.includes(' - ') ? p.title.split(' - ')[1] : p.category) || 'General';
+        const truncCat = cat.length > 25 ? cat.substring(0, 23) + '..' : cat;
+
         const cedula = p.cedula || '-';
+        const truncCedula = cedula.length > 17 ? cedula.substring(0, 15) + '..' : cedula;
         
         let fechaStr = '-';
         if (p.createdAt) {
@@ -647,13 +652,14 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
            fechaStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
         }
         
-        const pago = (p.paymentStatus || '-').length > 25 ? (p.paymentStatus || '-').substring(0, 23) + '..' : (p.paymentStatus || '-');
+        const pago = (p.paymentStatus || '-').length > 18 ? (p.paymentStatus || '-').substring(0, 16) + '..' : (p.paymentStatus || '-');
 
         doc.text(String(p.bibNumber || '-'), 14, y);
         doc.text(truncName, 28, y);
-        doc.text(cedula, 95, y);
-        doc.text(fechaStr, 130, y);
-        doc.text(pago, 160, y);
+        doc.text(truncCat, 70, y);
+        doc.text(truncCedula, 113, y);
+        doc.text(fechaStr, 142, y);
+        doc.text(pago, 168, y);
         y += 8;
     });
     
