@@ -151,6 +151,8 @@ export const POST: APIRoute = async ({ request }) => {
     const teamMemberBibs: number[] = [];
     let result: any = null;
 
+    const isYappy = (body.paymentMethod || '').toLowerCase().includes('yappy') || (body.paymentStatus || '').toLowerCase().includes('yappy');
+
     if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
         // Registrar cada miembro del equipo (todos, incluyendo el capitán en índice 0)
         // BIBs asignados secuencialmente: nextBib, nextBib+1, nextBib+2, ...
@@ -205,8 +207,9 @@ export const POST: APIRoute = async ({ request }) => {
             }
 
             // Enviar email a cada miembro con su BIB y código
+            // Enviar email a cada miembro con su BIB y código (excepto Yappy, que espera el Webhook)
             const emailAddr = member.email || (isCapitan ? body.email : null);
-            if (emailAddr) {
+            if (emailAddr && !isYappy) {
                 try {
                     await sendRegistrationEmail(env, {
                         email: emailAddr,
@@ -343,8 +346,8 @@ export const POST: APIRoute = async ({ request }) => {
 
     // 6. Enviar correo de confirmación (solo para inscripciones individuales;
     //    los equipos ya enviaron email a cada miembro en el paso anterior)
-    if (body.registrationType === 'team') {
-      // Ya enviado por miembro arriba, no hacer nada
+    if (body.registrationType === 'team' || isYappy) {
+      // Ya enviado por miembro arriba, o es Yappy (que se difiere al webhook). No hacer nada.
     } else
     try {
       // 6a. Obtener el nombre de la distancia para el correo
