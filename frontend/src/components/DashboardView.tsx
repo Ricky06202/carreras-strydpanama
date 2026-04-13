@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider } from '@mui/material';
+import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider, List, ListItem, ListItemText } from '@mui/material';
 import TombolaModal from './TombolaModal';
 
 const ACCENT = '#FF6B00';
@@ -16,6 +16,7 @@ interface DashboardViewProps {
 export default function DashboardView({ races, allDistances, participants, onFetchRaceData, selectedRace, onUpdateRace }: DashboardViewProps) {
   
   const [tombolaOpen, setTombolaOpen] = useState(false);
+  const [bdayMonth, setBdayMonth] = useState<number>(new Date().getMonth());
   
   // -- KPIs --
   const kpis = useMemo(() => {
@@ -86,6 +87,23 @@ export default function DashboardView({ races, allDistances, participants, onFet
      return { genders, modalities, sizes, cats };
   }, [participants]);
 
+  const birthdays = useMemo(() => {
+    return participants.filter((p: any) => {
+      if (!p.birthDate || typeof p.birthDate !== 'string') return false;
+      const bdayParts = p.birthDate.split('-');
+      if (bdayParts.length === 3) {
+        const monthIndex = parseInt(bdayParts[1], 10) - 1; // 0-based
+        return monthIndex === bdayMonth;
+      }
+      return false;
+    }).sort((a: any, b: any) => {
+      // Sort by day
+      const dayA = parseInt(a.birthDate.split('-')[2], 10);
+      const dayB = parseInt(b.birthDate.split('-')[2], 10);
+      return dayA - dayB;
+    });
+  }, [participants, bdayMonth]);
+
   const kpiCard = (title: string, value: string | number, color: string = 'text.primary', subtitle?: string, highlightBorder?: boolean) => (
     <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: highlightBorder ? ACCENT : 'divider' }}>
       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: 1 }}>{title}</Typography>
@@ -145,29 +163,76 @@ export default function DashboardView({ races, allDistances, participants, onFet
         }}
       />
 
-      {/* Analytics Row */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: showSizes ? '1fr 1fr' : '1fr' }, gap: 3, mb: 4 }}>
-        {/* Genero Pie Chart */}
+      {/* Analytics Row 1: Genero & Cumpleañeros */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3, mb: 4 }}>
+        {/* Genero Lista */}
         <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
-           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: 'text.primary' }}>Corredores por Sexo</Typography>
-           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-             <Box sx={{ 
-                width: 150, height: 150, borderRadius: '50%', 
-                background: `conic-gradient(${ACCENT} 0% ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}%, ${(theme => theme.palette?.mode === 'dark' ? '#FFFFFF' : '#e0e0e0')} ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}% ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}%, #777777 ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}% 100%)` 
-             }} />
-             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, bgcolor: ACCENT }}/> Masculino ({stats.genders.m})</Typography>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, border: 1, borderColor: 'divider', bgcolor: (theme => theme.palette?.mode === 'dark' ? '#FFFFFF' : '#e0e0e0') }}/> Femenino ({stats.genders.f})</Typography>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, bgcolor: '#777777' }}/> N/E ({stats.genders.u})</Typography>
-             </Box>
-           </Box>
+           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, color: 'text.primary' }}>Corredores por Sexo</Typography>
+           <List disablePadding>
+             <ListItem sx={{ borderBottom: 1, borderColor: 'divider', px: 0, pt: 0 }}>
+               <ListItemText primary="Masculino" primaryTypographyProps={{ fontWeight: 'bold', color: 'text.secondary' }} />
+               <Typography variant="h6" fontWeight="bold">{stats.genders.m}</Typography>
+             </ListItem>
+             <ListItem sx={{ borderBottom: 1, borderColor: 'divider', px: 0 }}>
+               <ListItemText primary="Femenino" primaryTypographyProps={{ fontWeight: 'bold', color: 'text.secondary' }} />
+               <Typography variant="h6" fontWeight="bold">{stats.genders.f}</Typography>
+             </ListItem>
+             <ListItem sx={{ px: 0, pb: 0 }}>
+               <ListItemText primary="No Especificado / Otros" primaryTypographyProps={{ fontWeight: 'bold', color: 'text.secondary' }} />
+               <Typography variant="h6" fontWeight="bold">{stats.genders.u}</Typography>
+             </ListItem>
+           </List>
         </Paper>
 
+        {/* Cumpleañeros Lista */}
+        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+             <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>Cumpleañeros</Typography>
+             <select 
+               style={{ padding: '6px 12px', borderRadius: 6, backgroundColor: 'var(--mui-palette-background-default, #eee)', color: 'inherit', border: '1px solid gray', outline: 'none' }}
+               value={bdayMonth}
+               onChange={(e) => setBdayMonth(Number(e.target.value))}
+             >
+               {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
+                 <option key={i} value={i}>{m}</option>
+               ))}
+             </select>
+           </Box>
+           
+           <Box sx={{ flex: 1, maxHeight: 180, overflowY: 'auto', pr: 1 }}>
+             {birthdays.length === 0 ? (
+               <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: 'center', fontStyle: 'italic' }}>No hay cumpleañeros registrados en este mes.</Typography>
+             ) : (
+               <List dense disablePadding>
+                 {birthdays.map((p: any, i: number) => {
+                   const day = parseInt(p.birthDate.split('-')[2], 10);
+                   return (
+                     <ListItem key={i} sx={{ px: 0, borderBottom: '1px dashed', borderColor: 'divider' }}>
+                       <ListItemText 
+                          primary={`${p.firstName} ${p.lastName}`} 
+                          secondary={`Dorsal #${p.bibNumber || 'Pendiente'}`}
+                          primaryTypographyProps={{ fontWeight: 'bold', color: 'text.primary' }} 
+                       />
+                       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', bgcolor: 'background.default', border: `1px solid ${ACCENT}`, borderRadius: 2, px: 1.5, py: 0.5 }}>
+                          <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1, fontSize: '0.65rem' }}>Día</Typography>
+                          <Typography variant="body1" sx={{ color: ACCENT, fontWeight: 900, lineHeight: 1 }}>{day}</Typography>
+                       </Box>
+                     </ListItem>
+                   )
+                 })}
+               </List>
+             )}
+           </Box>
+        </Paper>
+      </Box>
+
+      {/* Analytics Row 2: Tallas y Categorias */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: showSizes ? '1fr 1fr' : '1fr' }, gap: 3, mb: 4 }}>
         {/* Tallas Bar Chart (Condicional) */}
         {showSizes && (
         <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: 'text.primary' }}>Conteo por Tallas (Logística)</Typography>
-           <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 150, borderBottom: 1, borderColor: 'divider' }}>
+           <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 180, borderBottom: 1, borderColor: 'divider' }}>
               {Object.entries(stats.sizes).map(([talla, count]) => {
                  const height = Math.max((count / Math.max(kpis.totalInscritos, 1)) * 100, 5);
                  return (
@@ -182,20 +247,20 @@ export default function DashboardView({ races, allDistances, participants, onFet
         </Paper>
         )}
 
-        {/* Categorias Horizontal Bar Chart */}
+        {/* Categorias List */}
         <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', gridColumn: '1 / -1', border: 1, borderColor: 'divider' }}>
            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, color: 'text.primary' }}>Corredores por Categoría</Typography>
-           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+           <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
               {Object.entries(stats.cats).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
-                <Box key={cat} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="body2" sx={{ width: 150, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.primary', fontWeight: 'bold' }}>{cat}</Typography>
-                  <Box sx={{ flex: 1, height: 16, bgcolor: 'action.hover', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
-                     <Box sx={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(count / Math.max(kpis.totalInscritos, 1)) * 100}%`, bgcolor: ACCENT, borderRadius: 6 }} />
-                  </Box>
-                  <Typography variant="subtitle2" sx={{ width: 40, color: 'text.primary', fontWeight: 900 }}>{count} pax</Typography>
-                </Box>
+                <ListItem key={cat} sx={{ bgcolor: 'action.hover', borderRadius: 2, px: 2, py: 1 }}>
+                  <ListItemText 
+                    primary={cat} 
+                    primaryTypographyProps={{ fontWeight: 'bold', color: 'text.primary' }} 
+                  />
+                  <Typography variant="subtitle1" sx={{ color: ACCENT, fontWeight: 900 }}>{count} pax</Typography>
+                </ListItem>
               ))}
-           </Box>
+           </List>
         </Paper>
       </Box>
 
