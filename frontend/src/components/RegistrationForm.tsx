@@ -723,10 +723,17 @@ const handleSubmit = async () => {
         const paymentData = await resCheck.json();
 
         if (paymentData.success) {
+            // Liberar el estado de carga primero para que el Web Component de Yappy 
+            // no esté bloqueado 'disabled=true' cuando llamamos a su API interna.
+            setLoading(false);
+            
             // 3. Invocar pasarela gráfica
-            bp.eventPayment({ ...paymentData.body });
+            setTimeout(() => {
+                bp.eventPayment({ ...paymentData.body });
+            }, 50); // Mínimo retardo para asegurar que React actualizó el DOM a disabled="false"
         } else {
-            setNotification({ message: 'Error de Yappy: ' + paymentData.error, type: 'error' });
+            setNotification({ message: 'Error al generar link Yappy: ' + paymentData.error, type: 'error' });
+            setLoading(false);
         }
       } catch (e: any) {
         console.error('Yappy initiation error:', e);
@@ -741,13 +748,26 @@ const handleSubmit = async () => {
     const handleYappySuccess = (e: any) => {
       // Yappy dice que se hizo exitoso visualmente
       setNotification({ message: '¡Pago Yappy exitoso!', type: 'success' });
+      setLoading(false);
       // Si pagó con Yappy, va directo a confirmación (Paso 4).
-      // Los documentos de estudiante ya se subieron en el Paso 1 si aplicaba.
       setStep(4);
+    };
+
+    const handleYappyCancel = (e: any) => {
+       // El usuario cerró la ventana emergente de Yappy o lo canceló
+       setLoading(false);
+       setNotification({ message: 'Pago cancelado o interrumpido.', type: 'error' });
     };
 
     bp.addEventListener('eventClick', handleYappyClick);
     bp.addEventListener('eventSuccess', handleYappySuccess);
+    bp.addEventListener('eventCancel', handleYappyCancel);
+
+    return () => {
+        bp.removeEventListener('eventClick', handleYappyClick);
+        bp.removeEventListener('eventSuccess', handleYappySuccess);
+        bp.removeEventListener('eventCancel', handleYappyCancel);
+    };
 
     return () => {
       bp.removeEventListener('eventClick', handleYappyClick);
