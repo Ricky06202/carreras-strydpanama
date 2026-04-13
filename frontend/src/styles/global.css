@@ -24,24 +24,7 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Yappy Timer Modal Global Centering Fix */
-btn-yappy {
-  /* Prevent the button from trapping fixed children if it inadvertently creates a containing block */
-  position: static !important;
-}
-btn-yappy::part(modal),
-iframe[src*="checkout"],
-.yappy-modal,
-[id*="yappy-modal"] {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-  z-index: 999999 !important;
-  margin: 0 !important;
-  bottom: auto !important;
-  right: auto !important;
-}
+
 
 html.dark {
   color-scheme: dark;
