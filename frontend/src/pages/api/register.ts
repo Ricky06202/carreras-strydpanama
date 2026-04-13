@@ -393,7 +393,8 @@ export const POST: APIRoute = async ({ request }) => {
       success: true,
       assignedBib: nextBib, 
       confirmationCode: confCode,
-      data: result.data || result
+      orderId: result?.data?.id || result?.id,
+      data: result?.data || result
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
