@@ -54,7 +54,7 @@ const currentPath = Astro.url.pathname;
           <a href="/" class={`transition-colors font-medium hover:text-accent ${currentPath === '/' ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>Carreras</a>
           <a href="/register" class={`transition-colors font-medium hover:text-accent ${currentPath.startsWith('/register') ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>Inscribirse</a>
           <a href="/resultados" class={`transition-colors font-medium hover:text-accent ${currentPath.startsWith('/resultados') ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>🏆 Resultados</a>
-          <a href="/atletas" class={`transition-colors font-medium hover:text-accent ${currentPath.startsWith('/atletas') ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>Atletas</a>
+          {/* <a href="/atletas" class={`transition-colors font-medium hover:text-accent ${currentPath.startsWith('/atletas') ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>Atletas</a> */}
           <a href="/mis-inscripciones" class={`transition-colors font-medium hover:text-accent ${currentPath.startsWith('/mis-inscripciones') ? 'text-accent dark:text-accent font-bold' : 'dark:text-white'}`}>Mis Inscripciones</a>
           <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-gray-500 dark:text-gray-400" aria-label="Toggle Dark Mode">
             <svg id="theme-toggle-dark-icon" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
@@ -91,9 +91,9 @@ const currentPath = Astro.url.pathname;
           <a href="/resultados" class={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${currentPath.startsWith('/resultados') ? 'bg-orange-50 dark:bg-orange-500/10 text-accent dark:text-accent' : 'hover:bg-gray-50 dark:hover:bg-slate-800 dark:text-white text-gray-800'}`}>
             <span class="text-lg">🏆</span> Resultados
           </a>
-          <a href="/atletas" class={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${currentPath.startsWith('/atletas') ? 'bg-orange-50 dark:bg-orange-500/10 text-accent dark:text-accent' : 'hover:bg-gray-50 dark:hover:bg-slate-800 dark:text-white text-gray-800'}`}>
+          <!-- <a href="/atletas" class={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${currentPath.startsWith('/atletas') ? 'bg-orange-50 dark:bg-orange-500/10 text-accent dark:text-accent' : 'hover:bg-gray-50 dark:hover:bg-slate-800 dark:text-white text-gray-800'}`}>
             <span class="text-lg">🏃</span> Atletas
-          </a>
+          </a> -->
           <a href="/mis-inscripciones" class={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors font-medium ${currentPath.startsWith('/mis-inscripciones') ? 'bg-orange-50 dark:bg-orange-500/10 text-accent dark:text-accent' : 'hover:bg-gray-50 dark:hover:bg-slate-800 dark:text-white text-gray-800'}`}>
             <span class="text-lg">🔍</span> Mis Inscripciones
           </a>

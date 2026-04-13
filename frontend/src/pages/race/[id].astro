@@ -269,9 +269,7 @@ const raceData = race?.data || {};
     @media (max-width: 767px) {
       .sticky-cta { display: flex; }
       /* Espacio para que el contenido no quede tapado por la barra */
-      body { padding-bottom: 80px; }
-      /* Ocultar el CTA del título en mobile para no duplicar */
-      .cta-top { display: none; }
+      :global(body) { padding-bottom: 80px; }
     }
 
     .route-embed :global(iframe) {
