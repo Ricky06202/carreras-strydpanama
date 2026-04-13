@@ -49,78 +49,79 @@ export const POST: APIRoute = async ({ request }) => {
     let assignedCategoryId = body.categoryId;
     let resolvedCategoryName = 'General';
 
-    // PRIORIDAD: Tipo de Participante (Estudiante, Docente, Administrativo) + Género
-    const pType = (body.participantType || 'general').toLowerCase();
-    const categoriesRes = await api.getCategories(env, body.raceId);
-    const allCategories = categoriesRes?.data || [];
-
-    // Mapeo de tipos especiales → términos de búsqueda
+    // Helper for category resolution
     const TYPE_SEARCH_TERMS: Record<string, string> = {
       'estudiante': 'estudiante',
       'docente': 'docente',
       'administrativo': 'administrativo',
     };
 
-    if (pType !== 'general' && TYPE_SEARCH_TERMS[pType]) {
-        const searchTerm = TYPE_SEARCH_TERMS[pType];
-        const runnerGender = (body.gender || '').toLowerCase();
-        const typeMatch = allCategories.find((cat: any) => {
-            const isSameRace = cat.data?.race === body.raceId;
-            const title = (cat.data?.title || cat.title || '').toLowerCase();
-            const catGender = (cat.data?.gender || 'ambos').toLowerCase();
-            const nameMatch = title.includes(searchTerm);
-            const genderMatch = catGender === 'ambos' ||
-                               (catGender === 'masculino' && runnerGender === 'm') ||
-                               (catGender === 'femenino' && runnerGender === 'f');
-            return isSameRace && nameMatch && genderMatch;
-        });
-        if (typeMatch) {
-            assignedCategoryId = typeMatch.id;
-            resolvedCategoryName = typeMatch.data?.title || typeMatch.title;
-            console.log(`Category Assigned by Type+Gender (${pType}, ${runnerGender}): ${resolvedCategoryName}`);
-        }
-    }
+    const resolveCategoryForPerson = (personBirthDate: string, personGender: string, personType: string) => {
+        let catId = '';
+        let catName = 'General';
 
-    // Si no se asignó por tipo (es público general o no hubo match), procedemos por EDAD
-    if (!assignedCategoryId && body.birthDate && raceFields.date) {
-        const raceDate = new Date(raceFields.date);
-        const birthDate = new Date(body.birthDate);
-        let age = raceDate.getFullYear() - birthDate.getFullYear();
-        const m = raceDate.getMonth() - birthDate.getMonth();
-        if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
-            age--;
+        const pType = (personType || 'general').toLowerCase();
+        if (pType !== 'general' && TYPE_SEARCH_TERMS[pType]) {
+            const searchTerm = TYPE_SEARCH_TERMS[pType];
+            const runnerGender = (personGender || '').toLowerCase();
+            const typeMatch = allCategories.find((cat: any) => {
+                const isSameRace = cat.data?.race === body.raceId;
+                const title = (cat.data?.title || cat.title || '').toLowerCase();
+                const catGender = (cat.data?.gender || 'ambos').toLowerCase();
+                const nameMatch = title.includes(searchTerm);
+                const genderMatch = catGender === 'ambos' ||
+                                   (catGender === 'masculino' && runnerGender === 'm') ||
+                                   (catGender === 'femenino' && runnerGender === 'f');
+                return isSameRace && nameMatch && genderMatch;
+            });
+            if (typeMatch) {
+                catId = typeMatch.id;
+                catName = typeMatch.data?.title || typeMatch.title;
+            }
         }
 
-        const runnerGender = (body.gender || 'M').toLowerCase();
-        
-        // Excluir categorías de tipos especiales para que público general no caiga ahí
-        const specialTerms = Object.values(TYPE_SEARCH_TERMS);
-        const match = allCategories.find((cat: any) => {
-            const c = cat.data || {};
-            // IMPORTANTE: Filtrar por carrera primero
-            if (c.race !== body.raceId) return false;
+        if (!catId && personBirthDate && raceFields.date) {
+            const raceDate = new Date(raceFields.date);
+            const birthDate = new Date(personBirthDate);
+            let age = raceDate.getFullYear() - birthDate.getFullYear();
+            const m = raceDate.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
+                age--;
+            }
 
-            // Excluir categorías de tipos especiales
-            const catTitle = (c.title || cat.title || '').toLowerCase();
-            if (specialTerms.some(term => catTitle.includes(term))) return false;
+            const runnerGender = (personGender || 'm').toLowerCase();
+            const specialTerms = Object.values(TYPE_SEARCH_TERMS);
 
-            const min = Number(c.minAge || 0);
-            const max = Number(c.maxAge || 999);
-            const catGender = (c.gender || 'ambos').toLowerCase();
+            const match = allCategories.find((cat: any) => {
+                const c = cat.data || {};
+                if (c.race !== body.raceId) return false;
+                const catTitle = (c.title || cat.title || '').toLowerCase();
+                if (specialTerms.some(term => catTitle.includes(term))) return false;
 
-            const ageMatch = age >= min && age <= max;
-            const genderMatch = catGender === 'ambos' || 
-                               (catGender === 'masculino' && runnerGender === 'm') || 
-                               (catGender === 'femenino' && runnerGender === 'f');
-            
-            return ageMatch && genderMatch;
-        });
+                const min = Number(c.minAge || 0);
+                const max = Number(c.maxAge || 999);
+                const catGender = (c.gender || 'ambos').toLowerCase();
 
-        if (match) {
-            assignedCategoryId = match.id;
-            resolvedCategoryName = match.data?.title || match.title;
+                const ageMatch = age >= min && age <= max;
+                const genderMatch = catGender === 'ambos' || 
+                                   (catGender === 'masculino' && runnerGender === 'm') || 
+                                   (catGender === 'femenino' && runnerGender === 'f');
+                
+                return ageMatch && genderMatch;
+            });
+
+            if (match) {
+                catId = match.id;
+                catName = match.data?.title || match.title;
+            }
         }
-    }
+
+        return { catId, catName };
+    };
+
+    const mainCat = resolveCategoryForPerson(body.birthDate, body.gender, body.participantType);
+    let assignedCategoryId = mainCat.catId;
+    let resolvedCategoryName = mainCat.catName;
 
     // Asignar el dorsal y la categoría calculada
     body.bibNumber = nextBib;
@@ -155,7 +156,8 @@ export const POST: APIRoute = async ({ request }) => {
             isFirstMember = false;
             const memberConfCode = isCapitan ? confCode : ('STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase());
             const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres únicos
-            const memberTitle = `${member.firstName} ${member.lastName} - ${resolvedCategoryName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
+            const memberCat = resolveCategoryForPerson(member.birthDate, member.gender, body.participantType);
+            const memberTitle = `${member.firstName} ${member.lastName} - ${memberCat.catName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
             const memberData = {
                 firstName: member.firstName,
                 lastName: member.lastName,
@@ -168,9 +170,9 @@ export const POST: APIRoute = async ({ request }) => {
                 size: member.size || '',
                 race: body.raceId,
                 raceId: body.raceId,
-                category: assignedCategoryId,
-                categoryId: assignedCategoryId,
-                categoryName: resolvedCategoryName,
+                category: memberCat.catId,
+                categoryId: memberCat.catId,
+                categoryName: memberCat.catName,
                 distance: body.distanceId,
                 distanceId: body.distanceId,
                 teamName: body.teamName || '',
@@ -203,8 +205,8 @@ export const POST: APIRoute = async ({ request }) => {
                         lastName: member.lastName,
                         raceName: raceName,
                         bibNumber: memberBib,
-                        distance: resolvedCategoryName,
-                        category: resolvedCategoryName,
+                        distance: memberCat.catName,
+                        category: memberCat.catName,
                         cedula: member.cedula || '',
                         size: member.size || '',
                         paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
