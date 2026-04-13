@@ -44,6 +44,15 @@ export const POST: APIRoute = async ({ request }) => {
       if (highestBib >= startingBib) nextBib = highestBib + 1;
     }
     
+    // 2.5 Obtener Categorías de la Carrera
+    let allCategories: any[] = [];
+    try {
+        const catRes = await apiFetch(`/api/collections/categories/content?limit=500`, env, { method: 'GET' });
+        allCategories = catRes?.data || [];
+    } catch (e) {
+        console.error('Failed to fetch categories during registration:', e);
+    }
+
     // 3. ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA POR EDAD Y GÉNERO
     // Calculamos edad al día de la carrera
     let assignedCategoryId = body.categoryId;
