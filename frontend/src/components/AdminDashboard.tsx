@@ -615,26 +615,45 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
     
     let y = 40;
-    doc.setFontSize(12);
+    doc.setFontSize(10);
+    doc.setFont('', 'bold');
     doc.text('Dorsal', 14, y);
-    doc.text('Nombre', 30, y);
-    doc.text('Equipo', 90, y);
-    doc.text('Estado', 150, y);
+    doc.text('Nombre Completo', 28, y);
+    doc.text('Cédula', 95, y);
+    doc.text('Fecha', 130, y);
+    doc.text('Estado de Pago', 160, y);
     
     y += 2;
     doc.line(14, y, 196, y);
     y += 7;
     
-    doc.setFontSize(10);
+    doc.setFont('', 'normal');
+    doc.setFontSize(9);
     filtered.forEach((p, index) => {
         if (y > 280) {
             doc.addPage();
             y = 20;
         }
+        
+        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || 'Sin nombre';
+        // Truncate to avoid horizontal overlap
+        const truncName = fullName.length > 38 ? fullName.substring(0, 36) + '..' : fullName;
+        
+        const cedula = p.cedula || '-';
+        
+        let fechaStr = '-';
+        if (p.createdAt) {
+           const d = new Date(p.createdAt);
+           fechaStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+        }
+        
+        const pago = (p.paymentStatus || '-').length > 25 ? (p.paymentStatus || '-').substring(0, 23) + '..' : (p.paymentStatus || '-');
+
         doc.text(String(p.bibNumber || '-'), 14, y);
-        doc.text(p.title || '-', 30, y);
-        doc.text(p.teamName || '-', 90, y);
-        doc.text(p.paymentStatus || '-', 150, y);
+        doc.text(truncName, 28, y);
+        doc.text(cedula, 95, y);
+        doc.text(fechaStr, 130, y);
+        doc.text(pago, 160, y);
         y += 8;
     });
     
