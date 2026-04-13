@@ -13,6 +13,12 @@ const darkTheme = createTheme({
   },
 });
 
+const getFullImageUrl = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http')) return url;
+  return `https://api.carreras.strydpanama.com${url}`;
+};
+
 function parseSafe<T>(str: string, fallback: T): T {
   try { return str ? JSON.parse(str) : fallback; } catch { return fallback; }
 }
@@ -80,7 +86,7 @@ export default function AtletaProfile({ runner }: { runner: Runner }) {
         {/* Banner + Hero */}
         <Box sx={{
           background: runner.bannerUrl
-            ? `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(15,15,15,1)), url(${runner.bannerUrl}) center/cover no-repeat`
+            ? `linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(15,15,15,1)), url(${getFullImageUrl(runner.bannerUrl)}) center/cover no-repeat`
             : 'linear-gradient(135deg, #000000 0%, #2d1a00 50%, #0f0f0f 100%)',
           pt: { xs: 6, sm: 10 },
           pb: { xs: 4, sm: 6 },
@@ -94,7 +100,7 @@ export default function AtletaProfile({ runner }: { runner: Runner }) {
               bgcolor: '#2d2d2d', display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               {runner.photoUrl
-                ? <img src={runner.photoUrl} alt={runner.firstName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ? <img src={getFullImageUrl(runner.photoUrl)} alt={runner.firstName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <Typography sx={{ fontSize: '3rem' }}>🏃</Typography>
               }
             </Box>
@@ -238,17 +244,20 @@ export default function AtletaProfile({ runner }: { runner: Runner }) {
             <Box sx={cardSx}>
               <Typography sx={titleSx}>📷 Galería</Typography>
               <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)' }, gap: 1.5 }}>
-                {gallery.map((url, i) => (
-                  <Box
-                    key={i}
-                    sx={{ position: 'relative', paddingTop: '100%', borderRadius: 2, overflow: 'hidden', cursor: 'pointer', bgcolor: '#2d2d2d',
-                      '&:hover img': { transform: 'scale(1.05)' },
-                    }}
-                    onClick={() => setLightboxSrc(url)}
-                  >
-                    <img src={url} alt={`foto ${i + 1}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
-                  </Box>
-                ))}
+                {gallery.map((url, i) => {
+                  const fullUrl = getFullImageUrl(url);
+                  return (
+                    <Box
+                      key={i}
+                      sx={{ position: 'relative', paddingTop: '100%', borderRadius: 2, overflow: 'hidden', cursor: 'pointer', bgcolor: '#2d2d2d',
+                        '&:hover img': { transform: 'scale(1.05)' },
+                      }}
+                      onClick={() => setLightboxSrc(fullUrl)}
+                    >
+                      <img src={fullUrl} alt={`foto ${i + 1}`} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.3s ease' }} />
+                    </Box>
+                  );
+                })}
               </Box>
             </Box>
           )}
