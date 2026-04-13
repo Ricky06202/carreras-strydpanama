@@ -14,6 +14,8 @@ export const sendRegistrationEmail = async (env: any, data: {
   confirmationCode?: string;
   teamName?: string;
   registrationType?: string;
+  isPadrino?: boolean;
+  donatedTickets?: number;
 }) => {
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -23,7 +25,7 @@ export const sendRegistrationEmail = async (env: any, data: {
 
   const resend = new Resend(resendApiKey);
 
-  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode, teamName, registrationType } = data;
+  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode, teamName, registrationType, isPadrino, donatedTickets } = data;
 
   try {
     const response = await resend.emails.send({
@@ -51,6 +53,20 @@ export const sendRegistrationEmail = async (env: any, data: {
                 <strong>🚩 Has sido inscrito como parte de un equipo:</strong><br/>
                 <span style="font-size: 18px;">${teamName}</span>
               </p>
+            </div>
+            ` : ''}
+
+            ${isPadrino && donatedTickets ? `
+            <div style="background: linear-gradient(135deg, #FF6B00 0%, #D84315 100%); color: #ffffff; padding: 25px; margin: 20px 0; border-radius: 12px; text-align: center; box-shadow: 0 4px 12px rgba(255,107,0,0.3);">
+              <h3 style="margin: 0 0 10px 0; font-size: 22px;">🎓 ¡GRACIAS, PADRINO UTP!</h3>
+              <p style="font-size: 16px; line-height: 1.5; margin: 0 0 15px 0;">
+                Tu enorme corazón ha patrocinado la inscripción de <strong>${donatedTickets} ${donatedTickets === 1 ? 'estudiante' : 'estudiantes'}</strong> de escasos recursos.
+              </p>
+              <div style="background-color: rgba(255,255,255,0.2); padding: 10px; border-radius: 8px;">
+                <p style="margin: 0; font-size: 14px;">
+                  ✨ <strong>Próximos Pasos:</strong> Tu ahijado(a) se comunicará pronto contigo para agradecerte personalmente por darle la oportunidad de participar. Además, recibirás un reconocimiento especial el día del evento.
+                </p>
+              </div>
             </div>
             ` : ''}
             
