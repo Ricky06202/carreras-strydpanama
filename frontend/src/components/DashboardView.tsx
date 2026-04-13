@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider, List, ListItem, ListItemText } from '@mui/material';
+import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider, List, ListItem, ListItemText, Select, MenuItem } from '@mui/material';
 import TombolaModal from './TombolaModal';
 
 const ACCENT = '#FF6B00';
@@ -188,15 +188,16 @@ export default function DashboardView({ races, allDistances, participants, onFet
         <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider', display: 'flex', flexDirection: 'column' }}>
            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
              <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: 'text.primary' }}>Cumpleañeros</Typography>
-             <select 
-               style={{ padding: '6px 12px', borderRadius: 6, backgroundColor: 'var(--mui-palette-background-default, #eee)', color: 'inherit', border: '1px solid gray', outline: 'none' }}
+             <Select
+               size="small"
                value={bdayMonth}
                onChange={(e) => setBdayMonth(Number(e.target.value))}
+               sx={{ minWidth: 120, borderRadius: 2 }}
              >
                {['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'].map((m, i) => (
-                 <option key={i} value={i}>{m}</option>
+                 <MenuItem key={i} value={i}>{m}</MenuItem>
                ))}
-             </select>
+             </Select>
            </Box>
            
            <Box sx={{ flex: 1, maxHeight: 180, overflowY: 'auto', pr: 1 }}>
