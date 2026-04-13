@@ -178,6 +178,11 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
      }
   }, []);
 
+  // Volver arriba automáticamente al cambiar de paso en el formulario
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [step]);
+
   const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
