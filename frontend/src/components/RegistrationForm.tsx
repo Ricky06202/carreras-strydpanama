@@ -143,6 +143,9 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   
   const [teamName, setTeamName] = useState('');
   const [manualTeamNameGroup, setManualTeamNameGroup] = useState('');
+  
+  const [isPadrino, setIsPadrino] = useState(false);
+  const [donatedTickets, setDonatedTickets] = useState(1);
 
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
@@ -570,6 +573,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   termsAccepted: boolean;
   discountCode: string;
   registrationType: 'individual' | 'team';
+  isPadrino?: boolean;
+  donatedTickets?: number;
   teamName?: string;
   receiptUrl?: string;
   studentIdUrl?: string;
@@ -614,7 +619,9 @@ const handleSubmit = async () => {
         studentIdUrl: formData.studentIdUrl,
         matriculaUrl: formData.matriculaUrl,
         photoUrl: formData.photoUrl,
-        participantType: formData.participantType
+        participantType: formData.participantType,
+        isPadrino: isPadrino && registrationType === 'individual',
+        donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0
       };
 
       if (registrationType === 'team') {
@@ -689,11 +696,14 @@ const handleSubmit = async () => {
             termsAccepted: termsAccepted,
             discountCode: code,
             registrationType: registrationType,
+            registrationType: registrationType,
             receiptUrl: formData.receiptUrl,
             studentIdUrl: formData.studentIdUrl,
             matriculaUrl: formData.matriculaUrl,
             photoUrl: formData.photoUrl,
-            participantType: formData.participantType
+            participantType: formData.participantType,
+            isPadrino: isPadrino && registrationType === 'individual',
+            donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0
         };
 
         if (registrationType === 'team') {
@@ -734,7 +744,8 @@ const handleSubmit = async () => {
         // Sumar cargo de servicio de plataforma (Yappy: fee dinámico, otros: 0)
         const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
         const platformFee = formData.paymentMethod === 'yappy' ? platformFeeVal : 0;
-        const fullPrice = basePrice + platformFee;
+        const sponsorshipCost = (isPadrino && registrationType === 'individual') ? (donatedTickets * 10) : 0;
+        const fullPrice = basePrice + platformFee + sponsorshipCost;
 
         const totalAmount = fullPrice;
         const selectedPhone = registrationType === 'team' ? (teamMembers[0]?.phone || '') : formData.phone;
@@ -1064,6 +1075,71 @@ const handleSubmit = async () => {
                     </Box>
                   </Box>
                 </Box>
+
+                <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
+                  <Box sx={{ 
+                    p: 3, 
+                    borderRadius: 3, 
+                    border: '2px solid', 
+                    borderColor: isPadrino ? '#FF6B00' : 'divider',
+                    bgcolor: isPadrino ? 'rgba(255, 107, 0, 0.05)' : 'background.paper',
+                    transition: 'all 0.3s ease',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}>
+                    {isPadrino && (
+                      <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>
+                        ¡ERES PADRINO UTP! 🎓
+                      </Box>
+                    )}
+                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                      <Checkbox 
+                        checked={isPadrino} 
+                        onChange={(e) => setIsPadrino(e.target.checked)} 
+                        sx={{ '&.Mui-checked': { color: '#FF6B00' }, mt: -1 }} 
+                      />
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: isPadrino ? '#FF6B00' : 'text.primary', mb: 0.5 }}>
+                          Quiero ser Padrino UTP
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+                          Apoya a estudiantes de escasos recursos donando cupos para que puedan participar en el evento. Cada cupo donado cuesta $10.00. Tendrás un reconocimiento especial el día de la carrera.
+                        </Typography>
+                        
+                        {isPadrino && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', p: 1.5, borderRadius: 2, border: '1px solid divider', width: 'fit-content' }}>
+                            <Typography variant="body2" fontWeight="bold">Cupos a donar:</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Button 
+                                variant="outlined" 
+                                size="small" 
+                                onClick={() => setDonatedTickets(Math.max(1, donatedTickets - 1))}
+                                sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}
+                              >
+                                -
+                              </Button>
+                              <Typography variant="body1" sx={{ width: 30, textAlign: 'center', fontWeight: 'bold', color: '#FF6B00' }}>
+                                {donatedTickets}
+                              </Typography>
+                              <Button 
+                                variant="outlined" 
+                                size="small" 
+                                onClick={() => setDonatedTickets(Math.min(15, donatedTickets + 1))}
+                                sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}
+                              >
+                                +
+                              </Button>
+                            </Box>
+                            <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
+                              Total aporte: <span style={{ color: '#FF6B00', fontWeight: 'bold' }}>${(donatedTickets * 10).toFixed(2)}</span>
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </Box>
+                </Box>
+
               </Box>
             )}
 
@@ -1501,13 +1577,20 @@ const handleSubmit = async () => {
       ) : (
         <Typography variant="body2" color="text.secondary">Cargo de plataforma genérico: +$0.50</Typography>
       )}
+      
+      {(isPadrino && registrationType === 'individual') && (
+        <Typography variant="body2" sx={{ color: '#FF6B00', fontWeight: 'bold', mt: 1 }}>
+          Aporte Solidario Padrino UTP: +${(donatedTickets * 10).toFixed(2)} ({donatedTickets} {donatedTickets === 1 ? 'cupo' : 'cupos'})
+        </Typography>
+      )}
+
       {isStudentCategorySelected() && (
         <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
           ✅ Documentación Estudiantil Cargada
         </Typography>
       )}
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
-        Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? platformFee : (formData.paymentMethod === 'transfer' ? 0 : 0.50))).toFixed(2)}
+        Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? platformFee : (formData.paymentMethod === 'transfer' ? 0 : 0.50)) + ((isPadrino && registrationType === 'individual') ? (donatedTickets * 10) : 0)).toFixed(2)}
       </Typography>
 
     </Box>

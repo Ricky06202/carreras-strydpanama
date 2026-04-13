@@ -386,7 +386,9 @@ export const POST: APIRoute = async ({ request }) => {
         cedula: body.cedula,
         size: body.size,
         paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
-        confirmationCode: confCode
+        confirmationCode: confCode,
+        isPadrino: body.isPadrino,
+        donatedTickets: body.donatedTickets
       });
       console.log(`Email sent successfully to ${body.email}`);
     } catch (mailError) {
