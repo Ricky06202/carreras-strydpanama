@@ -56,7 +56,7 @@ export default {
         title: 'Precio (Opcional, sobrescribe el precio base si no se configuran distancias)',
       },
       platformFee: {
-        type: 'number',
+        type: 'string', // Usamos string para evitar problemas con números decimales en el CMS
         title: 'Tarifa de Plataforma de Recaudo (Ej: 0.45 de Yappy/Stripe)',
       },
       maxParticipants: {

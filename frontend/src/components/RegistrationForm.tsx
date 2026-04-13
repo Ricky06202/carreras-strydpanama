@@ -711,7 +711,8 @@ const handleSubmit = async () => {
         const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
         
         // Sumar cargo de servicio de plataforma (Yappy: fee dinámico, otros: 0)
-        const platformFee = formData.paymentMethod === 'yappy' ? (raceInfo?.data?.platformFee ?? 0.45) : 0;
+        const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
+        const platformFee = formData.paymentMethod === 'yappy' ? platformFeeVal : 0;
         const fullPrice = basePrice + platformFee;
 
         // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
@@ -1444,7 +1445,7 @@ const handleSubmit = async () => {
 {(() => {
   const selectedDistanceObj = distances.find(d => d.id === formData.distance);
   const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
-  const platformFee = raceInfo?.data?.platformFee ?? 0.45;
+  const platformFee = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
 
   return (
     <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
