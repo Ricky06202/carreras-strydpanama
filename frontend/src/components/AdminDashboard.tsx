@@ -268,10 +268,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
          leftBox.style.textAlign = 'center';
          leftBox.style.paddingLeft = '10px';
          if (raceLogo) {
-             const imgPath = raceLogo.startsWith('http') ? raceLogo : \`https://api.carreras.strydpanama.com\${raceLogo}\`;
-             leftBox.innerHTML = \`<img src="\${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />\`;
+             const imgPath = raceLogo.startsWith('http') ? raceLogo : `https://api.carreras.strydpanama.com${raceLogo}`;
+             leftBox.innerHTML = `<img src="${imgPath}" crossOrigin="anonymous" style="max-width:100%; max-height:130px; object-fit:contain;" />`;
          } else {
-             leftBox.innerHTML = \`<h2 style="color:\${ACCENT}; margin:0; line-height:1.2; font-size:20px;">\${raceTitle}</h2>\`;
+             leftBox.innerHTML = `<h2 style="color:${ACCENT}; margin:0; line-height:1.2; font-size:20px;">${raceTitle}</h2>`;
          }
 
          const centerBox = document.createElement('div');
@@ -623,6 +623,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
              firstName: editParticipantObj.firstName,
              lastName: editParticipantObj.lastName,
              cedula: editParticipantObj.cedula,
+             phone: editParticipantObj.phone,
+             teamName: editParticipantObj.teamName,
+             birthDate: editParticipantObj.birthDate,
              title: titlePrefix ? newTitle : editParticipantObj.title
            }
          })
@@ -1798,12 +1801,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             <Table stickyHeader>
               <TableHead>
                 <TableRow sx={{ bgcolor: 'black' }}>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold', minWidth: 100 }}>Acción</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Dorsal</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Nombre Completo</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Categoría / Equipo</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Inscripción</TableCell>
-                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1848,30 +1851,6 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                             if ((e.target as HTMLElement).closest('button')) return; // Avoid opening if clicking confirm button
                             setSelectedParticipant(p);
                         }}>
-                          <TableCell sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: ACCENT }}>
-                            #{p.bibNumber || '---'}
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Typography sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{p.firstName} {p.lastName}</Typography>
-                            <Typography variant="caption" color="text.secondary">{p.email}</Typography>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-                              {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
-                            </Typography>
-                            {p.teamName && <Chip label={p.teamName} size="small" variant="outlined" sx={{ mt: 0.5 }} />}
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{p.cedula || '---'}</Typography>
-                          </TableCell>
-                          
-                          <TableCell>
-                            <Typography variant="body2">{p.created_at ? new Date(p.created_at).toLocaleDateString() : (p.createdOn ? new Date(p.createdOn).toLocaleDateString() : 'N/A')}</Typography>
-                          </TableCell>
-                          
                           <TableCell sx={{ minWidth: 150 }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                               <Box sx={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}>
@@ -1899,6 +1878,33 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                </Box>
                             </Box>
                           </TableCell>
+                          
+                          <TableCell sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: ACCENT }}>
+                            #{p.bibNumber || '---'}
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{p.firstName} {p.lastName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{p.email}</Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>
+                              {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
+                            </Typography>
+                            {p.teamName && <Chip label={p.teamName} size="small" variant="outlined" sx={{ mt: 0.5 }} />}
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{p.cedula || '---'}</Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : (p.created_at ? new Date(p.created_at).toLocaleDateString() : (p.createdOn ? new Date(p.createdOn).toLocaleDateString() : 'N/A'))}</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mt: 0.5 }}>{p.paymentStatus}</Typography>
+                          </TableCell>
+                          
+
                         </TableRow>
                       );
                     });
@@ -2045,10 +2051,17 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                  <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
                     <Typography variant="body2" color="text.secondary">Edita el nombre o cédula del corredor en caso de errores tipográficos en el registro.</Typography>
                     <Box sx={{ display: 'flex', gap: 2 }}>
-                        <TextField label="Nombre" value={editParticipantObj.firstName} onChange={e => setEditParticipantObj({...editParticipantObj, firstName: e.target.value})} fullWidth />
-                        <TextField label="Apellido" value={editParticipantObj.lastName} onChange={e => setEditParticipantObj({...editParticipantObj, lastName: e.target.value})} fullWidth />
+                        <TextField label="Nombre" size="small" value={editParticipantObj.firstName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, firstName: e.target.value})} fullWidth />
+                        <TextField label="Apellido" size="small" value={editParticipantObj.lastName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, lastName: e.target.value})} fullWidth />
                     </Box>
-                    <TextField label="Cédula" value={editParticipantObj.cedula} onChange={e => setEditParticipantObj({...editParticipantObj, cedula: e.target.value})} fullWidth />
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <TextField label="Cédula" size="small" value={editParticipantObj.cedula || ''} onChange={e => setEditParticipantObj({...editParticipantObj, cedula: e.target.value})} fullWidth />
+                        <TextField label="Telf / Celular" size="small" value={editParticipantObj.phone || ''} onChange={e => setEditParticipantObj({...editParticipantObj, phone: e.target.value})} fullWidth />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                        <TextField label="F. Nacimiento" type="date" InputLabelProps={{ shrink: true }} size="small" value={editParticipantObj.birthDate || ''} onChange={e => setEditParticipantObj({...editParticipantObj, birthDate: e.target.value})} fullWidth />
+                        <TextField label="Nombre de Equipo" size="small" value={editParticipantObj.teamName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, teamName: e.target.value})} fullWidth />
+                    </Box>
                  </DialogContent>
                  <DialogActions sx={{ p: 2 }}>
                    <Button onClick={() => setEditParticipantObj(null)} color="inherit">Cancelar</Button>
