@@ -38,7 +38,8 @@ export const GET: APIRoute = async ({ request }) => {
           vendor: vendor,
           batchId: batchId,
           status: status,
-          raceId: d.race
+          raceId: d.race,
+          allowedType: d.allowedType || 'all'
         });
     });
 

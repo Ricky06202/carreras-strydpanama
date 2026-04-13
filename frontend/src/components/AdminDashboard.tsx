@@ -283,10 +283,27 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             </div>
          `;
 
+         let displayTitle = '';
+         let displayPrice = '';
+         if (codeObj.allowedType === 'estudiante') {
+             displayTitle = 'ESTUDIANTES';
+             displayPrice = '$12.00';
+         } else if (codeObj.allowedType === 'general') {
+             displayTitle = 'PÚBLICO GENERAL';
+             displayPrice = '$15.00';
+         } else if (codeObj.allowedType === 'team') {
+             displayTitle = 'PAQUETE EQUIPO';
+             displayPrice = '$55.00';
+         } else {
+             displayTitle = 'LIBRE';
+             displayPrice = '';
+         }
+
          const rightBox = document.createElement('div');
          rightBox.style.width = '25%';
          rightBox.style.textAlign = 'right';
          rightBox.innerHTML = `
+            ${displayPrice ? `<div style="text-align:center; font-weight:900; font-size:16px; margin-bottom:5px; color:${ACCENT}; text-transform:uppercase;">${displayTitle} <span style="color:#000;">${displayPrice}</span></div>` : ''}
             <div style="background-color:${ACCENT}; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:10px;">
                <div style="font-size:12px; margin-bottom:5px; font-weight:bold; color:white; font-family:Arial, sans-serif;">REGISTRO WEB</div>
                <div style="font-size:26px; font-weight:900; color:white; font-family:monospace;">${codeObj.code}</div>
