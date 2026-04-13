@@ -30,41 +30,39 @@ async function handleRequest(request: Request) {
     // "E" significa Ejecutado (Éxito) en la V2 de Yappy
     if ((status === 'E' || status === 'SUCCESS') && orderId) {
       
-      // 1. Obtener al comprador original (Capitán o Individuo)
-      const mainParticipantRes = await apiFetch(`/api/content/${orderId}`, env, { method: 'GET' });
-      if (!mainParticipantRes?.data) {
-          console.error(`[Yappy Webhook] Participante principal ${orderId} NO encontrado en BD.`);
-          return new Response("success", { status: 200 });
-      }
-
-      const mainData = mainParticipantRes.data.data || {};
-      const confirmationCode = mainData.confirmationCode;
-      const registrationType = mainData.registrationType || 'individual';
+      // El orderId que Yappy devuelve está truncado a 15 caracteres y sin guiones
+      // por limitaciones de su API. Corresponde al confirmationCode (ej. STRYD12345678)
       
-      // 2. Determinar a cuántos afectar (si es equipo, a todos los bajo el mismo código)
-      let participantsToUpdate = [mainParticipantRes.data];
-
-      if (registrationType === 'team' && confirmationCode) {
-         try {
-           const allRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
-           const teamMembers = (allRes?.data || []).filter((p: any) => p.data?.confirmationCode === confirmationCode);
-           if (teamMembers.length > 0) {
-               participantsToUpdate = teamMembers;
-           }
-         } catch(e) {
-           console.error(`[Yappy Webhook] Error buscando miembros del equipo:`, e);
-         }
-      }
-
-      // 3. Pre-cargar datos estéticos de Carrera y Distancia para los correos
+      let participantsToUpdate: any[] = [];
       let raceName = 'Carrera';
-      if (mainData.race || mainData.raceId) {
-          try {
-             // Algunas veces se guarda como 'race' (el ID) o 'raceId'
-             const rObj = await api.getRace(env, mainData.raceId || mainData.race);
-             if (rObj) raceName = rObj.data?.title || rObj.title || 'Carrera';
-          } catch(e) {}
+      
+      try {
+           // Buscamos a TODOS los participantes que tengan este código de confirmación
+           const allRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
+           
+           participantsToUpdate = (allRes?.data || []).filter((p: any) => {
+               const code = p.data?.confirmationCode || '';
+               const normalizedCode = code.replace(/-/g, ''); // Quitamos guiones para comparar con lo de Yappy
+               return code === orderId || normalizedCode === orderId || p.id.replace(/-/g, '').slice(0, 15) === orderId;
+           });
+           
+           if (participantsToUpdate.length === 0) {
+               console.error(`[Yappy Webhook] Participante con orderId (confirmationCode) ${orderId} NO encontrado en BD.`);
+               return new Response("success", { status: 200 });
+           }
+
+           // Sacar el nombre de la carrera del primer participante
+           const mainData = participantsToUpdate[0].data || {};
+           if (mainData.race || mainData.raceId) {
+               try {
+                   const rObj = await api.getRace(env, mainData.raceId || mainData.race);
+                   if (rObj) raceName = rObj.data?.title || rObj.title || 'Carrera';
+               } catch(e) {}
+           }
+      } catch(e) {
+           console.error(`[Yappy Webhook] Error buscando miembros:`, e);
       }
+
       
       let allDistances: any[] = [];
       try {

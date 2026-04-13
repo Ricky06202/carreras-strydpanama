@@ -725,7 +725,7 @@ const handleSubmit = async () => {
         const resCheck = await fetch('/api/yappy/checkout', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, total: totalAmount, telefono: telYappy })
+            body: JSON.stringify({ orderId: orderIdToSend, total: totalAmount, telefono: telYappy })
         });
         const paymentData = await resCheck.json();
 
