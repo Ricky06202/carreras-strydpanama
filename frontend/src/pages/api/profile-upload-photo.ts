@@ -52,7 +52,7 @@ export const POST: APIRoute = async ({ request }) => {
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
 
-    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, {
+    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, {
       method: 'POST',
       headers: uploadHeaders,
       body: formData,
@@ -63,7 +63,11 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const uploadData = await uploadRes.json();
-    const url = uploadData?.url || uploadData?.data?.file;
+    const mediaId = uploadData?.file?.id || uploadData?.data?.file?.id || uploadData?.data?.id;
+    if (!mediaId) throw new Error('No se recibió ID del archivo');
+    
+    // Save deterministic path matching R2 bucket routing
+    const url = `/uploads/${mediaId}.${ext}`;
 
     // For gallery, append URL to existing array
     let updatedData = { ...runner.data };
