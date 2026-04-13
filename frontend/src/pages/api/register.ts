@@ -92,11 +92,7 @@ export const POST: APIRoute = async ({ request }) => {
         if (!catId && personBirthDate && raceFields.date) {
             const raceDate = new Date(raceFields.date);
             const birthDate = new Date(personBirthDate);
-            let age = raceDate.getFullYear() - birthDate.getFullYear();
-            const m = raceDate.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && raceDate.getDate() < birthDate.getDate())) {
-                age--;
-            }
+            const age = raceDate.getFullYear() - birthDate.getFullYear();
 
             const runnerGender = (personGender || 'm').toLowerCase();
             const specialTerms = Object.values(TYPE_SEARCH_TERMS);
