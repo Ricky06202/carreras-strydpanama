@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { vendor, raceId, quantity } = body;
+    const { vendor, raceId, quantity, allowedType } = body;
     
     if (!vendor || !raceId || !quantity || quantity < 1 || quantity > 100) {
       return new Response(JSON.stringify({ error: 'Parámetros inválidos' }), { status: 400 });
@@ -36,7 +36,8 @@ export const POST: APIRoute = async ({ request }) => {
               race: raceId,
               vendor: vendor,
               batchId: batchId,
-              status: 'generated'
+              status: 'generated',
+              allowedType: allowedType || 'all'
           }
         };
 

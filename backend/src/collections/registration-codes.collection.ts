@@ -23,8 +23,14 @@ export default {
       usedDate: { type: 'date', title: 'Fecha de Canje' },
       redeemedBy: { type: 'string', title: 'Canjeado Por (Nombre)' },
       redeemedByCedula: { type: 'string', title: 'Cédula del Canjeador' },
+      allowedType: {
+        type: 'select',
+        title: 'Aplica Para (Tipo de Registro)',
+        enum: ['all', 'general', 'estudiante', 'team'],
+        default: 'all'
+      },
     },
-    required: ['title', 'code', 'race'],
+    required: ['title', 'code', 'race', 'allowedType'],
   },
 
   listFields: ['title', 'code', 'vendor', 'status'],

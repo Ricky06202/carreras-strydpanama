@@ -4,7 +4,8 @@ import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
-    const { code, raceId } = await request.json();
+    const body = await request.json();
+    const { code, raceId } = body;
     
     // Buscamos todos los codigos y filtramos en la app
     const result = await apiFetch(`/api/collections/registration_codes/content?limit=500`, env, { method: 'GET' });
@@ -12,6 +13,22 @@ export const POST: APIRoute = async ({ request }) => {
 
     if (!match) {
         return new Response(JSON.stringify({ valid: false, message: 'Código no encontrado o inválido para esta carrera' }), { status: 400 });
+    }
+
+    const { participantType = 'general', registrationType = 'individual' } = body;
+    
+    // Validar restricción de Tipo de Registro
+    if (match.data?.allowedType && match.data.allowedType !== 'all') {
+        const typeAllowed = match.data.allowedType;
+        if (typeAllowed === 'team' && registrationType !== 'team') {
+            return new Response(JSON.stringify({ valid: false, message: 'Este código es exclusivo para inscripciones en EQUIPO.' }), { status: 400 });
+        }
+        if (typeAllowed === 'estudiante' && participantType !== 'estudiante') {
+            return new Response(JSON.stringify({ valid: false, message: 'Este código es exclusivo para ESTUDIANTES.' }), { status: 400 });
+        }
+        if (typeAllowed === 'general' && (participantType !== 'general' || registrationType === 'team')) {
+            return new Response(JSON.stringify({ valid: false, message: 'Este código es exclusivo para PÚBLICO GENERAL INDIVIDUAL.' }), { status: 400 });
+        }
     }
 
     if (match.data?.status === 'redeemed' || match.data?.used === true) {

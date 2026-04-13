@@ -12,6 +12,8 @@ export const sendRegistrationEmail = async (env: any, data: {
   cedula?: string;
   size?: string;
   confirmationCode?: string;
+  teamName?: string;
+  registrationType?: string;
 }) => {
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -21,7 +23,7 @@ export const sendRegistrationEmail = async (env: any, data: {
 
   const resend = new Resend(resendApiKey);
 
-  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode } = data;
+  const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode, teamName, registrationType } = data;
 
   try {
     const response = await resend.emails.send({
@@ -42,6 +44,15 @@ export const sendRegistrationEmail = async (env: any, data: {
               Te has registrado exitosamente para la carrera <strong>${raceName}</strong>. 
               Estamos muy emocionados de tenerte con nosotros.
             </p>
+
+            ${registrationType === 'team' && teamName ? `
+            <div style="background-color: #FFF3E0; border-left: 4px solid #FF6B00; padding: 15px; margin: 20px 0; border-radius: 4px;">
+              <p style="color: #E65100; margin: 0; font-size: 14px;">
+                <strong>🚩 Has sido inscrito como parte de un equipo:</strong><br/>
+                <span style="font-size: 18px;">${teamName}</span>
+              </p>
+            </div>
+            ` : ''}
             
             <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 25px 0;">
               <table style="width: 100%; border-collapse: collapse;">

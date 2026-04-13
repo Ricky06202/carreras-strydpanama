@@ -517,7 +517,12 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       const res = await fetch('/api/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: code.trim().toUpperCase(), raceId: selectedRace })
+        body: JSON.stringify({ 
+          code: code.trim().toUpperCase(), 
+          raceId: selectedRace,
+          participantType: formData.participantType,
+          registrationType: registrationType
+        })
       });
       const data = await res.json();
       setCodeValid({ valid: data.valid, message: data.message });

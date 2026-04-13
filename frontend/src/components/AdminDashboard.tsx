@@ -80,6 +80,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
   const [codeQuantity, setCodeQuantity] = useState<number | ''>('');
+  const [allowedTypeInput, setAllowedTypeInput] = useState('all');
   const [codeStats, setCodeStats] = useState<any[]>([]);
   const [allCodes, setAllCodes] = useState<any[]>([]);
   const [codesLoading, setCodesLoading] = useState(false);
@@ -114,7 +115,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       const res = await fetch('/api/admin/bulk-codes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor: vendorInput, raceId: codeRaceId, quantity: Number(codeQuantity) })
+        body: JSON.stringify({ vendor: vendorInput, raceId: codeRaceId, quantity: Number(codeQuantity), allowedType: allowedTypeInput })
       });
       const data = await res.json();
       if (data.success) {
@@ -1384,6 +1385,16 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 
                 <TextField size="small" sx={{ minWidth: 250, flex: 1 }} label="Vendedor Físico (Punto de Venta)" placeholder="Ej. Tienda Running" value={vendorInput} onChange={e => setVendorInput(e.target.value)} />
                 
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>Aplica Para</InputLabel>
+                  <Select value={allowedTypeInput} label="Aplica Para" onChange={e => setAllowedTypeInput(e.target.value)}>
+                    <MenuItem value="all">Cualquiera</MenuItem>
+                    <MenuItem value="general">Público General</MenuItem>
+                    <MenuItem value="estudiante">Estudiantes</MenuItem>
+                    <MenuItem value="team">Equipos</MenuItem>
+                  </Select>
+                </FormControl>
+
                 <TextField type="number" size="small" sx={{ width: 120 }} label="Cantidad" placeholder="Ej. 20" value={codeQuantity} onChange={e => setCodeQuantity(e.target.value ? Number(e.target.value) : '')} />
                 
                 <Button variant="contained" onClick={generateCodes} disabled={codesLoading} sx={{ py: 1, px: 3, bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>

@@ -163,7 +163,7 @@ export const POST: APIRoute = async ({ request }) => {
             teamMemberBibs.push(memberBib);
             const isCapitan = isFirstMember;
             isFirstMember = false;
-            const memberConfCode = isCapitan ? confCode : ('STRYD-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase());
+            const memberConfCode = confCode; // Todos comparten el código del capitán
             const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres únicos
             const memberCat = resolveCategoryForPerson(member.birthDate, member.gender, body.participantType);
             const memberTitle = `${member.firstName} ${member.lastName} - ${memberCat.catName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
@@ -220,6 +220,8 @@ export const POST: APIRoute = async ({ request }) => {
                         size: member.size || '',
                         paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
                         confirmationCode: memberConfCode,
+                        teamName: body.teamName,
+                        registrationType: 'team',
                     });
                     console.log(`Email sent to ${emailAddr}`);
                 } catch (e) {
