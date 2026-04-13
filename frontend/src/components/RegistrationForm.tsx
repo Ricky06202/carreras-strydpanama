@@ -1200,7 +1200,7 @@ const handleSubmit = async () => {
                       />
                       
                       <TextField label="Email *" type="email" value={member.email} onChange={(e) => updateTeamMember(index, 'email', e.target.value)} placeholder="Ej: juan@correo.com" size="small" sx={{ gridColumn: '1 / -1' }}/>
-                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} placeholder="Ej: 6123-4567" size="small" sx={{ gridColumn: '1 / -1' }}/>
+                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} placeholder="Ej: 61234567" size="small" helperText="Preferiblemente sin guiones o espacios" sx={{ gridColumn: '1 / -1' }}/>
 
                       <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
                         <FormControl fullWidth size="small">
