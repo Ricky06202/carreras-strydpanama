@@ -158,6 +158,25 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [croppingImageSrc, setCroppingImageSrc] = useState<string | null>(null);
   const [finalConfirmationCode, setFinalConfirmationCode] = useState('');
   const [assignedBib, setAssignedBib] = useState<number | null>(null);
+  
+  const [recoveredPayment, setRecoveredPayment] = useState(false);
+
+  useEffect(() => {
+     // Recuperar sesión de Yappy en navegadores móviles (Safari/Chrome) 
+     // que matan la pestaña por falta de memoria cuando se abre el app de Banco General.
+     const pendingStr = localStorage.getItem('stryd_pending_yappy');
+     if (pendingStr) {
+         try {
+             const pending = JSON.parse(pendingStr);
+             if (Date.now() - pending.timestamp < 15 * 60 * 1000) { // 15 minutos máximo
+                 setFinalConfirmationCode(pending.code);
+                 setRecoveredPayment(true);
+                 setStep(4);
+             }
+             localStorage.removeItem('stryd_pending_yappy');
+         } catch(e){}
+     }
+  }, []);
 
   const resizeImage = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -736,6 +755,12 @@ const handleSubmit = async () => {
             
             // 3. Invocar pasarela gráfica
             setTimeout(() => {
+                // Guardamos bandera en localStorage justo antes de cruzar a Yappy, 
+                // para que si el celular mata el browser, mostremos confirmación al regresar.
+                localStorage.setItem('stryd_pending_yappy', JSON.stringify({
+                    code: orderId,
+                    timestamp: Date.now()
+                }));
                 bp.eventPayment({ ...paymentData.body });
             }, 50); // Mínimo retardo para asegurar que React actualizó el DOM a disabled="false"
         } else {
@@ -1593,7 +1618,29 @@ const handleSubmit = async () => {
           <Box sx={{ py: 4 }}>
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
-              <Typography variant="h4" sx={{ mb: 2, color: 'success.main', fontWeight: 'bold' }}>¡Proceso Completado!</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
+                {recoveredPayment ? 'Estado de tu Registro' : '¡Registro Completado!'} 
+              </Typography>
+
+              {recoveredPayment && (
+                  <Box sx={{ bgcolor: 'rgba(255, 107, 0, 0.1)', borderLeft: '4px solid #FF6B00', p: 2, mb: 3, textAlign: 'left', borderRadius: '4px' }}>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#FF6B00', mb: 1 }}>
+                          Recuperamos esta pantalla
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: '#555' }}>
+                          Hemos detectado que el navegador se refrescó mientras usabas Banco General.
+                      </Typography>
+                      <ul style={{ margin: '10px 0', paddingLeft: '20px', color: '#555', fontSize: '14px' }}>
+                          <li><b>Si completaste el pago exitosamente:</b> tu cupo está asegurado y has recibido (o recibirás en breve) el correo oficial.</li>
+                          <li><b>Si NO pagaste o hubo un error en Yappy:</b> puedes ignorar esta pantalla y volver a iniciar el proceso haciendo clic abajo.</li>
+                      </ul>
+                  </Box>
+              )}
+
+              <Typography sx={{ color: '#555', mb: 3 }}>
+                Tu código de confirmación principal es:
+              </Typography>
+              
               <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
               {(formData.paymentMethod === 'transfer' || isStudentCategorySelected()) && (
                  <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
@@ -1718,7 +1765,7 @@ const handleSubmit = async () => {
                     onClick={() => window.location.href = '/'}
                     sx={{ bgcolor: ACCENT, borderRadius: 8, px: 4, '&:hover': { bgcolor: '#E55A00' } }}
                   >
-                    Volver al Inicio
+                    Cerrar y Volver al Inicio
                   </Button>
                 </Box>
               </Box>
