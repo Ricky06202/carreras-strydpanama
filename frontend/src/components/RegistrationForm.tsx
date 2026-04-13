@@ -912,12 +912,31 @@ const handleSubmit = async () => {
                       { value: 'general', label: 'Público General' },
                       { value: 'estudiante', label: 'Estudiante (UTP)' },
                       { value: 'docente', label: 'Docente (UTP)' },
-                      { value: 'administrativo', label: 'Administrativo (UTP)' }
+                      { value: 'administrativo', label: 'Administrativo (UTP)' },
+                      { value: 'niño', label: 'Niño' }
                     ].map((t) => (
                       <Button
                         key={t.value}
                         variant={formData.participantType === t.value ? "contained" : "outlined"}
-                        onClick={() => setFormData({...formData, participantType: t.value})}
+                        onClick={() => {
+                            const newType = t.value;
+                            let autoDist = formData.distance;
+                            
+                            if (registrationType === 'individual') {
+                                if (newType === 'general' || newType === 'docente' || newType === 'administrativo') {
+                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
+                                    if (dist) autoDist = dist.id;
+                                } else if (newType === 'estudiante') {
+                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
+                                    if (dist) autoDist = dist.id;
+                                } else if (newType === 'niño') {
+                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
+                                    if (dist) autoDist = dist.id;
+                                }
+                            }
+                            
+                            setFormData({...formData, participantType: newType, distance: autoDist});
+                        }}
                         size="small"
                         sx={{ 
                           borderRadius: 5,
