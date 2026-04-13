@@ -87,7 +87,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
   }, [participants]);
 
   const kpiCard = (title: string, value: string | number, color: string = 'text.primary', subtitle?: string, highlightBorder?: boolean) => (
-    <Paper sx={{ p: 3, borderRadius: 3, bgcolor: '#1a1a1a', border: highlightBorder ? `1px solid ${ACCENT}` : '1px solid #333' }}>
+    <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: highlightBorder ? ACCENT : 'divider' }}>
       <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', mb: 1, display: 'block', textTransform: 'uppercase', letterSpacing: 1 }}>{title}</Typography>
       <Typography variant="h3" sx={{ fontWeight: 900, color }}>{value}</Typography>
       {subtitle && <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>{subtitle}</Typography>}
@@ -105,7 +105,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
            <Typography variant="body2" color="text.secondary">Métricas en tiempo real de la carrera seleccionada.</Typography>
         </Box>
         <select 
-          style={{ padding: '10px 15px', borderRadius: 8, backgroundColor: '#2d2d2d', color: 'white', border: `1px solid ${ACCENT}`, outline: 'none' }}
+          style={{ padding: '10px 15px', borderRadius: 8, backgroundColor: 'var(--mui-palette-background-paper, #2d2d2d)', color: 'inherit', border: `1px solid ${ACCENT}`, outline: 'none' }}
           value={selectedRace} 
           onChange={(e) => onFetchRaceData(e.target.value)}
         >
@@ -118,13 +118,13 @@ export default function DashboardView({ races, allDistances, participants, onFet
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold', mb: 2 }}>Finanzas (KPIs)</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
-          {kpiCard('Total Inscritos', kpis.totalInscritos, '#FFFFFF')}
+          {kpiCard('Total Inscritos', kpis.totalInscritos, 'text.primary')}
           {kpiCard('Pagos Confirmados', kpis.pagosConfirmados, ACCENT, `De ${kpis.totalInscritos} participantes`, true)}
-          {kpiCard('Pagos Pendientes', kpis.pagosPendientes, '#FFFFFF', 'Requieren validación o pago físico')}
+          {kpiCard('Pagos Pendientes', kpis.pagosPendientes, 'text.primary', 'Requieren validación o pago físico')}
           
-          {kpiCard('Recaudación Neta Carrera', `B/. ${kpis.baseRevenue.toFixed(2)}`, '#FFFFFF')}
-          {kpiCard('Recolección de Plataforma', `B/. ${(kpis.platformFeeRevenue).toFixed(2)}`, '#AAAAAA', 'Asignados a comisiones o costos')}
-          {kpiCard('Monto Pendiente (Aprox)', `B/. ${kpis.totalAdeudado.toFixed(2)}`, '#FFFFFF')}
+          {kpiCard('Recaudación Neta Carrera', `B/. ${kpis.baseRevenue.toFixed(2)}`, 'text.primary')}
+          {kpiCard('Recolección de Plataforma', `B/. ${(kpis.platformFeeRevenue).toFixed(2)}`, 'text.secondary', 'Asignados a comisiones o costos')}
+          {kpiCard('Monto Pendiente (Aprox)', `B/. ${kpis.totalAdeudado.toFixed(2)}`, 'text.primary')}
         </Box>
       </Box>
 
@@ -148,33 +148,33 @@ export default function DashboardView({ races, allDistances, participants, onFet
       {/* Analytics Row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: showSizes ? '1fr 1fr' : '1fr' }, gap: 3, mb: 4 }}>
         {/* Genero Pie Chart */}
-        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: '#1a1a1a', border: '1px solid #333' }}>
-           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: '#FFFFFF' }}>Corredores por Sexo</Typography>
+        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: 'text.primary' }}>Corredores por Sexo</Typography>
            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
              <Box sx={{ 
                 width: 150, height: 150, borderRadius: '50%', 
-                background: `conic-gradient(${ACCENT} 0% ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}%, #FFFFFF ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}% ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}%, #444444 ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}% 100%)` 
+                background: `conic-gradient(${ACCENT} 0% ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}%, ${(theme => theme.palette?.mode === 'dark' ? '#FFFFFF' : '#e0e0e0')} ${(stats.genders.m / Math.max(kpis.totalInscritos, 1))*100}% ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}%, #777777 ${((stats.genders.m + stats.genders.f) / Math.max(kpis.totalInscritos, 1))*100}% 100%)` 
              }} />
              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#FFFFFF' }}><Box sx={{ width: 12, height: 12, bgcolor: ACCENT }}/> Masculino ({stats.genders.m})</Typography>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#FFFFFF' }}><Box sx={{ width: 12, height: 12, bgcolor: '#FFFFFF' }}/> Femenino ({stats.genders.f})</Typography>
-                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: '#FFFFFF' }}><Box sx={{ width: 12, height: 12, bgcolor: '#444444' }}/> N/E ({stats.genders.u})</Typography>
+                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, bgcolor: ACCENT }}/> Masculino ({stats.genders.m})</Typography>
+                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, border: 1, borderColor: 'divider', bgcolor: (theme => theme.palette?.mode === 'dark' ? '#FFFFFF' : '#e0e0e0') }}/> Femenino ({stats.genders.f})</Typography>
+                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.primary' }}><Box sx={{ width: 12, height: 12, bgcolor: '#777777' }}/> N/E ({stats.genders.u})</Typography>
              </Box>
            </Box>
         </Paper>
 
         {/* Tallas Bar Chart (Condicional) */}
         {showSizes && (
-        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: '#1a1a1a', border: '1px solid #333' }}>
-           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: '#FFFFFF' }}>Conteo por Tallas (Logística)</Typography>
-           <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 150, borderBottom: '1px solid #333' }}>
+        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, textAlign: 'center', color: 'text.primary' }}>Conteo por Tallas (Logística)</Typography>
+           <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2, height: 150, borderBottom: 1, borderColor: 'divider' }}>
               {Object.entries(stats.sizes).map(([talla, count]) => {
                  const height = Math.max((count / Math.max(kpis.totalInscritos, 1)) * 100, 5);
                  return (
                    <Box key={talla} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 40 }}>
-                     <Typography variant="caption" sx={{ mb: 1, color: '#FFFFFF', fontWeight: 'bold' }}>{count}</Typography>
+                     <Typography variant="caption" sx={{ mb: 1, color: 'text.primary', fontWeight: 'bold' }}>{count}</Typography>
                      <Box sx={{ width: 30, height: `${height}%`, bgcolor: ACCENT, borderTopLeftRadius: 4, borderTopRightRadius: 4, transition: 'height 0.5s ease' }} />
-                     <Typography variant="caption" sx={{ mt: 1, display: 'block', pb: 1, color: '#FFFFFF' }}>{talla}</Typography>
+                     <Typography variant="caption" sx={{ mt: 1, display: 'block', pb: 1, color: 'text.primary' }}>{talla}</Typography>
                    </Box>
                  )
               })}
@@ -183,16 +183,16 @@ export default function DashboardView({ races, allDistances, participants, onFet
         )}
 
         {/* Categorias Horizontal Bar Chart */}
-        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: '#1a1a1a', gridColumn: '1 / -1', border: '1px solid #333' }}>
-           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, color: '#FFFFFF' }}>Corredores por Categoría</Typography>
+        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', gridColumn: '1 / -1', border: 1, borderColor: 'divider' }}>
+           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, color: 'text.primary' }}>Corredores por Categoría</Typography>
            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {Object.entries(stats.cats).sort((a,b) => b[1] - a[1]).map(([cat, count]) => (
                 <Box key={cat} sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <Typography variant="body2" sx={{ width: 150, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#FFFFFF', fontWeight: 'bold' }}>{cat}</Typography>
-                  <Box sx={{ flex: 1, height: 16, bgcolor: '#2d2d2d', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
+                  <Typography variant="body2" sx={{ width: 150, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'text.primary', fontWeight: 'bold' }}>{cat}</Typography>
+                  <Box sx={{ flex: 1, height: 16, bgcolor: 'action.hover', borderRadius: 6, position: 'relative', overflow: 'hidden' }}>
                      <Box sx={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(count / Math.max(kpis.totalInscritos, 1)) * 100}%`, bgcolor: ACCENT, borderRadius: 6 }} />
                   </Box>
-                  <Typography variant="subtitle2" sx={{ width: 40, color: '#FFFFFF', fontWeight: 900 }}>{count} pax</Typography>
+                  <Typography variant="subtitle2" sx={{ width: 40, color: 'text.primary', fontWeight: 900 }}>{count} pax</Typography>
                 </Box>
               ))}
            </Box>
