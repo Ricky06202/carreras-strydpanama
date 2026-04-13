@@ -238,10 +238,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
          
          const ticketDiv = document.createElement('div');
          ticketDiv.style.width = '800px';
-         ticketDiv.style.height = '180px'; 
+         ticketDiv.style.height = '188px'; 
          ticketDiv.style.border = '2px dashed #999';
          ticketDiv.style.boxSizing = 'border-box';
-         ticketDiv.style.padding = '15px';
+         ticketDiv.style.padding = '12px 10px';
          ticketDiv.style.display = 'flex';
          ticketDiv.style.justifyContent = 'space-between';
          ticketDiv.style.alignItems = 'center';
@@ -314,11 +314,11 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
          rightBox.style.textAlign = 'right';
          rightBox.innerHTML = `
             ${displayPrice ? `<div style="text-align:center; font-weight:900; font-size:16px; margin-bottom:5px; color:${ACCENT}; text-transform:uppercase;">${displayTitle} <span style="color:#000;">${displayPrice}</span></div>` : ''}
-            <div style="background-color:${ACCENT}; padding:15px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:10px;">
-               <div style="font-size:12px; margin-bottom:5px; font-weight:bold; color:white; font-family:Arial, sans-serif;">REGISTRO WEB</div>
-               <div style="font-size:26px; font-weight:900; color:white; font-family:monospace;">${codeObj.code}</div>
+            <div style="background-color:${ACCENT}; padding:10px; border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; margin-bottom:8px;">
+               <div style="font-size:11px; margin-bottom:3px; font-weight:bold; color:white; font-family:Arial, sans-serif;">REGISTRO WEB</div>
+               <div style="font-size:24px; font-weight:900; color:white; font-family:monospace;">${codeObj.code}</div>
             </div>
-            <div style="font-size:13px; color:#333; font-weight:bold; text-align:center; font-family:Arial, sans-serif;">carreras.strydpanama.com</div>
+            <div style="font-size:12px; color:#333; font-weight:bold; text-align:center; font-family:Arial, sans-serif; position:relative; top:-2px;">carreras.strydpanama.com</div>
          `;
 
          ticketDiv.appendChild(stubBox);
