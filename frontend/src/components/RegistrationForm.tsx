@@ -734,9 +734,7 @@ const handleSubmit = async () => {
         const platformFee = formData.paymentMethod === 'yappy' ? platformFeeVal : 0;
         const fullPrice = basePrice + platformFee;
 
-        // OJO: SOBREESCRIBIR TOTAL TEMPORALMENTE PARA EFECTOS DE PRUEBA EN YAPPY
-        // TODO: Revertir esta línea para usar `fullPrice` cuando termine el periodo de testing
-        const totalAmount = 0.25; 
+        const totalAmount = fullPrice;
         const selectedPhone = registrationType === 'team' ? (teamMembers[0]?.phone || '') : formData.phone;
         const telYappy = selectedPhone.replace(/\D/g, ''); // Limpiamos guiones o caracteres especiales para Yappy
 
@@ -1490,11 +1488,7 @@ const handleSubmit = async () => {
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
         Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? platformFee : (formData.paymentMethod === 'transfer' ? 0 : 0.50))).toFixed(2)}
       </Typography>
-      {formData.paymentMethod === 'yappy' && (
-        <Typography variant="caption" sx={{ color: 'warning.main', display: 'block', mt: 1, fontWeight: 'bold' }}>
-          * Modo PRUEBA activo: A Yappy se le enviará un debito de solo $0.25 *
-        </Typography>
-      )}
+
     </Box>
   );
 })()}
