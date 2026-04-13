@@ -143,6 +143,50 @@ export const POST: APIRoute = async ({ request }) => {
     // Para equipos: todos los miembros vienen en teamMembers (índice 0 = capitán).
     // NO se registra el body principal como participante para evitar entradas fantasma.
     // Para individuales: se registra el body principal normalmente.
+    
+    // Helper para guardar/actualizar en la base de datos de "Corredores" (permanent DB)
+    const upsertRunnerProfile = async (runnerInput: any, runnerCatName: string) => {
+        if (!runnerInput.cedula) return;
+        try {
+            const allRunners = await apiFetch(`/api/collections/runners/content?limit=2000`, env, { method: 'GET' });
+            const existing = (allRunners?.data || []).find((r: any) => 
+               (r.data?.cedula || '').toLowerCase().trim() === runnerInput.cedula.toLowerCase().trim()
+            );
+
+            const runnerDataObj = {
+                title: `${runnerInput.firstName} ${runnerInput.lastName}`,
+                firstName: runnerInput.firstName,
+                lastName: runnerInput.lastName,
+                email: runnerInput.email || body.email,
+                phone: runnerInput.phone || body.phone,
+                cedula: runnerInput.cedula,
+                birthDate: runnerInput.birthDate || '',
+                gender: runnerInput.gender || '',
+                country: runnerInput.country || body.country || '',
+                photoUrl: runnerInput.photoUrl || (existing?.data?.photoUrl || ''),
+                totalRaces: (existing?.data?.totalRaces || 0) + 1,
+            };
+
+            const runnerTitle = `${runnerInput.firstName} ${runnerInput.lastName} (${runnerInput.cedula})`;
+            const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
+            const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
+            
+            if (existing) {
+                const colId = runnersCol?.id || existing.collectionId;
+                await apiFetch(`/api/content/${existing.id}`, env, {
+                    method: 'PUT',
+                    body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerTitle, status: 'published', data: { ...existing.data, ...runnerDataObj } })
+                });
+            } else if (runnersCol?.id) {
+                await apiFetch('/api/content', env, {
+                    method: 'POST',
+                    body: JSON.stringify({ collectionId: runnersCol.id, collection_id: runnersCol.id, title: runnerTitle, status: 'published', data: runnerDataObj })
+                });
+            }
+        } catch (e) {
+            console.error('Runner upsert failed for', runnerInput.firstName, e);
+        }
+    };
 
     const teamMemberBibs: number[] = [];
     let result: any = null;
@@ -198,6 +242,10 @@ export const POST: APIRoute = async ({ request }) => {
                 const regResult = await api.registerParticipant(env, memberData);
                 if (isCapitan) result = regResult;
                 console.log(`Team member registered: ${member.firstName} ${member.lastName} - BIB ${memberBib}`);
+                
+                // Guardar en Perfiles Permanentes de Corredores
+                await upsertRunnerProfile(member, memberCat.catName);
+                
             } catch (e) {
                 console.error(`Failed to register team member ${member.firstName}:`, e);
             }
@@ -235,6 +283,9 @@ export const POST: APIRoute = async ({ request }) => {
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
         teamMemberBibs.push(nextBib);
+        
+        // Guardar en Perfiles Permanentes de Corredores
+        await upsertRunnerProfile(body, resolvedCategoryName);
     }
 
     // 4a. Verificar y reparar BIBs duplicados post-registro
@@ -292,53 +343,7 @@ export const POST: APIRoute = async ({ request }) => {
         });
     }
     
-    // 5. Upsert el perfil del corredor en la base de datos permanente
-    if (body.cedula) {
-      try {
-        const RUNNERS_COL = 'col-runners-' + 'strydpanama';
-        const allRunners = await apiFetch('/api/collections/runners/content?limit=2000', env, { method: 'GET' });
-        const existing = (allRunners?.data || []).find((r: any) => 
-          (r.data?.cedula || '').toLowerCase().trim() === body.cedula.toLowerCase().trim()
-        );
-
-        const runnerData = {
-          title: `${body.firstName} ${body.lastName}`, // Este es el campo dentro de data
-          firstName: body.firstName,
-          lastName: body.lastName,
-          email: body.email,
-          phone: body.phone,
-          cedula: body.cedula,
-          birthDate: body.birthDate,
-          gender: body.gender,
-          country: body.country,
-          photoUrl: body.photoUrl || (existing?.data?.photoUrl || ''),
-          totalRaces: (existing?.data?.totalRaces || 0) + 1,
-        };
-
-        const runnerTitle = `${body.firstName} ${body.lastName} (${body.cedula})`; // Título único para el slug
-
-        if (existing) {
-          const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
-          const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
-          const colId = runnersCol?.id || existing.collectionId;
-          await apiFetch(`/api/content/${existing.id}`, env, {
-            method: 'PUT',
-            body: JSON.stringify({ id: existing.id, collectionId: colId, collection_id: colId, title: runnerTitle, status: 'published', data: { ...existing.data, ...runnerData } })
-          });
-        } else {
-          const runnersRes = await apiFetch('/api/collections', env, { method: 'GET' });
-          const runnersCol = (runnersRes?.data || []).find((c: any) => c.name === 'runners');
-          if (runnersCol?.id) {
-            await apiFetch('/api/content', env, {
-              method: 'POST',
-              body: JSON.stringify({ collectionId: runnersCol.id, collection_id: runnersCol.id, title: runnerTitle, status: 'published', data: runnerData })
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Runner upsert failed:', e);
-      }
-    }
+    // 5. Antiguo bloque de base de datos permanente (reemplazado por upsertRunnerProfile)
 
     // 6. Enviar correo de confirmación (solo para inscripciones individuales;
     //    los equipos ya enviaron email a cada miembro en el paso anterior)
