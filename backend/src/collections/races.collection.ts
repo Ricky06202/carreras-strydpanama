@@ -112,6 +112,10 @@ export default {
         type: 'string',
         title: 'URL Logo para Certificado',
       },
+      raffleWinners: {
+        type: 'textarea',
+        title: 'Ganadores de Tómbola (Historial encriptado)',
+      },
     },
     required: ['title'],
   },

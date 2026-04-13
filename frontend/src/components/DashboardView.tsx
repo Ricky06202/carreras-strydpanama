@@ -1,5 +1,6 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider } from '@mui/material';
+import TombolaModal from './TombolaModal';
 
 const ACCENT = '#FF6B00';
 
@@ -9,9 +10,12 @@ interface DashboardViewProps {
   participants: any[];
   onFetchRaceData: (raceId: string) => void;
   selectedRace: string;
+  onUpdateRace?: (id: string, updates: any) => Promise<void>;
 }
 
-export default function DashboardView({ races, allDistances, participants, onFetchRaceData, selectedRace }: DashboardViewProps) {
+export default function DashboardView({ races, allDistances, participants, onFetchRaceData, selectedRace, onUpdateRace }: DashboardViewProps) {
+  
+  const [tombolaOpen, setTombolaOpen] = useState(false);
   
   // -- KPIs --
   const kpis = useMemo(() => {
@@ -125,9 +129,21 @@ export default function DashboardView({ races, allDistances, participants, onFet
       </Box>
 
       {/* Button Row */}
-      <Button variant="contained" fullWidth sx={{ py: 2, mb: 4, borderRadius: 3, bgcolor: ACCENT, color: '#FFFFFF', '&:hover': { bgcolor: '#E55A00' }, fontWeight: 900, fontSize: '1.2rem', letterSpacing: 2 }}>
+      <Button disabled={!selectedRace} onClick={() => setTombolaOpen(true)} variant="contained" fullWidth sx={{ py: 2, mb: 4, borderRadius: 3, bgcolor: ACCENT, color: '#FFFFFF', '&:hover': { bgcolor: '#E55A00' }, fontWeight: 900, fontSize: '1.2rem', letterSpacing: 2 }}>
         🏆 IR A TÓMBOLA DE PREMIOS 🏆
       </Button>
+      
+      <TombolaModal 
+        open={tombolaOpen} 
+        onClose={() => setTombolaOpen(false)} 
+        participants={participants} 
+        raceInfo={currentRaceObj} 
+        onUpdateRace={async (updates: any) => {
+           if (onUpdateRace && selectedRace) {
+             await onUpdateRace(selectedRace, updates);
+           }
+        }}
+      />
 
       {/* Analytics Row */}
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: showSizes ? '1fr 1fr' : '1fr' }, gap: 3, mb: 4 }}>
