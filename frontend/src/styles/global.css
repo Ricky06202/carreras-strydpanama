@@ -24,7 +24,17 @@ html {
   -webkit-tap-highlight-color: transparent;
 }
 
-
+/* Centrado del Modal de Yappy (Shadow DOM) */
+btn-yappy::part(modal) {
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 999999 !important;
+  margin: 0 !important;
+  bottom: auto !important;
+  right: auto !important;
+}
 
 html.dark {
   color-scheme: dark;
