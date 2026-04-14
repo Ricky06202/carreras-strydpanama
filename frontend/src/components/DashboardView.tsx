@@ -29,7 +29,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
     // Obtener configuración de plataforma de la carrera actual
     const currentRaceObj = races.find(r => r.id === selectedRace);
-    const feeConfig = currentRaceObj?.data?.platformFee ?? 0.45;
+    const feeConfigRaw = currentRaceObj?.data?.platformFee;
+    const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.45;
 
     participants.forEach(p => {
        const isConfirmed = p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
@@ -38,7 +39,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
        // Buscar el costo real de la distancia
        const distObj = allDistances.find(d => d.id === p.distance);
-       let basePrice = distObj?.price ?? currentRaceObj?.data?.price ?? 0;
+       let basePriceRaw = distObj?.price ?? currentRaceObj?.data?.price ?? 0;
+       let basePrice = Number(basePriceRaw) || 0;
 
        // Factor de Equipos (Para no multiplicar pagos de grupo)
        if (p.registrationType === 'team') basePrice = basePrice / 4;
@@ -55,8 +57,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
       totalInscritos, 
       pagosConfirmados, 
       pagosPendientes, 
-      baseRevenue, 
-      platformFeeRevenue,
+      baseRevenue: baseRevenue || 0, 
+      platformFeeRevenue: platformFeeRevenue || 0,
       totalAdeudado: pagosPendientes * 15 // Mock standard para deuda estimada, o recalcular si quisieramos
     };
   }, [participants, allDistances, races, selectedRace]);
