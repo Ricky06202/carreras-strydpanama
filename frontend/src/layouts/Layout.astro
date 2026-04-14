@@ -135,6 +135,22 @@ const currentPath = Astro.url.pathname;
       </div>
     </footer>
 
+    <!-- Floating WhatsApp Support Widget -->
+    <a href="https://wa.me/50766769050?text=Hola,%20necesito%20ayuda%20con%20una%20inscripci%C3%B3n" target="_blank" rel="noopener noreferrer" class="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-[100] flex items-end gap-3 group transition-transform hover:scale-105" aria-label="Contactar soporte por WhatsApp">
+      <!-- Chat Balloon (Visible on medium+ screens or when hovered) -->
+      <div class="bg-white text-gray-800 px-4 py-2.5 rounded-2xl rounded-br-none shadow-xl border border-gray-100 items-center text-sm font-bold md:flex hidden mb-2 animate-bounce group-hover:animate-none">
+        ¿Necesitas ayuda?
+      </div>
+      <!-- Avatar bubble -->
+      <div class="relative w-14 h-14 md:w-16 md:h-16 rounded-full shadow-2xl bg-accent flex items-center justify-center isolate">
+        <!-- Image with fallback -->
+        <img src="/support-avatar.jpg" alt="Soporte" class="w-full h-full object-cover rounded-full border-2 border-white" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=Soporte&background=FF6B00&color=fff';" />
+        <!-- Online pulse indicator -->
+        <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 border-2 border-white rounded-full" title="¡En línea!"></div>
+        <div class="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full animate-ping opacity-75"></div>
+      </div>
+    </a>
+
     <script>
       // --- Desktop theme toggle ---
       const themeToggleBtn = document.getElementById('theme-toggle');
