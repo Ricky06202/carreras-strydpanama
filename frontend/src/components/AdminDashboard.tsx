@@ -22,6 +22,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import DashboardView from './DashboardView';
 import MUIThemeProvider from './MUIThemeProvider';
 
@@ -76,6 +77,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     { label: 'Mapeo de Modalidades', value: 3, icon: <EditLocationAltIcon sx={{ mr: 2 }} /> },
     { label: 'Gestión de Categorías', value: 4, icon: <GroupsIcon sx={{ mr: 2 }} /> },
     { label: 'Directorio de Inscritos', value: 5, icon: <ReceiptLongIcon sx={{ mr: 2 }} /> },
+    { label: 'Lista de Padrinos', value: 6, icon: <FavoriteIcon sx={{ mr: 2 }} /> },
   ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
@@ -564,7 +566,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   };
 
   useEffect(() => {
-    if (tabIndex === 0 || tabIndex === 5) {
+    if (tabIndex === 0 || tabIndex === 5 || tabIndex === 6) {
       if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
@@ -2002,6 +2004,21 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Código de Confirmación</Typography>
                                 <Typography variant="body2" color={ACCENT} fontWeight="bold">{selectedParticipant.confirmationCode || 'N/A'}</Typography>
                             </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Método de Pago</Typography>
+                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.paymentMethod || selectedParticipant.paymentStatus || 'N/A'}</Typography>
+                            </Box>
+                            {selectedParticipant.isPadrino && (
+                                <Box sx={{ gridColumn: '1 / -1' }}>
+                                    <Chip
+                                        icon={<FavoriteIcon />}
+                                        label={`Padrino — ${selectedParticipant.donatedTickets} cupo${selectedParticipant.donatedTickets === 1 ? '' : 's'} patrocinado${selectedParticipant.donatedTickets === 1 ? '' : 's'}`}
+                                        color="success"
+                                        size="small"
+                                        sx={{ fontWeight: 'bold' }}
+                                    />
+                                </Box>
+                            )}
                         </Box>
                     </Box>
                   </Box>
@@ -2076,6 +2093,113 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           </Dialog>
         </Box>
       )}
+      {tabIndex === 6 && (() => {
+        const padrinos = participants.filter(p => p.isPadrino);
+
+        const exportPadrinosPDF = async () => {
+          if (padrinos.length === 0) return alert('No hay padrinos para exportar.');
+          const { jsPDF } = await import('jspdf');
+          const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+          doc.setFontSize(18);
+          doc.text('Lista de Padrinos — STRYD Panama', 14, 18);
+          doc.setFontSize(10);
+          doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 26);
+          doc.text(`Total de padrinos: ${padrinos.length}  |  Cupos totales patrocinados: ${padrinos.reduce((s, p) => s + (p.donatedTickets || 0), 0)}`, 14, 33);
+
+          let y = 44;
+          doc.setFontSize(9);
+          doc.setFont('', 'bold');
+          doc.text('Nombre', 14, y);
+          doc.text('Cédula', 80, y);
+          doc.text('Teléfono', 115, y);
+          doc.text('Email', 145, y);
+          doc.text('Tipo', 205, y);
+          doc.text('Cupos', 235, y);
+
+          y += 2;
+          doc.line(14, y, 265, y);
+          y += 7;
+          doc.setFont('', 'normal');
+          doc.setFontSize(8.5);
+
+          padrinos.forEach(p => {
+            if (y > 195) { doc.addPage(); y = 20; }
+            const name = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || '-';
+            doc.text(name.length > 38 ? name.slice(0, 36) + '..' : name, 14, y);
+            doc.text((p.cedula || '-').slice(0, 18), 80, y);
+            doc.text((p.phone || '-').slice(0, 16), 115, y);
+            doc.text((p.email || '-').slice(0, 32), 145, y);
+            doc.text(p.registrationType || 'individual', 205, y);
+            doc.text(String(p.donatedTickets || 0), 235, y);
+            y += 8;
+          });
+
+          doc.save(`Padrinos_${new Date().toISOString().split('T')[0]}.pdf`);
+        };
+
+        return (
+          <Box sx={{ mt: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Lista de Padrinos</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {padrinos.length} padrino{padrinos.length !== 1 ? 's' : ''} · {padrinos.reduce((s, p) => s + (p.donatedTickets || 0), 0)} cupo{padrinos.reduce((s, p) => s + (p.donatedTickets || 0), 0) !== 1 ? 's' : ''} patrocinado{padrinos.reduce((s, p) => s + (p.donatedTickets || 0), 0) !== 1 ? 's' : ''}
+                </Typography>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={exportPadrinosPDF}
+                disabled={padrinos.length === 0}
+                sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' }, fontWeight: 'bold' }}
+              >
+                Exportar PDF
+              </Button>
+            </Box>
+
+            {participantsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress sx={{ color: ACCENT }} /></Box>
+            ) : padrinos.length === 0 ? (
+              <Alert severity="info">No hay padrinos registrados aún.</Alert>
+            ) : (
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: ACCENT }}>
+                      {['Nombre', 'Cédula', 'Teléfono', 'Email', 'Tipo de Participante', 'Cupos Donados'].map(h => (
+                        <TableCell key={h} sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{h}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {padrinos.map((p, i) => (
+                      <TableRow key={p.id} sx={{ bgcolor: i % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+                        <TableCell sx={{ fontWeight: 'bold' }}>{`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || '-'}</TableCell>
+                        <TableCell>{p.cedula || '-'}</TableCell>
+                        <TableCell>{p.phone || '-'}</TableCell>
+                        <TableCell>{p.email || '-'}</TableCell>
+                        <TableCell>
+                          <Chip label={p.registrationType || 'individual'} size="small" variant="outlined" />
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            icon={<FavoriteIcon sx={{ fontSize: 14 }} />}
+                            label={`${p.donatedTickets} cupo${p.donatedTickets !== 1 ? 's' : ''}`}
+                            color="success"
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        );
+      })()}
+
       </>
       )}
     </Container>
