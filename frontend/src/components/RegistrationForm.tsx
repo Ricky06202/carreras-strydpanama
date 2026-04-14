@@ -150,7 +150,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [formData, setFormData] = useState({
     firstName: '', lastName: '', email: '', phone: '', cedula: '', country: 'Panamá',
     birthDay: '', birthMonth: '', birthYear: '', gender: '', category: '', distance: '', teamName: '', size: '', paymentMethod: '', photoUrl: '',
-    receiptUrl: '', studentIdUrl: '', matriculaUrl: '', participantType: 'general'
+    receiptUrl: '', studentIdUrl: '', matriculaUrl: '', participantType: 'general', shippingAddress: ''
   });
   const [manualTeamNameInd, setManualTeamNameInd] = useState('');
 
@@ -380,6 +380,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) errors.push('Nombre del equipo');
     if (isStudentCategorySelected() && !formData.studentIdUrl) errors.push('Foto del carnet estudiantil');
     if (isStudentCategorySelected() && !formData.matriculaUrl) errors.push('Foto de matrícula');
+    if (formData.participantType === 'virtual' && !formData.shippingAddress?.trim()) errors.push('Dirección de envío (Corredores Virtuales)');
     if (raceInfo?.data?.termsAndConditions && !termsAccepted) errors.push('Aceptar términos y condiciones');
     return errors;
   };
@@ -475,6 +476,9 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
           if (dist) autoDist = dist.id;
       } else if (tType === 'niño') {
           const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
+          if (dist) autoDist = dist.id;
+      } else if (tType === 'virtual') {
+          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
           if (dist) autoDist = dist.id;
       }
 
@@ -601,6 +605,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   studentIdUrl?: string;
   matriculaUrl?: string;
   photoUrl?: string;
+  shippingAddress?: string;
   participantType?: string;
   teamMembers?: Array<{
     firstName: string;
@@ -642,7 +647,8 @@ const handleSubmit = async () => {
         photoUrl: formData.photoUrl,
         participantType: formData.participantType,
         isPadrino: isPadrino && registrationType === 'individual',
-        donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0
+        donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0,
+        shippingAddress: formData.participantType === 'virtual' ? formData.shippingAddress : ''
       };
 
       if (registrationType === 'team') {
@@ -944,10 +950,11 @@ const handleSubmit = async () => {
                   <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
                     {[
                       { value: 'general', label: 'Público General' },
-                      { value: 'estudiante', label: 'Estudiante (UTP)' },
-                      { value: 'docente', label: 'Docente (UTP)' },
-                      { value: 'administrativo', label: 'Administrativo (UTP)' },
-                      { value: 'niño', label: 'Niño' }
+                      { value: 'estudiante', label: 'Estudiantes UTP' },
+                      { value: 'docente', label: 'Docente UTP' },
+                      { value: 'administrativo', label: 'Administrativo UTP' },
+                      { value: 'niño', label: 'Niño' },
+                      { value: 'virtual', label: 'Virtual' }
                     ].map((t) => (
                       <Button
                         key={t.value}
@@ -965,6 +972,9 @@ const handleSubmit = async () => {
                                     if (dist) autoDist = dist.id;
                                 } else if (newType === 'niño') {
                                     const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
+                                    if (dist) autoDist = dist.id;
+                                } else if (newType === 'virtual') {
+                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
                                     if (dist) autoDist = dist.id;
                                 }
                             }
@@ -1034,6 +1044,26 @@ const handleSubmit = async () => {
                   </Select>
                   {showErrors && !formData.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>Campo requerido</Typography>}
                 </FormControl>
+
+                {formData.participantType === 'virtual' && registrationType === 'individual' && (
+                  <Box sx={{ gridColumn: '1 / -1', bgcolor: 'rgba(255, 107, 0, 0.05)', p: 2, borderRadius: 2, border: `1px solid ${ACCENT}` }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: ACCENT }}>Corredor Virtual 🌍</Typography>
+                    <TextField 
+                      fullWidth 
+                      label="Dirección exacta de envío *" 
+                      multiline
+                      rows={2}
+                      value={formData.shippingAddress} 
+                      onChange={(e) => setFormData({...formData, shippingAddress: e.target.value})} 
+                      placeholder="Ej: Provincia, Distrito, Corregimiento, Calle/Barriada, Casa..." 
+                      error={showErrors && !formData.shippingAddress?.trim()} 
+                      helperText={showErrors && !formData.shippingAddress?.trim() ? 'Requerido para enviarle su kit' : ''} 
+                    />
+                    <Alert severity="warning" sx={{ mt: 2, fontSize: '0.8rem' }}>
+                      <strong>Importante:</strong> El costo de envío del kit corre por cuenta del corredor. Se le contactará a su número celular registrado para coordinar la entrega y los costos.
+                    </Alert>
+                  </Box>
+                )}
                 
                 <Box sx={{ gridColumn: '1 / -1' }}>
                   <Autocomplete
