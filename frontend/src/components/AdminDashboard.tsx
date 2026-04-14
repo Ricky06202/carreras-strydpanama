@@ -2113,8 +2113,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           doc.text('Cédula', 80, y);
           doc.text('Teléfono', 115, y);
           doc.text('Email', 145, y);
-          doc.text('Tipo', 205, y);
-          doc.text('Cupos', 235, y);
+          doc.text('Categoría', 205, y);
+          doc.text('Cupos', 245, y);
 
           y += 2;
           doc.line(14, y, 265, y);
@@ -2129,8 +2129,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             doc.text((p.cedula || '-').slice(0, 18), 80, y);
             doc.text((p.phone || '-').slice(0, 16), 115, y);
             doc.text((p.email || '-').slice(0, 32), 145, y);
-            doc.text(p.registrationType || 'individual', 205, y);
-            doc.text(String(p.donatedTickets || 0), 235, y);
+            const catName = p.categoryName || allCategories.find((c: any) => c.id === (p.category || p.categoryId))?.name || 'General';
+            doc.text(catName.slice(0, 22), 205, y);
+            doc.text(String(p.donatedTickets || 0), 245, y);
             y += 8;
           });
 
@@ -2166,7 +2167,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: ACCENT }}>
-                      {['Nombre', 'Cédula', 'Teléfono', 'Email', 'Tipo de Participante', 'Cupos Donados'].map(h => (
+                      {['Nombre', 'Cédula', 'Teléfono', 'Email', 'Categoría', 'Cupos Donados'].map(h => (
                         <TableCell key={h} sx={{ color: 'white', fontWeight: 'bold', whiteSpace: 'nowrap' }}>{h}</TableCell>
                       ))}
                     </TableRow>
@@ -2179,7 +2180,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                         <TableCell>{p.phone || '-'}</TableCell>
                         <TableCell>{p.email || '-'}</TableCell>
                         <TableCell>
-                          <Chip label={p.registrationType || 'individual'} size="small" variant="outlined" />
+                          <Chip label={p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || 'General'} size="small" variant="outlined" />
                         </TableCell>
                         <TableCell>
                           <Chip
