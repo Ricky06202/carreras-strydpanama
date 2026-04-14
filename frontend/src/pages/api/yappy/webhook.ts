@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch, api } from '../../../lib/api';
 import { sendRegistrationEmail } from '../../../lib/mailer';
+import { POST as RegisterPost } from '../register';
 
 export const GET: APIRoute = async ({ request }) => handleRequest(request);
 export const POST: APIRoute = async ({ request }) => handleRequest(request);
@@ -30,103 +31,144 @@ async function handleRequest(request: Request) {
     // "E" significa Ejecutado (Éxito) en la V2 de Yappy
     if ((status === 'E' || status === 'SUCCESS') && orderId) {
       
-      // El orderId que Yappy devuelve está truncado a 15 caracteres y sin guiones
-      // por limitaciones de su API. Corresponde al confirmationCode (ej. STRYD12345678)
-      
-      let participantsToUpdate: any[] = [];
-      let raceName = 'Carrera';
-      
-      try {
-           // Buscamos a TODOS los participantes que tengan este código de confirmación
-           const allRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
-           
-           participantsToUpdate = (allRes?.data || []).filter((p: any) => {
-               const code = p.data?.confirmationCode || '';
-               const normalizedCode = code.replace(/-/g, ''); // Quitamos guiones para comparar con lo de Yappy
-               return code === orderId || normalizedCode === orderId || p.id.replace(/-/g, '').slice(0, 15) === orderId;
-           });
-           
-           if (participantsToUpdate.length === 0) {
-               console.error(`[Yappy Webhook] Participante con orderId (confirmationCode) ${orderId} NO encontrado en BD.`);
-               return new Response("success", { status: 200 });
-           }
+      let transactionPending = false;
+      let transactionPayload = null;
+      let transactionIdObj = null;
 
-           // Sacar el nombre de la carrera del primer participante
-           const mainData = participantsToUpdate[0].data || {};
-           if (mainData.race || mainData.raceId) {
-               try {
-                   const rObj = await api.getRace(env, mainData.raceId || mainData.race);
-                   if (rObj) raceName = rObj.data?.title || rObj.title || 'Carrera';
-               } catch(e) {}
-           }
+      try {
+        const txRes = await apiFetch(`/api/collections/transactions/content?limit=5000`, env, { method: 'GET' });
+        const txMatch = (txRes?.data || []).find((t: any) => t.data?.orderId === orderId || (t.data?.title || '').includes(orderId));
+        if (txMatch && txMatch.data?.payload) {
+          transactionPayload = JSON.parse(txMatch.data.payload);
+          transactionIdObj = txMatch;
+          transactionPending = true;
+        }
       } catch(e) {
-           console.error(`[Yappy Webhook] Error buscando miembros:`, e);
+        console.error('[Yappy Webhook] Error fetching transactions', e);
       }
 
-      
-      let allDistances: any[] = [];
-      try {
-         const dRes = await api.getDistances(env);
-         allDistances = dRes?.data || [];
-      } catch(e) {}
-
-      // 4. Actualizar estado y Disparar Correos Reales
-      for (const p of participantsToUpdate) {
-         const pData = p.data || {};
-         const colId = p.collectionId || 'col-participants-93d1ac21';
-         
-         // 4.1 Update en DB de Pendiente a Pagado
-         try {
-             await apiFetch(`/api/content/${p.id}`, env, {
-                 method: 'PUT',
-                 headers: { 'Content-Type': 'application/json' },
+      if (transactionPending && transactionPayload) {
+          try {
+              console.log(`[Yappy Webhook] Encontrada transacción diferida orden ${orderId}. Ejecutando creación de registros.`);
+              // 1. Invocar el POST a /api/register con la bandera comprobada para saltarse la espera
+              const simulReq = new Request(new URL('/api/register', request.url), {
+                 method: 'POST',
                  body: JSON.stringify({
-                    id: p.id,
-                    collectionId: colId,
-                    collection_id: colId, 
-                    title: p.title,
-                    status: 'published',
-                    data: {
-                        ...pData,
-                        paymentStatus: 'Pagado',
-                        transactionId: transactionId || 'YAPPY_CONFIRMED'
-                    }
+                     ...transactionPayload,
+                     isWebhookConfirmed: true,
+                     paymentStatus: 'Pagado'
                  })
-             });
-             console.log(`[Yappy Webhook] Updated paymentStatus to 'Pagado' for ${p.id}`);
-         } catch (e) {
-             console.error(`[Yappy Webhook] Fail updating DB for ${p.id}`, e);
-         }
+              });
+              await RegisterPost({ request: simulReq } as any);
+              console.log(`[Yappy Webhook] Inscripción diferida procesada exitosamente vía registro interno.`);
 
-         // 4.2 Enviar Correo Oficial (sabiendo que el dinero ya entró)
-         if (pData.email) {
-             let distName = pData.categoryName || 'General';
-             if (pData.distanceId || pData.distance) {
-                 const dObj = allDistances.find(d => d.id === (pData.distanceId || pData.distance));
-                 if (dObj) distName = dObj.data?.name || dObj.name || distName;
-             }
+              // 2. Marcar la transacción como exitosa
+              await apiFetch(`/api/content/${transactionIdObj.id}`, env, {
+                 method: 'PUT',
+                 body: JSON.stringify({
+                     id: transactionIdObj.id,
+                     collectionId: transactionIdObj.collectionId || 'col-transactions-e06da228',
+                     collection_id: transactionIdObj.collectionId || 'col-transactions-e06da228',
+                     title: transactionIdObj.title,
+                     status: 'published',
+                     data: { ...transactionIdObj.data, status: 'Success_Pagado' }
+                 })
+              });
+          } catch(err) {
+              console.error('[Yappy Webhook] Falló el procesamiento de la instrucción diferida', err);
+          }
+      } else {
 
+          // === LOGICA DE COMPATIBILIDAD HACIA ATRAS (Por si alguien quedó "Pendiente" en la vieja BD o usaba la via vieja) ===
+          
+          let participantsToUpdate: any[] = [];
+          let raceName = 'Carrera';
+          
+          try {
+               const allRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
+               participantsToUpdate = (allRes?.data || []).filter((p: any) => {
+                   const code = p.data?.confirmationCode || '';
+                   const normalizedCode = code.replace(/-/g, ''); 
+                   return code === orderId || normalizedCode === orderId || p.id.replace(/-/g, '').slice(0, 15) === orderId;
+               });
+               
+               if (participantsToUpdate.length === 0) {
+                   console.error(`[Yappy Webhook] Participante con orderId (confirmationCode) ${orderId} NO encontrado en BD (ni en Transacciones nuevas ni Participantes Viejos).`);
+                   return new Response("success", { status: 200 });
+               }
+
+               const mainData = participantsToUpdate[0].data || {};
+               if (mainData.race || mainData.raceId) {
+                   try {
+                       const rObj = await api.getRace(env, mainData.raceId || mainData.race);
+                       if (rObj) raceName = rObj.data?.title || rObj.title || 'Carrera';
+                   } catch(e) {}
+               }
+          } catch(e) {
+               console.error(`[Yappy Webhook] Error buscando miembros pre-creados:`, e);
+          }
+
+          let allDistances: any[] = [];
+          try {
+             const dRes = await api.getDistances(env);
+             allDistances = dRes?.data || [];
+          } catch(e) {}
+
+          for (const p of participantsToUpdate) {
+             const pData = p.data || {};
+             const colId = p.collectionId || 'col-participants-93d1ac21';
+             
              try {
-                await sendRegistrationEmail(env, {
-                    email: pData.email,
-                    firstName: pData.firstName || '',
-                    lastName: pData.lastName || '',
-                    raceName: raceName,
-                    bibNumber: pData.bibNumber || '',
-                    distance: distName,
-                    category: pData.categoryName || '',
-                    cedula: pData.cedula || '',
-                    size: pData.size || '',
-                    paymentMethod: 'Yappy',
-                    confirmationCode: pData.confirmationCode || '',
-                    teamName: pData.teamName || '',
-                    registrationType: pData.registrationType || 'individual'
-                });
-                console.log(`[Yappy Webhook] Correo de confirmación oficial enviado a ${pData.email}`);
-             } catch(e) {
-                console.error(`[Yappy Webhook] Fail sending email to ${pData.email}`, e);
+                 await apiFetch(`/api/content/${p.id}`, env, {
+                     method: 'PUT',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                        id: p.id,
+                        collectionId: colId,
+                        collection_id: colId, 
+                        title: p.title,
+                        status: 'published',
+                        data: {
+                            ...pData,
+                            paymentStatus: 'Pagado',
+                            transactionId: transactionId || 'YAPPY_CONFIRMED'
+                        }
+                     })
+                 });
+                 console.log(`[Yappy Webhook] Updated old-style paymentStatus to 'Pagado' for ${p.id}`);
+             } catch (e) {
+                 console.error(`[Yappy Webhook] Fail updating DB for ${p.id}`, e);
              }
-         }
+
+             if (pData.email) {
+                 let distName = pData.categoryName || 'General';
+                 if (pData.distanceId || pData.distance) {
+                     const dObj = allDistances.find(d => d.id === (pData.distanceId || pData.distance));
+                     if (dObj) distName = dObj.data?.name || dObj.name || distName;
+                 }
+
+                 try {
+                    await sendRegistrationEmail(env, {
+                        email: pData.email,
+                        firstName: pData.firstName || '',
+                        lastName: pData.lastName || '',
+                        raceName: raceName,
+                        bibNumber: pData.bibNumber || '',
+                        distance: distName,
+                        category: pData.categoryName || '',
+                        cedula: pData.cedula || '',
+                        size: pData.size || '',
+                        paymentMethod: 'Yappy',
+                        confirmationCode: pData.confirmationCode || '',
+                        teamName: pData.teamName || '',
+                        registrationType: pData.registrationType || 'individual'
+                    });
+                    console.log(`[Yappy Webhook] Correo de confirmación oficial enviado a ${pData.email} via viejo flujo`);
+                 } catch(e) {
+                    console.error(`[Yappy Webhook] Fail sending email to ${pData.email}`, e);
+                 }
+             }
+          }
       }
     }
 

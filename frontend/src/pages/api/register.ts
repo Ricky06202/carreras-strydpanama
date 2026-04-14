@@ -139,6 +139,45 @@ export const POST: APIRoute = async ({ request }) => {
     const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
     body.confirmationCode = confCode;
 
+    const isYappy = (body.paymentMethod || '').toLowerCase().includes('yappy') || (body.paymentStatus || '').toLowerCase().includes('yappy');
+    const isWebhookConfirmed = body.isWebhookConfirmed === true;
+
+    // DEFERIMIENTO DE YAPPY: Si es pago con Yappy y aún no proviene del Webhook comprobado
+    if (isYappy && !isWebhookConfirmed) {
+        const payloadString = JSON.stringify(body);
+        const colIdTx = 'col-transactions-e06da228';
+        await apiFetch('/api/content', env, {
+            method: 'POST',
+            body: JSON.stringify({
+                collectionId: colIdTx,
+                collection_id: colIdTx,
+                title: `[PENDIENTE YAPPY] ${confCode}`,
+                status: 'published',
+                data: {
+                    title: `[PENDIENTE YAPPY] ${confCode}`,
+                    participant: body.email || body.firstName || 'Desconocido',
+                    amount: body.totalAmount ? Number(body.totalAmount) : 0, 
+                    status: 'pending',
+                    orderId: confCode,
+                    payload: payloadString
+                }
+            })
+        });
+
+        // Retornar éxito inmediato para que el front redirija a Yappy. 
+        // No creamos corredores ni participantes en base de datos oficial.
+        return new Response(JSON.stringify({ 
+            success: true,
+            assignedBib: null, 
+            confirmationCode: confCode,
+            usedCode: Boolean(usedCodeId),
+            paymentMethod: body.paymentStatus || body.paymentMethod || 'yappy'
+        }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
     // 4. Registrar participantes
     // Para equipos: todos los miembros vienen en teamMembers (índice 0 = capitán).
     // NO se registra el body principal como participante para evitar entradas fantasma.
@@ -190,8 +229,6 @@ export const POST: APIRoute = async ({ request }) => {
 
     const teamMemberBibs: number[] = [];
     let result: any = null;
-
-    const isYappy = (body.paymentMethod || '').toLowerCase().includes('yappy') || (body.paymentStatus || '').toLowerCase().includes('yappy');
 
     if (body.registrationType === 'team' && Array.isArray(body.teamMembers) && body.teamMembers.length > 0) {
         // Registrar cada miembro del equipo (todos, incluyendo el capitán en índice 0)
@@ -251,9 +288,8 @@ export const POST: APIRoute = async ({ request }) => {
             }
 
             // Enviar email a cada miembro con su BIB y código
-            // Enviar email a cada miembro con su BIB y código (excepto Yappy, que espera el Webhook)
             const emailAddr = member.email || (isCapitan ? body.email : null);
-            if (emailAddr && !isYappy) {
+            if (emailAddr) {
                 try {
                     await sendRegistrationEmail(env, {
                         email: emailAddr,
@@ -345,10 +381,10 @@ export const POST: APIRoute = async ({ request }) => {
     
     // 5. Antiguo bloque de base de datos permanente (reemplazado por upsertRunnerProfile)
 
-    // 6. Enviar correo de confirmación (solo para inscripciones individuales;
-    //    los equipos ya enviaron email a cada miembro en el paso anterior)
-    if (body.registrationType === 'team' || isYappy) {
-      // Ya enviado por miembro arriba, o es Yappy (que se difiere al webhook). No hacer nada.
+    // 6. Enviar correo de confirmación
+    // Si viene del webhook, ya está pagado por Yappy. Las transferencias mandan correo aquí como pendientes.
+    if (body.registrationType === 'team') {
+      // Ya enviado por miembro arriba
     } else
     try {
       // 6a. Obtener el nombre de la distancia para el correo
