@@ -37,8 +37,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
        if (isConfirmed) pagosConfirmados++;
        else pagosPendientes++;
 
-       // Buscar el costo real de la distancia
-       const distObj = allDistances.find(d => d.id === p.distance);
+       // Buscar el costo real de la distancia (compatible con records viejos que guardan el Nombre y nuevos que guardan el ID)
+       const distObj = allDistances.find(d => d.id === p.distance || (d.name && d.name === p.distance) || (d.title && d.title === p.distance));
        let basePriceRaw = distObj?.price ?? currentRaceObj?.data?.price ?? 0;
        let basePrice = Number(basePriceRaw) || 0;
 
