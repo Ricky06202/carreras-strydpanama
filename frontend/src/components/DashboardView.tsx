@@ -260,7 +260,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
                     primary={cat} 
                     primaryTypographyProps={{ fontWeight: 'bold', color: 'text.primary' }} 
                   />
-                  <Typography variant="subtitle1" sx={{ color: ACCENT, fontWeight: 900 }}>{count} pax</Typography>
+                  <Typography variant="subtitle1" sx={{ color: ACCENT, fontWeight: 900 }}>{count}</Typography>
                 </ListItem>
               ))}
            </List>
