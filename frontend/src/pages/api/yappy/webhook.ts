@@ -1,7 +1,8 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch, api } from '../../../lib/api';
-import { processRegistration } from '../../../lib/registerLogic';
+import { confirmYappyOrder } from '../../../lib/yappyConfirm';
+import { sendRegistrationEmail } from '../../../lib/mailer';
 
 export const GET: APIRoute = async ({ request }) => handleRequest(request);
 export const POST: APIRoute = async ({ request }) => handleRequest(request);
@@ -10,7 +11,7 @@ async function handleRequest(request: Request) {
   try {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
-    
+
     let orderId = searchParams.get('orderId');
     let status = searchParams.get('status');
     let transactionId = searchParams.get('transactionId');
@@ -29,53 +30,11 @@ async function handleRequest(request: Request) {
 
     // "E" significa Ejecutado (Éxito) en la V2 de Yappy
     if ((status === 'E' || status === 'SUCCESS') && orderId) {
-      
-      let transactionPending = false;
-      let transactionPayload = null;
-      let transactionIdObj = null;
 
-      try {
-        const txRes = await apiFetch(`/api/collections/transactions/content?limit=5000`, env, { method: 'GET' });
-        const txMatch = (txRes?.data || []).find((t: any) => t.data?.orderId === orderId || (t.data?.title || '').includes(orderId));
-        if (txMatch && txMatch.data?.payload) {
-          transactionPayload = JSON.parse(txMatch.data.payload);
-          transactionIdObj = txMatch;
-          transactionPending = true;
-        }
-      } catch(e) {
-        console.error('[Yappy Webhook] Error fetching transactions', e);
-      }
+      const confirmResult = await confirmYappyOrder(env, orderId, transactionId);
 
-      if (transactionPending && transactionPayload) {
-          try {
-              console.log(`[Yappy Webhook] Encontrada transacción diferida orden ${orderId}. Ejecutando creación de registros.`);
-              // 1. Invocar la lógica de registro directamente en vez de fetch
-              try {
-                  await processRegistration(env, {
-                      ...transactionPayload,
-                      isWebhookConfirmed: true,
-                      paymentStatus: 'Pagado'
-                  });
-                  console.log(`[Yappy Webhook] Inscripción diferida procesada exitosamente vía registro interno.`);
-              } catch (regError) {
-                  console.error('[Yappy Webhook] Error interno ejecutando processRegistration:', regError);
-              }
-
-              // 2. Marcar la transacción como exitosa
-              await apiFetch(`/api/content/${transactionIdObj.id}`, env, {
-                 method: 'PUT',
-                 body: JSON.stringify({
-                     id: transactionIdObj.id,
-                     collectionId: transactionIdObj.collectionId || 'col-transactions-e06da228',
-                     collection_id: transactionIdObj.collectionId || 'col-transactions-e06da228',
-                     title: transactionIdObj.title,
-                     status: 'published',
-                     data: { ...transactionIdObj.data, status: 'Success_Pagado' }
-                 })
-              });
-          } catch(err) {
-              console.error('[Yappy Webhook] Falló el procesamiento de la instrucción diferida', err);
-          }
+      if (confirmResult.foundTransaction) {
+          console.log(`[Yappy Webhook] Transacción procesada vía confirmYappyOrder: ${confirmResult.status}`);
       } else {
 
           // === LOGICA DE COMPATIBILIDAD HACIA ATRAS (Por si alguien quedó "Pendiente" en la vieja BD o usaba la via vieja) ===
