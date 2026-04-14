@@ -2,7 +2,6 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch, api } from '../../../lib/api';
 import { sendRegistrationEmail } from '../../../lib/mailer';
-import { POST as RegisterPost } from '../register';
 
 export const GET: APIRoute = async ({ request }) => handleRequest(request);
 export const POST: APIRoute = async ({ request }) => handleRequest(request);
@@ -50,17 +49,23 @@ async function handleRequest(request: Request) {
       if (transactionPending && transactionPayload) {
           try {
               console.log(`[Yappy Webhook] Encontrada transacción diferida orden ${orderId}. Ejecutando creación de registros.`);
-              // 1. Invocar el POST a /api/register con la bandera comprobada para saltarse la espera
-              const simulReq = new Request(new URL('/api/register', request.url), {
+              // 1. Invocar el POST a /api/register vía HTTP Fetch hacia nosotros mismos
+              const registerUrl = new URL('/api/register', request.url).toString();
+              const simulReq = await fetch(registerUrl, {
                  method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
                  body: JSON.stringify({
                      ...transactionPayload,
                      isWebhookConfirmed: true,
                      paymentStatus: 'Pagado'
                  })
               });
-              await RegisterPost({ request: simulReq } as any);
-              console.log(`[Yappy Webhook] Inscripción diferida procesada exitosamente vía registro interno.`);
+              
+              if (!simulReq.ok) {
+                 console.error('[Yappy Webhook] Fetch a /api/register falló', await simulReq.text());
+              } else {
+                 console.log(`[Yappy Webhook] Inscripción diferida procesada exitosamente vía registro interno.`);
+              }
 
               // 2. Marcar la transacción como exitosa
               await apiFetch(`/api/content/${transactionIdObj.id}`, env, {
