@@ -1967,11 +1967,15 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     {/* Datos Principales */}
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
                         <Typography variant="h6" sx={{ lineHeight: 1 }}>{selectedParticipant.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">{selectedParticipant.email} | {selectedParticipant.phone}</Typography>
+                        <Typography variant="body2" color="text.secondary">{selectedParticipant.email}</Typography>
                         <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Cédula</Typography>
-                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.cedula}</Typography>
+                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.cedula || 'N/A'}</Typography>
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>WhatsApp/Celular</Typography>
+                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.phone || 'N/A'}</Typography>
                             </Box>
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Nacimiento</Typography>
