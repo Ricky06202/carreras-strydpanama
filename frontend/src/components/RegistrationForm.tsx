@@ -453,15 +453,36 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     }
   }, [selectedRace]);
 
-  // Si se selecciona tipo 'team', buscamos automáticamente la distancia de equipo y la asignamos
+  // ASIGNACIÓN AUTOMÁTICA DE DISTANCIA (Equipos e Individuales)
   useEffect(() => {
-    if (registrationType === 'team' && distances.length > 0) {
-      const teamDist = distances.find(d => d.name.toLowerCase().startsWith('equipo'));
+    if (distances.length === 0) return;
+
+    if (registrationType === 'team') {
+      const teamDist = distances.find(d => (d.name || d.title || '').toLowerCase().startsWith('equipo'));
       if (teamDist && formData.distance !== teamDist.id) {
         setFormData(prev => ({ ...prev, distance: teamDist.id }));
       }
+    } else if (registrationType === 'individual' && !formData.distance) {
+      // Auto-seleccionar distancia basada en el tipo de participante si no hay ninguna seleccionada
+      let autoDist = formData.distance;
+      const tType = formData.participantType;
+      
+      if (tType === 'general' || tType === 'docente' || tType === 'administrativo') {
+          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
+          if (dist) autoDist = dist.id;
+      } else if (tType === 'estudiante') {
+          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
+          if (dist) autoDist = dist.id;
+      } else if (tType === 'niño') {
+          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
+          if (dist) autoDist = dist.id;
+      }
+
+      if (autoDist && autoDist !== formData.distance) {
+          setFormData(prev => ({ ...prev, distance: autoDist }));
+      }
     }
-  }, [registrationType, distances]);
+  }, [registrationType, distances, formData.participantType, formData.distance]);
 
   // Mapeo de participantType del botón → término de búsqueda en nombres de categorías
   const TYPE_SEARCH_TERMS: Record<string, string> = {
