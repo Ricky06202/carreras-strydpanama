@@ -9,10 +9,10 @@ export const GET: APIRoute = async () => {
       .filter((item: any) => item.status === 'published')
       .map((item: any) => ({
         id: item.id,
-        title: item.data?.title || item.title || 'Sin nombre',
         name: item.data?.title || item.title || 'Sin nombre',
         race: item.data?.race || '',
         kilometers: item.data?.kilometers || '',
+        price: item.data?.price,
         collectionId: item.collectionId || item.collection_id || 'col-distances-93815733',
       }));
 
