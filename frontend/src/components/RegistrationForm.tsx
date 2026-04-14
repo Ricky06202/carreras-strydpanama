@@ -815,12 +815,24 @@ const handleSubmit = async () => {
       }
     };
 
-    const handleYappySuccess = (e: any) => {
+    const handleYappySuccess = async (e: any) => {
       // Yappy dice que se hizo exitoso visualmente
       setNotification({ message: '¡Pago Yappy exitoso!', type: 'success' });
       setLoading(false);
-      // Si pagó con Yappy, va directo a confirmación (Paso 4).
       setStep(4);
+
+      // Safety net: avisar al backend por si el IPN de Yappy no llega.
+      // confirmYappyOrder es idempotente, así que es seguro aunque el webhook también dispare.
+      try {
+        const transactionId = e?.detail?.transactionId || e?.transactionId || null;
+        await fetch('/api/yappy/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId: finalConfirmationCode, transactionId })
+        });
+      } catch (err) {
+        console.error('[Yappy] Safety net confirm falló (webhook debería procesarlo):', err);
+      }
     };
 
     const handleYappyCancel = (e: any) => {
