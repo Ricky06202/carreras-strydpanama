@@ -1465,7 +1465,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     <TableCell align="center"><Typography color="info.main">{stat.redeemed}</Typography></TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
-                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={stat.generated === 0 || codesLoading}>
+                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={stat.total === 0 || codesLoading}>
                            Administrar Lote
                          </Button>
                          <Button size="small" variant="contained" sx={{ bgcolor: ACCENT, color: 'white', '&:hover': { bgcolor: '#E55A00' } }} onClick={() => printLibreta(stat.batchId)} disabled={codesLoading}>
