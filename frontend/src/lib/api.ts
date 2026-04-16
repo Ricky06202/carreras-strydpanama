@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-async function getAuthToken(env: any): Promise<string | null> {
+export async function getAuthToken(env: any): Promise<string | null> {
   const { SONICJS_API_URL, SONICJS_API_EMAIL, SONICJS_API_PASSWORD } = env;
   
   if (!SONICJS_API_URL || !SONICJS_API_EMAIL || !SONICJS_API_PASSWORD) return null;
