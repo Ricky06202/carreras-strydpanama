@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { apiFetch } from '../../lib/api';
+import { apiFetch, getAuthToken } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -25,20 +25,11 @@ export const POST: APIRoute = async ({ request }) => {
     const formData = new FormData();
     formData.append('file', fileToUpload);
 
-    // Authenticate with SonicJS first (media upload requires auth)
-    let authToken = '';
-    try {
-      const loginRes = await fetch(`${sonicUrl}/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: (env as any).SONICJS_API_EMAIL || 'admin@strydpanama.com',
-          password: (env as any).SONICJS_API_PASSWORD || 'StrydPanama2026!'
-        })
-      });
-      const loginData = await loginRes.json();
-      authToken = loginData?.token || loginData?.data?.token || '';
-    } catch {}
+    // Authenticate with SonicJS (reuses the same logic as apiFetch)
+    const authToken = await getAuthToken(env);
+    if (!authToken) {
+      console.error('[update-participant-photo] No se pudo obtener token de auth de SonicJS');
+    }
 
     const uploadHeaders: Record<string, string> = {};
     if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
