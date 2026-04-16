@@ -566,8 +566,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       const res = await fetch('/api/validate-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          code: code.trim().toUpperCase(), 
+        body: JSON.stringify({
+          code: code.trim().toUpperCase(),
           raceId: selectedRace,
           participantType: formData.participantType,
           registrationType: registrationType
@@ -580,6 +580,14 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     }
     setLoading(false);
   };
+
+  // Re-validar el código cuando el usuario cambia su tipo de participante o tipo de inscripción
+  // en el paso 1, ya que la validación inicial en paso 0 usa el tipo por defecto ('general').
+  useEffect(() => {
+    if (code.trim() && selectedRace && codeValid !== null) {
+      validateCode();
+    }
+  }, [formData.participantType, registrationType]);
 
   interface ParticipantData {
   firstName: string;
@@ -899,7 +907,10 @@ const handleSubmit = async () => {
             {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">{codeValid.message}</Typography>}
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              <Button variant="contained" onClick={async () => {
+                if (code.trim() && codeValid === null) await validateCode();
+                setStep(1);
+              }} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
