@@ -125,11 +125,14 @@ export const processRegistration = async (env: any, body: any) => {
     assignedCategoryId = mainCat.catId;
     resolvedCategoryName = mainCat.catName;
 
-    // Asignar el dorsal y la categorÃ­a calculada
-    body.bibNumber = nextBib;
-    body.categoryId = assignedCategoryId;
-    body.category = assignedCategoryId;
-    body.categoryName = resolvedCategoryName; // Guardamos el nombre para que sea persistente
+    // Padrinos no corren: sin dorsal ni categoría de carrera
+    const isPadrinoOnly = body.participantType === 'padrino';
+
+    // Asignar el dorsal y la categoría calculada
+    body.bibNumber = isPadrinoOnly ? null : nextBib;
+    body.categoryId = isPadrinoOnly ? null : assignedCategoryId;
+    body.category = isPadrinoOnly ? null : assignedCategoryId;
+    body.categoryName = isPadrinoOnly ? 'Padrino UTP' : resolvedCategoryName;
 
     // Generar cÃ³digo de confirmaciÃ³n Ãºnico: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
@@ -307,15 +310,17 @@ export const processRegistration = async (env: any, body: any) => {
             }
         }
     } else {
-        // InscripciÃ³n individual normal
-        const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres Ãºnicos
-        const participantTitle = `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
+        // Inscripción individual normal
+        const uniqueSuffix = crypto.randomUUID().split('-')[0];
+        const participantTitle = isPadrinoOnly
+            ? `${body.firstName} ${body.lastName} - Padrino UTP [${uniqueSuffix}]`
+            : `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
-        teamMemberBibs.push(nextBib);
-        
-        // Guardar en Perfiles Permanentes de Corredores
-        await upsertRunnerProfile(body, resolvedCategoryName);
+        if (!isPadrinoOnly) teamMemberBibs.push(nextBib);
+
+        // Guardar en Perfiles Permanentes de Corredores (solo corredores, no padrinos)
+        if (!isPadrinoOnly) await upsertRunnerProfile(body, resolvedCategoryName);
     }
 
     // 4a. Verificar y reparar BIBs duplicados post-registro
@@ -428,7 +433,7 @@ export const processRegistration = async (env: any, body: any) => {
     // Retornamos el objeto con el código en la raíz para facilitar la lectura del frontend
     return { 
       success: true,
-      assignedBib: nextBib, 
+      assignedBib: isPadrinoOnly ? null : nextBib,
       confirmationCode: confCode,
       orderId: result?.data?.id || result?.id,
       data: result?.data || result
