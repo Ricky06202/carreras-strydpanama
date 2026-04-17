@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { apiFetch, getAuthToken } from '../../lib/api';
+import { apiFetch } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
 export const POST: APIRoute = async ({ request }) => {
@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     const sonicUrl = (env as any).SONICJS_API_URL || 'https://api.carreras.strydpanama.com';
 
-    // Convert base64 to blob and upload via SonicJS /api/media/upload
+    // Convert base64 a blob
     const mimeMatch = imageBase64.match(/^data:(image\/\w+);base64,/);
     const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
     const ext = mimeType.split('/')[1] || 'jpg';
@@ -25,22 +25,18 @@ export const POST: APIRoute = async ({ request }) => {
     const formData = new FormData();
     formData.append('file', fileToUpload);
 
-    // Authenticate with SonicJS (reuses the same logic as apiFetch)
-    const authToken = await getAuthToken(env);
-    if (!authToken) {
-      console.error('[update-participant-photo] No se pudo obtener token de auth de SonicJS');
+    // Usamos /api/custom-upload (no requiere auth, sube directo a R2)
+    // así evitamos el 401 intermitente de /api/media/upload cuando el token expira o no se obtiene.
+    const uploadRes = await fetch(`${sonicUrl}/api/custom-upload`, { method: 'POST', body: formData });
+    if (!uploadRes.ok) {
+      const errText = await uploadRes.text();
+      throw new Error(`Upload failed: ${uploadRes.status} — ${errText}`);
     }
 
-    const uploadHeaders: Record<string, string> = {};
-    if (authToken) uploadHeaders['Authorization'] = `Bearer ${authToken}`;
-
-    const uploadRes = await fetch(`${sonicUrl}/api/media/upload`, { method: 'POST', headers: uploadHeaders, body: formData });
-    if (!uploadRes.ok) throw new Error(`Upload failed: ${uploadRes.status}`);
-
-    const uploadData = await uploadRes.json();
-    // Guardar el mediaId para que SonicJS pueda vincularlo internamente en el CMS
-    const extractedMediaId = uploadData?.file?.id || uploadData?.id || uploadData?.data?.id || uploadData?.data?.[0]?.id || uploadData?.[0]?.id;
-    if (!extractedMediaId) throw new Error(`SonicJS Payload: ${JSON.stringify(uploadData)}`);
+    const uploadData = await uploadRes.json() as any;
+    // /api/custom-upload devuelve { success, url, file, name }
+    const filePath = uploadData?.file; // ej: "/uploads/UUID.ext"
+    if (!filePath) throw new Error(`Upload OK pero no se recibió path: ${JSON.stringify(uploadData)}`);
 
     // Update participant record
     const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
@@ -55,7 +51,7 @@ export const POST: APIRoute = async ({ request }) => {
         collection_id: part.collectionId,
         title: part.title,
         status: part.status || 'published',
-        data: { ...part.data, photoUrl: `/uploads/${extractedMediaId}.${ext}` }
+        data: { ...part.data, photoUrl: filePath }
       })
     });
 
@@ -75,14 +71,14 @@ export const POST: APIRoute = async ({ request }) => {
             body: JSON.stringify({
               id: runner.id, collectionId: colId, collection_id: colId,
               title: runner.title, status: 'published',
-              data: { ...runner.data, photoUrl: `/uploads/${extractedMediaId}.${ext}` }
+              data: { ...runner.data, photoUrl: filePath }
             })
           });
         }
       } catch {}
     }
 
-    return new Response(JSON.stringify({ success: true, photoUrl: `/uploads/${extractedMediaId}.${ext}` }), {
+    return new Response(JSON.stringify({ success: true, photoUrl: filePath }), {
       status: 200, headers: { 'Content-Type': 'application/json' }
     });
   } catch (error: any) {
