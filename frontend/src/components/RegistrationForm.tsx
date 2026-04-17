@@ -1644,40 +1644,38 @@ const handleSubmit = async () => {
               <Typography variant="subtitle2" sx={{ mb: 1 }}>Resumen:</Typography>
 <Typography variant="body2">Carrera: {races.find(r => r.id === selectedRace)?.data?.title || races.find(r => r.id === selectedRace)?.title || '-'}</Typography>
 <Typography variant="body2">Participante: {formData.firstName} {formData.lastName}</Typography>
-<Typography variant="body2">Distancia: {distances.find(d => d.id === formData.distance)?.name || formData.distance || '-'}</Typography>
-<Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>Categoría: {categories.find(c => c.id === formData.category)?.name || 'Asignando...'}</Typography>
+{formData.participantType !== 'padrino' && <Typography variant="body2">Distancia: {distances.find(d => d.id === formData.distance)?.name || formData.distance || '-'}</Typography>}
+{formData.participantType !== 'padrino' && <Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>Categoría: {categories.find(c => c.id === formData.category)?.name || 'Asignando...'}</Typography>}
 
 {(() => {
+  const isPadrinoOnly = formData.participantType === 'padrino';
+  const effectiveIsPadrino = isPadrinoOnly || (isPadrino && registrationType === 'individual');
   const selectedDistanceObj = distances.find(d => d.id === formData.distance);
-  const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
-  const platformFee = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
+  const basePrice = isPadrinoOnly ? 0 : (selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0);
+  const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
+  const platformFee = formData.paymentMethod === 'yappy' ? platformFeeVal : 0;
+  const sponsorshipCost = effectiveIsPadrino ? (donatedTickets * 10) : 0;
+  const total = basePrice + platformFee + sponsorshipCost;
 
   return (
     <Box sx={{ mt: 1, borderTop: 1, pt: 1, borderColor: 'divider' }}>
-      <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>
-      {formData.paymentMethod === 'yappy' ? (
-        <Typography variant="body2" color="text.secondary">Cargo de plataforma Yappy: +${platformFee.toFixed(2)} (costos de procesamiento y desarrollo)</Typography>
-      ) : formData.paymentMethod === 'transfer' ? (
-        <Typography variant="body2" color="text.secondary">Cargo de plataforma Transferencia: +$0.00</Typography>
-      ) : (
-        <Typography variant="body2" color="text.secondary">Cargo de plataforma genérico: +$0.50</Typography>
+      {!isPadrinoOnly && <Typography variant="body2">Costo de inscripción: ${basePrice.toFixed(2)}</Typography>}
+      {formData.paymentMethod === 'yappy' && (
+        <Typography variant="body2" color="text.secondary">Cargo de plataforma Yappy: +${platformFeeVal.toFixed(2)}</Typography>
       )}
-      
-      {(isPadrino && registrationType === 'individual') && (
+      {effectiveIsPadrino && (
         <Typography variant="body2" sx={{ color: '#FF6B00', fontWeight: 'bold', mt: 1 }}>
-          Aporte Solidario Padrino UTP: +${(donatedTickets * 10).toFixed(2)} ({donatedTickets} {donatedTickets === 1 ? 'cupo' : 'cupos'})
+          Aporte Solidario Padrino UTP: ${sponsorshipCost.toFixed(2)} ({donatedTickets} {donatedTickets === 1 ? 'cupo' : 'cupos'} × $10)
         </Typography>
       )}
-
       {isStudentCategorySelected() && (
         <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold', mt: 1 }}>
           ✅ Documentación Estudiantil Cargada
         </Typography>
       )}
       <Typography variant="body1" fontWeight="bold" sx={{ mt: 1, color: ACCENT }}>
-        Total: ${(basePrice + (formData.paymentMethod === 'yappy' ? platformFee : (formData.paymentMethod === 'transfer' ? 0 : 0.50)) + ((isPadrino && registrationType === 'individual') ? (donatedTickets * 10) : 0)).toFixed(2)}
+        Total: ${total.toFixed(2)}
       </Typography>
-
     </Box>
   );
 })()}
