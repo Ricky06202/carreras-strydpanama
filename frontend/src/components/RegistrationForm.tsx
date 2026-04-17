@@ -340,14 +340,17 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isIndividualValid = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.cedula || !formData.country) return false;
     if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) return false;
-    if (!formData.gender) return false;
+    if (formData.participantType !== 'padrino' && !formData.gender) return false;
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) return false;
-    
+
     // Mandatory docs for students in Step 1
     if (isStudentCategorySelected()) {
       if (!formData.studentIdUrl || !formData.matriculaUrl) return false;
     }
-    
+
+    // Padrinos deben donar al menos 1 cupo
+    if (formData.participantType === 'padrino' && donatedTickets < 1) return false;
+
     return true;
   };
 
@@ -375,8 +378,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     if (!formData.email) errors.push('Correo electrónico');
     if (!formData.phone) errors.push('Celular o teléfono');
     if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) errors.push('Fecha de nacimiento');
-    if (!formData.gender) errors.push('Género');
-    if (distances.length > 0 && !formData.distance) errors.push('Distancia');
+    if (formData.participantType !== 'padrino' && !formData.gender) errors.push('Género');
+    if (formData.participantType !== 'padrino' && distances.length > 0 && !formData.distance) errors.push('Distancia');
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) errors.push('Nombre del equipo');
     if (isStudentCategorySelected() && !formData.studentIdUrl) errors.push('Foto del carnet estudiantil');
     if (isStudentCategorySelected() && !formData.matriculaUrl) errors.push('Foto de matrícula');
@@ -463,7 +466,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       if (teamDist && formData.distance !== teamDist.id) {
         setFormData(prev => ({ ...prev, distance: teamDist.id }));
       }
-    } else if (registrationType === 'individual' && !formData.distance) {
+    } else if (registrationType === 'individual' && !formData.distance && formData.participantType !== 'padrino') {
       // Auto-seleccionar distancia basada en el tipo de participante si no hay ninguna seleccionada
       let autoDist = formData.distance;
       const tType = formData.participantType;
@@ -654,8 +657,8 @@ const handleSubmit = async () => {
         matriculaUrl: formData.matriculaUrl,
         photoUrl: formData.photoUrl,
         participantType: formData.participantType,
-        isPadrino: isPadrino && registrationType === 'individual',
-        donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0,
+        isPadrino: formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual'),
+        donatedTickets: (formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual')) ? donatedTickets : 0,
         shippingAddress: formData.participantType === 'virtual' ? formData.shippingAddress : ''
       };
 
@@ -737,8 +740,8 @@ const handleSubmit = async () => {
             matriculaUrl: formData.matriculaUrl,
             photoUrl: formData.photoUrl,
             participantType: formData.participantType,
-            isPadrino: isPadrino && registrationType === 'individual',
-            donatedTickets: (isPadrino && registrationType === 'individual') ? donatedTickets : 0
+            isPadrino: formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual'),
+            donatedTickets: (formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual')) ? donatedTickets : 0
         };
 
         if (registrationType === 'team') {
@@ -773,13 +776,16 @@ const handleSubmit = async () => {
         }
 
         // Precio base determinado por distancia (si aplica) o carrera
+        // Padrinos solo pagan por los cupos donados, no tienen inscripción propia
+        const isPadrinoOnly = formData.participantType === 'padrino';
         const selectedDistanceObj = distances.find(d => d.id === formData.distance);
-        const basePrice = selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0;
-        
+        const basePrice = isPadrinoOnly ? 0 : (selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0);
+
         // Sumar cargo de servicio de plataforma (Yappy: fee dinámico, otros: 0)
         const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
         const platformFee = formData.paymentMethod === 'yappy' ? platformFeeVal : 0;
-        const sponsorshipCost = (isPadrino && registrationType === 'individual') ? (donatedTickets * 10) : 0;
+        const effectiveIsPadrino = isPadrinoOnly || (isPadrino && registrationType === 'individual');
+        const sponsorshipCost = effectiveIsPadrino ? (donatedTickets * 10) : 0;
         const fullPrice = basePrice + platformFee + sponsorshipCost;
 
         const totalAmount = fullPrice;
@@ -977,7 +983,8 @@ const handleSubmit = async () => {
                       { value: 'docente', label: 'Docente UTP' },
                       { value: 'administrativo', label: 'Administrativo UTP' },
                       { value: 'niño', label: 'Niño' },
-                      { value: 'virtual', label: 'Virtual' }
+                      { value: 'virtual', label: 'Virtual' },
+                      { value: 'padrino', label: '🎓 Solo Padrino' },
                     ].map((t) => (
                       <Button
                         key={t.value}
@@ -1059,14 +1066,16 @@ const handleSubmit = async () => {
                   </Box>
                 </Box>
 
-                <FormControl fullWidth error={showErrors && !formData.gender}>
-                  <InputLabel>Género *</InputLabel>
-                  <Select value={formData.gender} label="Género *" onChange={(e) => setFormData({...formData, gender: e.target.value})}>
-                    <MenuItem value="M">Masculino</MenuItem>
-                    <MenuItem value="F">Femenino</MenuItem>
-                  </Select>
-                  {showErrors && !formData.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>Campo requerido</Typography>}
-                </FormControl>
+                {formData.participantType !== 'padrino' && (
+                  <FormControl fullWidth error={showErrors && !formData.gender}>
+                    <InputLabel>Género *</InputLabel>
+                    <Select value={formData.gender} label="Género *" onChange={(e) => setFormData({...formData, gender: e.target.value})}>
+                      <MenuItem value="M">Masculino</MenuItem>
+                      <MenuItem value="F">Femenino</MenuItem>
+                    </Select>
+                    {showErrors && !formData.gender && <Typography variant="caption" color="error" sx={{ mt: 0.5, ml: 1.5 }}>Campo requerido</Typography>}
+                  </FormControl>
+                )}
 
                 {formData.participantType === 'virtual' && registrationType === 'individual' && (
                   <Box sx={{ gridColumn: '1 / -1', bgcolor: 'rgba(255, 107, 0, 0.05)', p: 2, borderRadius: 2, border: `1px solid ${ACCENT}` }}>
@@ -1088,131 +1097,133 @@ const handleSubmit = async () => {
                   </Box>
                 )}
                 
-                <Box sx={{ gridColumn: '1 / -1' }}>
-                  <Autocomplete
-                    options={getTeamAutocompleteOptions()}
-                    value={formData.teamName || null}
-                    onChange={(_, newValue) => setFormData({...formData, teamName: newValue || ''})}
-                    renderInput={(params) => <TextField {...params} label="Equipo (Opcional)" placeholder="Selecciona un equipo" />}
-                  />
-                  {formData.teamName === 'Agregar manualmente' && (
-                    <TextField 
-                      label="Escribe tu equipo *" 
-                      value={manualTeamNameInd} 
-                      onChange={(e) => setManualTeamNameInd(e.target.value)} 
-                      placeholder="Ej: Los Runners"
-                      fullWidth 
-                      sx={{ mt: 2 }}
-                      required
+                {formData.participantType !== 'padrino' && (
+                  <Box sx={{ gridColumn: '1 / -1' }}>
+                    <Autocomplete
+                      options={getTeamAutocompleteOptions()}
+                      value={formData.teamName || null}
+                      onChange={(_, newValue) => setFormData({...formData, teamName: newValue || ''})}
+                      renderInput={(params) => <TextField {...params} label="Equipo (Opcional)" placeholder="Selecciona un equipo" />}
                     />
-                  )}
-                </Box>
-
-                {/* Sección de foto */}
-                <Box sx={{ gridColumn: '1 / -1', border: '1px dashed', borderColor: 'divider', borderRadius: 3, p: 2.5 }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5 }}>📸 Foto del Corredor <Typography component="span" variant="caption" color="text.secondary">(opcional — para tu certificado y el podio)</Typography></Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
-                    <Box sx={{
-                      width: 90, height: 90, borderRadius: '50%', overflow: 'hidden',
-                      border: `3px solid ${ACCENT}`, flexShrink: 0,
-                      bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      {photoPreview
-                        ? <img src={ensureAbsolute(photoPreview)} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : <Typography variant="h4">🏃</Typography>
-                      }
-                    </Box>
-                    <Box>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        id="photo-upload-input"
-                        style={{ display: 'none' }}
-                        onChange={handlePhotoChange}
-                        disabled={!formData.cedula.trim()}
+                    {formData.teamName === 'Agregar manualmente' && (
+                      <TextField
+                        label="Escribe tu equipo *"
+                        value={manualTeamNameInd}
+                        onChange={(e) => setManualTeamNameInd(e.target.value)}
+                        placeholder="Ej: Los Runners"
+                        fullWidth
+                        sx={{ mt: 2 }}
+                        required
                       />
-                      <label htmlFor="photo-upload-input">
-                        <Button
-                          component="span"
-                          variant="outlined"
-                          disabled={!formData.cedula.trim() || photoUploading}
-                          sx={{ borderColor: ACCENT, color: ACCENT }}
-                        >
-                          {photoUploading ? 'Subiendo...' : photoPreview ? 'Cambiar Foto' : 'Subir Foto'}
-                        </Button>
-                      </label>
-                      {!formData.cedula.trim() && (
-                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                          Ingresa tu cédula primero para subir una foto.
-                        </Typography>
-                      )}
-                    </Box>
-                  </Box>
-                </Box>
-
-                <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
-                  <Box sx={{ 
-                    p: 3, 
-                    borderRadius: 3, 
-                    border: '2px solid', 
-                    borderColor: isPadrino ? '#FF6B00' : 'divider',
-                    bgcolor: isPadrino ? 'rgba(255, 107, 0, 0.05)' : 'background.paper',
-                    transition: 'all 0.3s ease',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    {isPadrino && (
-                      <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>
-                        ¡ERES PADRINO UTP! 🎓
-                      </Box>
                     )}
-                    <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
-                      <Checkbox 
-                        checked={isPadrino} 
-                        onChange={(e) => setIsPadrino(e.target.checked)} 
-                        sx={{ '&.Mui-checked': { color: '#FF6B00' }, mt: -1 }} 
-                      />
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: isPadrino ? '#FF6B00' : 'text.primary', mb: 0.5 }}>
-                          Quiero ser Padrino UTP
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
-                          Apoya a estudiantes de escasos recursos donando cupos para que puedan participar en el evento. Cada cupo donado cuesta $10.00. Tendrás un reconocimiento especial el día de la carrera.
-                        </Typography>
-                        
-                        {isPadrino && (
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', p: 1.5, borderRadius: 2, border: '1px solid divider', width: 'fit-content' }}>
-                            <Typography variant="body2" fontWeight="bold">Cupos a donar:</Typography>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <Button 
-                                variant="outlined" 
-                                size="small" 
-                                onClick={() => setDonatedTickets(Math.max(1, donatedTickets - 1))}
-                                sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}
-                              >
-                                -
-                              </Button>
-                              <Typography variant="body1" sx={{ width: 30, textAlign: 'center', fontWeight: 'bold', color: '#FF6B00' }}>
-                                {donatedTickets}
-                              </Typography>
-                              <Button 
-                                variant="outlined" 
-                                size="small" 
-                                onClick={() => setDonatedTickets(Math.min(15, donatedTickets + 1))}
-                                sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}
-                              >
-                                +
-                              </Button>
-                            </Box>
-                            <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
-                              Total aporte: <span style={{ color: '#FF6B00', fontWeight: 'bold' }}>${(donatedTickets * 10).toFixed(2)}</span>
-                            </Typography>
-                          </Box>
+                  </Box>
+                )}
+
+                {/* Sección de foto — oculta para padrinos */}
+                {formData.participantType !== 'padrino' && (
+                  <Box sx={{ gridColumn: '1 / -1', border: '1px dashed', borderColor: 'divider', borderRadius: 3, p: 2.5 }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1.5 }}>📸 Foto del Corredor <Typography component="span" variant="caption" color="text.secondary">(opcional — para tu certificado y el podio)</Typography></Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <Box sx={{
+                        width: 90, height: 90, borderRadius: '50%', overflow: 'hidden',
+                        border: `3px solid ${ACCENT}`, flexShrink: 0,
+                        bgcolor: 'action.hover', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        {photoPreview
+                          ? <img src={ensureAbsolute(photoPreview)} alt="foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <Typography variant="h4">🏃</Typography>
+                        }
+                      </Box>
+                      <Box>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          id="photo-upload-input"
+                          style={{ display: 'none' }}
+                          onChange={handlePhotoChange}
+                          disabled={!formData.cedula.trim()}
+                        />
+                        <label htmlFor="photo-upload-input">
+                          <Button
+                            component="span"
+                            variant="outlined"
+                            disabled={!formData.cedula.trim() || photoUploading}
+                            sx={{ borderColor: ACCENT, color: ACCENT }}
+                          >
+                            {photoUploading ? 'Subiendo...' : photoPreview ? 'Cambiar Foto' : 'Subir Foto'}
+                          </Button>
+                        </label>
+                        {!formData.cedula.trim() && (
+                          <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                            Ingresa tu cédula primero para subir una foto.
+                          </Typography>
                         )}
                       </Box>
                     </Box>
                   </Box>
-                </Box>
+                )}
+
+                {/* Sección Padrino: checkbox para corredores normales, banner fijo para tipo padrino */}
+                {formData.participantType === 'padrino' ? (
+                  <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
+                    <Box sx={{ p: 3, borderRadius: 3, border: '2px solid #FF6B00', bgcolor: 'rgba(255,107,0,0.05)', position: 'relative', overflow: 'hidden' }}>
+                      <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>
+                        ¡ERES PADRINO UTP! 🎓
+                      </Box>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#FF6B00', mb: 0.5 }}>
+                        Aporte Solidario Padrino UTP
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+                        Estás donando cupos para que estudiantes de escasos recursos puedan participar. Cada cupo cuesta <strong>$10.00</strong>. Tendrás un reconocimiento especial el día del evento.
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', p: 1.5, borderRadius: 2, border: '1px solid rgba(255,107,0,0.3)', width: 'fit-content' }}>
+                        <Typography variant="body2" fontWeight="bold">Cupos a donar:</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Button variant="outlined" size="small" onClick={() => setDonatedTickets(Math.max(1, donatedTickets - 1))} sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}>-</Button>
+                          <Typography variant="body1" sx={{ width: 30, textAlign: 'center', fontWeight: 'bold', color: '#FF6B00' }}>{donatedTickets}</Typography>
+                          <Button variant="outlined" size="small" onClick={() => setDonatedTickets(Math.min(15, donatedTickets + 1))} sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}>+</Button>
+                        </Box>
+                        <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
+                          Total: <span style={{ color: '#FF6B00', fontWeight: 'bold' }}>${(donatedTickets * 10).toFixed(2)}</span>
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                ) : (
+                  <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
+                    <Box sx={{ p: 3, borderRadius: 3, border: '2px solid', borderColor: isPadrino ? '#FF6B00' : 'divider', bgcolor: isPadrino ? 'rgba(255, 107, 0, 0.05)' : 'background.paper', transition: 'all 0.3s ease', position: 'relative', overflow: 'hidden' }}>
+                      {isPadrino && (
+                        <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>
+                          ¡ERES PADRINO UTP! 🎓
+                        </Box>
+                      )}
+                      <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
+                        <Checkbox checked={isPadrino} onChange={(e) => setIsPadrino(e.target.checked)} sx={{ '&.Mui-checked': { color: '#FF6B00' }, mt: -1 }} />
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: isPadrino ? '#FF6B00' : 'text.primary', mb: 0.5 }}>
+                            Quiero ser Padrino UTP
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, lineHeight: 1.5 }}>
+                            Apoya a estudiantes de escasos recursos donando cupos para que puedan participar en el evento. Cada cupo donado cuesta $10.00. Tendrás un reconocimiento especial el día de la carrera.
+                          </Typography>
+                          {isPadrino && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'background.paper', p: 1.5, borderRadius: 2, border: '1px solid divider', width: 'fit-content' }}>
+                              <Typography variant="body2" fontWeight="bold">Cupos a donar:</Typography>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Button variant="outlined" size="small" onClick={() => setDonatedTickets(Math.max(1, donatedTickets - 1))} sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}>-</Button>
+                                <Typography variant="body1" sx={{ width: 30, textAlign: 'center', fontWeight: 'bold', color: '#FF6B00' }}>{donatedTickets}</Typography>
+                                <Button variant="outlined" size="small" onClick={() => setDonatedTickets(Math.min(15, donatedTickets + 1))} sx={{ minWidth: 32, p: 0, height: 32, borderColor: 'divider', color: 'text.primary' }}>+</Button>
+                              </Box>
+                              <Typography variant="body2" sx={{ ml: 1, color: 'text.secondary' }}>
+                                Total aporte: <span style={{ color: '#FF6B00', fontWeight: 'bold' }}>${(donatedTickets * 10).toFixed(2)}</span>
+                              </Typography>
+                            </Box>
+                          )}
+                        </Box>
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
 
               </Box>
             )}
@@ -1239,7 +1250,7 @@ const handleSubmit = async () => {
                   )}
                 </FormControl>
               )}
-              {distances.length > 0 && registrationType === 'individual' && (() => {
+              {distances.length > 0 && registrationType === 'individual' && formData.participantType !== 'padrino' && (() => {
                 const filteredDistances = distances.filter(d => !d.name.toLowerCase().startsWith('equipo'));
                 if (filteredDistances.length === 0) return null;
                 return (
@@ -1336,7 +1347,7 @@ const handleSubmit = async () => {
                 </Box>
               )}
 
-              {registrationType === 'individual' && raceInfo?.data?.showShirtSize !== false && (
+              {registrationType === 'individual' && formData.participantType !== 'padrino' && raceInfo?.data?.showShirtSize !== false && (
                 <FormControl fullWidth>
                   <InputLabel>Talla de Camiseta</InputLabel>
                   <Select value={formData.size} label="Talla de Camiseta" onChange={(e) => setFormData({...formData, size: e.target.value})}>
