@@ -329,7 +329,9 @@ export const processRegistration = async (env: any, body: any) => {
       const allParts = (postCheck?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
       const bibCounts: Record<number, any[]> = {};
       for (const p of allParts) {
-        const bib = Number(p.data?.bibNumber || 0);
+        // Ignorar padrinos (bibNumber null/vacío) — no tienen dorsal y no deben deduplicarse
+        if (!p.data?.bibNumber) continue;
+        const bib = Number(p.data.bibNumber);
         if (!bibCounts[bib]) bibCounts[bib] = [];
         bibCounts[bib].push(p);
       }
