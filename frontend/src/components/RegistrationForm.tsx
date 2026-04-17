@@ -339,7 +339,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const isIndividualValid = () => {
     if (!formData.firstName || !formData.lastName || !formData.email || !formData.cedula || !formData.country) return false;
-    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) return false;
+    if (formData.participantType !== 'padrino' && (!formData.birthDay || !formData.birthMonth || !formData.birthYear)) return false;
     if (formData.participantType !== 'padrino' && !formData.gender) return false;
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) return false;
 
@@ -377,7 +377,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     if (!formData.country) errors.push('Nacionalidad');
     if (!formData.email) errors.push('Correo electrónico');
     if (!formData.phone) errors.push('Celular o teléfono');
-    if (!formData.birthDay || !formData.birthMonth || !formData.birthYear) errors.push('Fecha de nacimiento');
+    if (formData.participantType !== 'padrino' && (!formData.birthDay || !formData.birthMonth || !formData.birthYear)) errors.push('Fecha de nacimiento');
     if (formData.participantType !== 'padrino' && !formData.gender) errors.push('Género');
     if (formData.participantType !== 'padrino' && distances.length > 0 && !formData.distance) errors.push('Distancia');
     if (formData.teamName === 'Agregar manualmente' && !manualTeamNameInd) errors.push('Nombre del equipo');
@@ -1040,7 +1040,7 @@ const handleSubmit = async () => {
                 <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.email} helperText={showErrors && !formData.email ? 'Campo requerido' : ''} />
                 <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 61234567" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.phone} helperText={showErrors && !formData.phone ? 'Campo requerido' : 'Preferiblemente sin guiones o espacios'} />
                 
-                <Box sx={{ gridColumn: '1 / -1' }}>
+                {formData.participantType !== 'padrino' && (<Box sx={{ gridColumn: '1 / -1' }}>
                   <Typography variant="body2" sx={{ mb: 1, color: showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) ? 'error.main' : 'inherit' }}>
                     Nacimiento * {showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) && <span style={{ fontSize: '0.75rem', fontWeight: 'normal' }}>— Selecciona día, mes y año</span>}
                   </Typography>
@@ -1064,7 +1064,7 @@ const handleSubmit = async () => {
                       </Select>
                     </FormControl>
                   </Box>
-                </Box>
+                </Box>)}
 
                 {formData.participantType !== 'padrino' && (
                   <FormControl fullWidth error={showErrors && !formData.gender}>
@@ -1266,7 +1266,7 @@ const handleSubmit = async () => {
                   </FormControl>
                 );
               })()}
-              {formData.distance && (() => {
+              {formData.distance && formData.participantType !== 'padrino' && (() => {
                 const selected = distances.find(d => d.id === formData.distance);
                 const price = selected?.price ?? raceInfo?.data?.price ?? null;
                 if (price == null) return null;
