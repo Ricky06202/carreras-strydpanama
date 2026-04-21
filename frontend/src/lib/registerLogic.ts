@@ -14,9 +14,17 @@ export const processRegistration = async (env: any, body: any) => {
 
         if (!match) throw new Error('CÃ³digo de registro no encontrado o no pertenece a esta carrera');
         if (match.data?.status === 'redeemed' || match.data?.used === true) throw new Error('El cÃ³digo ingresado ya fue utilizado');
-        
+
         usedCodeId = match.id;
         usedCodeData = match.data;
+
+        // Si es un código de padrino, forzar precio 0 y método de pago apropiado
+        // sin importar lo que el frontend haya enviado
+        if (match.data?.isPadrinoCode === true) {
+            body.totalAmount = 0;
+            body.paymentMethod = 'Cupon Padrino';
+            body.paymentStatus = 'Cupon Padrino';
+        }
     }
     
     // 1. Obtener la carrera para conocer su startingBib
@@ -181,7 +189,7 @@ export const processRegistration = async (env: any, body: any) => {
     // Para individuales: se registra el body principal normalmente.
     
     // Helper para guardar/actualizar en la base de datos de "Corredores" (permanent DB)
-    const upsertRunnerProfile = async (runnerInput: any, runnerCatName: string) => {
+    const upsertRunnerProfile = async (runnerInput: any, _runnerCatName: string) => {
         if (!runnerInput.cedula) return;
         try {
             const allRunners = await apiFetch(`/api/collections/runners/content?limit=2000`, env, { method: 'GET' });
