@@ -33,9 +33,13 @@ export default function DashboardView({ races, allDistances, participants, onFet
     const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.45;
 
     participants.forEach(p => {
-       const isConfirmed = p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
+       // Participantes con cupo de padrino: están confirmados pero NO generan ingreso
+       const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
+       const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
        if (isConfirmed) pagosConfirmados++;
        else pagosPendientes++;
+
+       if (isPadrinoSponsored) return; // No suma a ingresos ni fees
 
        // Buscar el costo real de la distancia (compatible con records viejos que guardan el Nombre y nuevos que guardan el ID)
        const distObj = allDistances.find(d => d.id === p.distance || (d.name && d.name === p.distance) || (d.title && d.title === p.distance));

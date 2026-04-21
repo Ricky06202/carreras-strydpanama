@@ -2033,7 +2033,30 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                             </Box>
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Método de Pago</Typography>
-                                <Typography variant="body2" fontWeight="bold">{selectedParticipant.paymentMethod || selectedParticipant.paymentStatus || 'N/A'}</Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                    <Typography variant="body2" fontWeight="bold">{selectedParticipant.paymentMethod || selectedParticipant.paymentStatus || 'N/A'}</Typography>
+                                    {(selectedParticipant.paymentMethod !== 'Cupon Padrino' && selectedParticipant.paymentStatus !== 'Cupon Padrino') && (
+                                        <Button size="small" variant="outlined" color="warning" sx={{ fontSize: '0.65rem', py: 0.2, px: 1 }}
+                                            onClick={async () => {
+                                                if (!confirm('¿Marcar este participante como Cupon Padrino? Esto lo excluirá de la recaudación neta.')) return;
+                                                const res = await fetch('/api/admin/update-participant', {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ id: selectedParticipant.id, updates: { paymentMethod: 'Cupon Padrino', paymentStatus: 'Cupon Padrino' } })
+                                                });
+                                                if (res.ok) {
+                                                    setNotification({ message: 'Método de pago actualizado a Cupon Padrino', type: 'success' });
+                                                    setSelectedParticipant((prev: any) => ({ ...prev, paymentMethod: 'Cupon Padrino', paymentStatus: 'Cupon Padrino' }));
+                                                    fetchParticipants();
+                                                } else {
+                                                    setNotification({ message: 'Error al actualizar', type: 'error' });
+                                                }
+                                            }}
+                                        >
+                                            🎓 Marcar Cupon Padrino
+                                        </Button>
+                                    )}
+                                </Box>
                             </Box>
                             {selectedParticipant.isPadrino && (
                                 <Box sx={{ gridColumn: '1 / -1' }}>
