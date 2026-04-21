@@ -1444,19 +1444,21 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <TableRow sx={{ bgcolor: 'action.hover' }}>
                   <TableCell><strong>Vendedor</strong></TableCell>
                   <TableCell><strong>ID de Lote</strong></TableCell>
+                  <TableCell align="center"><strong>Aplica Para</strong></TableCell>
                   <TableCell align="center"><strong>Total Impresos</strong></TableCell>
                   <TableCell align="center"><strong>Faltan x Vender</strong></TableCell>
                   <TableCell align="center"><strong>Faltan x Canjear</strong></TableCell>
                   <TableCell align="center"><strong>Canjes Exitosos</strong></TableCell>
+                  <TableCell align="center"><strong>🎓 Cupos Padrino</strong></TableCell>
                   <TableCell align="center"><strong>Acciones</strong></TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {codeStats.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>No hay códigos registrados</TableCell></TableRow> : codeStats.map((stat, i) => (
+                {codeStats.length === 0 ? <TableRow><TableCell colSpan={9} align="center" sx={{ py: 4 }}>No hay códigos registrados</TableCell></TableRow> : codeStats.map((stat, i) => (
                   <TableRow key={i}>
                     <TableCell sx={{ fontWeight: 'bold' }}>{stat.vendor}</TableCell>
                     <TableCell><Chip label={stat.batchId} size="small" /></TableCell>
-                    <TableCell>
+                    <TableCell align="center">
                       <Chip label={stat.allowedType === 'estudiante' ? 'Estudiantes' : (stat.allowedType === 'team' ? 'Equipos' : (stat.allowedType === 'general' ? 'Público General' : 'Libre'))} size="small" variant="outlined" sx={{ fontWeight: 'bold' }} />
                     </TableCell>
                     <TableCell align="center">{stat.total}</TableCell>
@@ -1464,8 +1466,13 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     <TableCell align="center">{stat.sold}</TableCell>
                     <TableCell align="center"><Typography color="info.main">{stat.redeemed}</Typography></TableCell>
                     <TableCell align="center">
+                      {stat.padrinoTotal > 0 ? (
+                        <Chip icon={<FavoriteIcon sx={{ fontSize: 14 }} />} label={`${stat.padrinoRedeemed}/${stat.padrinoTotal}`} color="success" size="small" sx={{ fontWeight: 'bold' }} />
+                      ) : <Typography variant="body2" color="text.disabled">—</Typography>}
+                    </TableCell>
+                    <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
-                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={stat.total === 0 || codesLoading}>
+                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={(stat.total === 0 && stat.padrinoTotal === 0) || codesLoading}>
                            Administrar Lote
                          </Button>
                          <Button size="small" variant="contained" sx={{ bgcolor: ACCENT, color: 'white', '&:hover': { bgcolor: '#E55A00' } }} onClick={() => printLibreta(stat.batchId)} disabled={codesLoading}>
@@ -1495,26 +1502,46 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <Table size="small">
                    <TableHead>
                      <TableRow>
-                       <TableCell>Selección</TableCell>
+                       <TableCell>Marcar Vendido</TableCell>
                        <TableCell>Código Exacto</TableCell>
-                       <TableCell>Estado de Vida</TableCell>
+                       <TableCell>Estado</TableCell>
+                       <TableCell align="center">🎓 Cupo de Padrino</TableCell>
                      </TableRow>
                    </TableHead>
                    <TableBody>
                      {allCodes.filter(c => c.batchId === openBatchModal).map(code => (
-                       <TableRow key={code.id} sx={{ opacity: code.status === 'generated' ? 1 : 0.6 }}>
+                       <TableRow key={code.id} sx={{ opacity: code.status === 'generated' && !code.isPadrinoCode ? 1 : 0.7, bgcolor: code.isPadrinoCode ? 'rgba(255,107,0,0.05)' : 'inherit' }}>
                          <TableCell padding="checkbox">
-                           <Checkbox 
-                              checked={!!selectedForSale[code.id]} 
+                           <Checkbox
+                              checked={!!selectedForSale[code.id]}
                               onChange={() => handleToggleCode(code.id)}
-                              disabled={code.status !== 'generated'}
+                              disabled={code.status !== 'generated' || code.isPadrinoCode}
                            />
                          </TableCell>
                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.1rem' }}>{code.code}</TableCell>
                          <TableCell>
-                            {code.status === 'generated' && <Chip size="small" label="Falta x Vender" color="success" />}
-                            {code.status === 'sold' && <Chip size="small" label="Vendido (Falta x Canjear)" color="warning" />}
+                            {code.isPadrinoCode && <Chip size="small" icon={<FavoriteIcon sx={{ fontSize: 12 }} />} label="Cupo Padrino" color="success" sx={{ mr: 1 }} />}
+                            {!code.isPadrinoCode && code.status === 'generated' && <Chip size="small" label="Falta x Vender" color="success" />}
+                            {!code.isPadrinoCode && code.status === 'sold' && <Chip size="small" label="Vendido (Falta x Canjear)" color="warning" />}
                             {code.status === 'redeemed' && <Chip size="small" label="Canjeado Exitoso" color="info" />}
+                         </TableCell>
+                         <TableCell align="center">
+                           <Checkbox
+                             checked={!!code.isPadrinoCode}
+                             disabled={code.status === 'redeemed' || codesLoading}
+                             sx={{ '&.Mui-checked': { color: ACCENT } }}
+                             onChange={async () => {
+                               setCodesLoading(true);
+                               try {
+                                 await fetch('/api/admin/mark-padrino-code', {
+                                   method: 'POST',
+                                   headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify({ codeId: code.id, isPadrinoCode: !code.isPadrinoCode })
+                                 });
+                                 await fetchCodeStats();
+                               } finally { setCodesLoading(false); }
+                             }}
+                           />
                          </TableCell>
                        </TableRow>
                      ))}

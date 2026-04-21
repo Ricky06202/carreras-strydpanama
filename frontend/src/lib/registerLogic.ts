@@ -321,6 +321,44 @@ export const processRegistration = async (env: any, body: any) => {
 
         // Guardar en Perfiles Permanentes de Corredores (solo corredores, no padrinos)
         if (!isPadrinoOnly) await upsertRunnerProfile(body, resolvedCategoryName);
+
+        // Auto-generar códigos de padrino cuando se inscribe un padrino
+        if (isPadrinoOnly && body.donatedTickets && Number(body.donatedTickets) > 0) {
+            try {
+                const numCodes = Number(body.donatedTickets);
+                const padrinoBatchId = `PADRINO-${confCode}`;
+                const padrinoVendor = `Padrino — ${body.firstName} ${body.lastName}`;
+                const codesColId = 'col-registration_codes-469bc379';
+
+                for (let i = 0; i < numCodes; i++) {
+                    const uniquePart = crypto.randomUUID().replace(/-/g, '').slice(0, 10).toUpperCase();
+                    const generatedCode = `PAD-${uniquePart}`;
+                    await apiFetch('/api/content', env, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            collectionId: codesColId,
+                            collection_id: codesColId,
+                            title: `${generatedCode} (${padrinoVendor})`,
+                            status: 'published',
+                            data: {
+                                title: `${generatedCode} (${padrinoVendor})`,
+                                code: generatedCode,
+                                vendor: padrinoVendor,
+                                batchId: padrinoBatchId,
+                                race: body.raceId,
+                                allowedType: 'estudiante',
+                                isPadrinoCode: true,
+                                status: 'generated',
+                                used: false,
+                            }
+                        })
+                    });
+                }
+                console.log(`Generated ${numCodes} padrino codes for ${padrinoVendor} (batch: ${padrinoBatchId})`);
+            } catch (e) {
+                console.error('Failed to generate padrino codes:', e);
+            }
+        }
     }
 
     // 4a. Verificar y reparar BIBs duplicados post-registro

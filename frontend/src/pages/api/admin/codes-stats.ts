@@ -22,14 +22,22 @@ export const GET: APIRoute = async ({ request }) => {
         const key = `${vendor}___${batchId}`;
         
         if (!stats[key]) {
-            stats[key] = { vendor, batchId, generated: 0, sold: 0, redeemed: 0, total: 0, allowedType: d.allowedType || 'all' };
+            stats[key] = { vendor, batchId, generated: 0, sold: 0, redeemed: 0, total: 0, allowedType: d.allowedType || 'all', padrinoTotal: 0, padrinoRedeemed: 0 };
         }
-        
-        stats[key].total++;
-        if (status === 'generated') stats[key].generated++;
-        else if (status === 'sold') stats[key].sold++;
-        else if (status === 'redeemed') stats[key].redeemed++;
-        else stats[key].generated++;
+
+        const isPadrinoCode = d.isPadrinoCode === true;
+
+        if (isPadrinoCode) {
+            // Códigos de padrino: contados aparte, fuera de la contabilidad de ventas del lote
+            stats[key].padrinoTotal++;
+            if (status === 'redeemed') stats[key].padrinoRedeemed++;
+        } else {
+            stats[key].total++;
+            if (status === 'generated') stats[key].generated++;
+            else if (status === 'sold') stats[key].sold++;
+            else if (status === 'redeemed') stats[key].redeemed++;
+            else stats[key].generated++;
+        }
 
         rawCodes.push({
           id: c.id,
@@ -39,7 +47,8 @@ export const GET: APIRoute = async ({ request }) => {
           batchId: batchId,
           status: status,
           raceId: d.race,
-          allowedType: d.allowedType || 'all'
+          allowedType: d.allowedType || 'all',
+          isPadrinoCode: isPadrinoCode
         });
     });
 
