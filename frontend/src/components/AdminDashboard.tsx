@@ -2031,6 +2031,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Código de Confirmación</Typography>
                                 <Typography variant="body2" color={ACCENT} fontWeight="bold">{selectedParticipant.confirmationCode || 'N/A'}</Typography>
                             </Box>
+                            {selectedParticipant.discountCode && (
+                                <Box sx={{ gridColumn: '1 / -1' }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Cupón Utilizado</Typography>
+                                    <Typography variant="body2" fontWeight="bold" sx={{ fontFamily: 'monospace', color: '#9c27b0' }}>{selectedParticipant.discountCode}</Typography>
+                                </Box>
+                            )}
                             <Box>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Método de Pago</Typography>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -2045,11 +2051,11 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                                     body: JSON.stringify({ id: selectedParticipant.id, updates: { paymentMethod: 'Cupon Padrino', paymentStatus: 'Cupon Padrino' } })
                                                 });
                                                 if (res.ok) {
-                                                    setNotification({ message: 'Método de pago actualizado a Cupon Padrino', type: 'success' });
+                                                    alert('Método de pago actualizado a Cupon Padrino');
                                                     setSelectedParticipant((prev: any) => ({ ...prev, paymentMethod: 'Cupon Padrino', paymentStatus: 'Cupon Padrino' }));
-                                                    fetchParticipants();
+                                                    fetchParticipants(participantRaceFilter);
                                                 } else {
-                                                    setNotification({ message: 'Error al actualizar', type: 'error' });
+                                                    alert('Error al actualizar el participante');
                                                 }
                                             }}
                                         >
