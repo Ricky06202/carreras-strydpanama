@@ -137,6 +137,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [raceInfo, setRaceInfo] = useState<Race | null>(null);
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
+  const [codeValidData, setCodeValidData] = useState<{ allowedType?: string; isPadrinoCode?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
   const [registrationType, setRegistrationType] = useState<'individual' | 'team'>('individual');
@@ -325,6 +326,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   const isStudentCategorySelected = () => {
     if (formData.participantType === 'estudiante') return true;
+    // Si el código validado es exclusivo para estudiantes, requerir documentos igual
+    if (codeValidData?.allowedType === 'estudiante') return true;
     let name = '';
     if (formData.category) {
       const cat = categories.find(c => c.id == formData.category);
@@ -578,6 +581,13 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       });
       const data = await res.json();
       setCodeValid({ valid: data.valid, message: data.message });
+      if (data.valid && data.codeData) {
+        setCodeValidData({ allowedType: data.codeData.allowedType, isPadrinoCode: data.codeData.isPadrinoCode });
+        // Si el código es válido, forzar método de pago a código
+        setFormData(prev => ({ ...prev, paymentMethod: 'codigo' }));
+      } else if (!data.valid) {
+        setCodeValidData(null);
+      }
     } catch {
       setCodeValid({ valid: false, message: 'Error de conexión al validar código.' });
     }
@@ -1595,14 +1605,20 @@ const handleSubmit = async () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Selecciona tu método de pago</Typography>
             
-            <FormControl fullWidth>
-              <InputLabel>Método de Pago *</InputLabel>
-              <Select value={formData.paymentMethod} label="Método de Pago *" onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
-                {paymentMethods.map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
-              </Select>
-            </FormControl>
+            {(codeValid && codeValid.valid) ? (
+              <Box sx={{ bgcolor: 'rgba(46,125,50,0.10)', border: '1.5px solid #2e7d32', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Typography variant="body1" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>🎓 Cupo patrocinado — Sin costo de inscripción</Typography>
+              </Box>
+            ) : (
+              <FormControl fullWidth>
+                <InputLabel>Método de Pago *</InputLabel>
+                <Select value={formData.paymentMethod} label="Método de Pago *" onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
+                  {paymentMethods.map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
 
-            {formData.paymentMethod === 'transfer' ? (
+            {!(codeValid && codeValid.valid) && formData.paymentMethod === 'transfer' ? (
               <Box sx={{ bgcolor: 'rgba(255,107,0,0.08)', border: `1.5px solid ${ACCENT}`, p: 2.5, borderRadius: 2, mt: 2 }}>
                 <Typography variant="subtitle2" sx={{ color: ACCENT, fontWeight: 'bold', mb: 1.5 }}>
                   🏦 Datos para Transferencia Bancaria
