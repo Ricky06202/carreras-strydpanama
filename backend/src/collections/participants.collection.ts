@@ -28,6 +28,8 @@ export default {
       bibNumber: { type: 'number', title: 'Dorsal' },
       size: { type: 'string', title: 'Talla' },
       paymentStatus: { type: 'string', title: 'Pago' },
+      amountPaid: { type: 'number', title: 'Monto Pagado' },
+      discountCode: { type: 'string', title: 'Cupón Utilizado' },
       finishTime: { type: 'number', title: 'Tiempo de Llegada (s)' },
       receiptUrl: { type: 'media', title: 'Comprobante de Pago' },
       studentIdUrl: { type: 'media', title: 'Foto Cédula Estudiantil' },

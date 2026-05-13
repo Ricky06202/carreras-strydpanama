@@ -609,39 +609,42 @@ export default function AdminDashboard({ initialRaces = [] }: { initialRaces: Ra
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
     const { jsPDF } = await import('jspdf');
-    // Intentamos importar autotable dinámicamente si está disponible, sino lo hacemos manual
-    const doc = new jsPDF();
+    let autoTable;
+    try {
+        autoTable = (await import('jspdf-autotable')).default;
+    } catch (e) {
+        alert("El módulo jspdf-autotable no está disponible. Ejecuta npm install en el servidor.");
+        return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' });
     
     doc.setFontSize(18);
-    doc.text('Lista de Participantes - STRYD Panama', 14, 20);
+    doc.text('Informe Detallado de Inscritos - STRYD Panama', 14, 20);
     doc.setFontSize(10);
     doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
     
-    let y = 40;
-    doc.setFontSize(12);
-    doc.text('Dorsal', 14, y);
-    doc.text('Nombre', 30, y);
-    doc.text('Equipo', 90, y);
-    doc.text('Estado', 150, y);
-    
-    y += 2;
-    doc.line(14, y, 196, y);
-    y += 7;
-    
-    doc.setFontSize(10);
-    filtered.forEach((p, index) => {
-        if (y > 280) {
-            doc.addPage();
-            y = 20;
-        }
-        doc.text(String(p.bibNumber || '-'), 14, y);
-        doc.text(p.title || '-', 30, y);
-        doc.text(p.teamName || '-', 90, y);
-        doc.text(p.paymentStatus || '-', 150, y);
-        y += 8;
+    const tableData = filtered.map((p, index) => [
+      index + 1,
+      p.bibNumber || '-',
+      p.firstName || p.title?.split(' ')[0] || '-',
+      p.lastName || p.title?.split(' ').slice(1).join(' ') || '-',
+      `$${p.amountPaid || 0}`,
+      p.categoryName || '-',
+      p.paymentStatus || '-',
+      p.discountCode || '-',
+      p.createdOn ? new Date(p.createdOn).toLocaleString() : '-'
+    ]);
+
+    autoTable(doc, {
+      startY: 35,
+      head: [['#', 'Dorsal', 'Nombre', 'Apellido', 'Pago ($)', 'Categoría', 'Método Pago', 'Cupón', 'Fecha Inscripción']],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
     });
     
-    doc.save(`Participantes_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Informe_Inscritos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Estados para Meta de Llegada y Retorno

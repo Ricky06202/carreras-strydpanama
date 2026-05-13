@@ -128,6 +128,24 @@ export const POST: APIRoute = async ({ request }) => {
     body.category = assignedCategoryId;
     body.categoryName = resolvedCategoryName; // Guardamos el nombre para que sea persistente
 
+    // Calcular el monto pagado aproximado para los reportes
+    let basePrice = 0;
+    if (body.distanceId) {
+        const distsRes = await apiFetch('/api/collections/distances/content?limit=500', env, { method: 'GET' });
+        const dObj = (distsRes?.data || []).find((d: any) => d.id === body.distanceId);
+        basePrice = dObj?.data?.price ? Number(dObj.data.price) : 0;
+    } else {
+        basePrice = raceFields.price ? Number(raceFields.price) : 0;
+    }
+    
+    let finalAmount = basePrice;
+    if (usedCodeData) {
+        finalAmount = 0; // Asumimos descuento total por cupón o código físico
+    }
+    
+    // Si es equipo, el monto se multiplicaría, pero para el reporte individual guardamos el base
+    body.amountPaid = finalAmount;
+
     // Generar código de confirmación único: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
     const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
@@ -180,6 +198,8 @@ export const POST: APIRoute = async ({ request }) => {
                 matriculaUrl: body.matriculaUrl || '',
                 bibNumber: memberBib,
                 paymentStatus: body.paymentMethod,
+                amountPaid: finalAmount,
+                discountCode: body.discountCode || '',
                 confirmationCode: memberConfCode,
                 participantType: body.participantType || 'general',
                 registrationType: 'team',
