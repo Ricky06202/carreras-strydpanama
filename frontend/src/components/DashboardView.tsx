@@ -20,7 +20,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
   
   // -- KPIs --
   const kpis = useMemo(() => {
-    let totalInscritos = participants.length;
+    let totalInscritos = 0;
+    let totalPadrinos = 0;
     let pagosConfirmados = 0;
     let pagosPendientes = 0;
     
@@ -33,13 +34,36 @@ export default function DashboardView({ races, allDistances, participants, onFet
     const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.45;
 
     participants.forEach(p => {
+       const isPadrinoSolo = p.participantType === 'padrino';
+       if (isPadrinoSolo) {
+           totalPadrinos++;
+       } else {
+           totalInscritos++;
+       }
+
        // Participantes con cupo de padrino: están confirmados pero NO generan ingreso
        const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
        const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
-       if (isConfirmed) pagosConfirmados++;
-       else pagosPendientes++;
+       
+       if (isConfirmed) {
+           if (!isPadrinoSolo) pagosConfirmados++;
+       } else {
+           if (!isPadrinoSolo) pagosPendientes++;
+       }
 
        if (isPadrinoSponsored) return; // No suma a ingresos ni fees
+
+       if (isPadrinoSolo) {
+           // Si es padrino sumamos lo que pago (está en amountPaid)
+           if (isConfirmed) {
+               const amount = Number(p.amountPaid) || 0;
+               baseRevenue += amount;
+               if (p.paymentStatus === 'Yappy' || p.paymentStatus === 'Confirmado') {
+                   platformFeeRevenue += feeConfig;
+               }
+           }
+           return; // No sumar basePrice normal
+       }
 
        // Buscar el costo real de la distancia (compatible con records viejos que guardan el Nombre y nuevos que guardan el ID)
        const distObj = allDistances.find(d => d.id === p.distance || (d.name && d.name === p.distance) || (d.title && d.title === p.distance));
@@ -59,6 +83,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
     return { 
       totalInscritos, 
+      totalPadrinos,
       pagosConfirmados, 
       pagosPendientes, 
       baseRevenue: baseRevenue || 0, 
@@ -75,6 +100,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
      let cats: Record<string, number> = {};
 
      participants.forEach(p => {
+        if (p.participantType === 'padrino') return; // Excluir padrinos de stats logisticas
+
         // Genero
         if (p.gender === 'M' || p.gender === 'Masculino') genders.m++;
         else if (p.gender === 'F' || p.gender === 'Femenino') genders.f++;
@@ -95,6 +122,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
   const birthdays = useMemo(() => {
     return participants.filter((p: any) => {
+      if (p.participantType === 'padrino') return false; // Excluir padrinos
       if (!p.birthDate || typeof p.birthDate !== 'string') return false;
       const bdayParts = p.birthDate.split('-');
       if (bdayParts.length === 3) {
@@ -142,13 +170,13 @@ export default function DashboardView({ races, allDistances, participants, onFet
       <Box sx={{ mb: 4 }}>
         <Typography variant="h6" sx={{ color: ACCENT, fontWeight: 'bold', mb: 2 }}>Finanzas (KPIs)</Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 3 }}>
-          {kpiCard('Total Inscritos', kpis.totalInscritos, 'text.primary')}
-          {kpiCard('Pagos Confirmados', kpis.pagosConfirmados, ACCENT, `De ${kpis.totalInscritos} participantes`, true)}
-          {kpiCard('Pagos Pendientes', kpis.pagosPendientes, 'text.primary', 'Requieren validación o pago físico')}
+          {kpiCard('Total Inscritos', kpis.totalInscritos, 'text.primary', 'Corredores')}
+          {kpiCard('Padrinos Donantes', kpis.totalPadrinos, ACCENT, 'No corren')}
+          {kpiCard('Pagos Confirmados', kpis.pagosConfirmados, ACCENT, `De ${kpis.totalInscritos} inscritos`, true)}
+          {kpiCard('Pagos Pendientes', kpis.pagosPendientes, 'text.primary', 'Corredores por validar')}
           
-          {kpiCard('Recaudación Neta Carrera', `B/. ${kpis.baseRevenue.toFixed(2)}`, 'text.primary')}
-          {kpiCard('Recolección de Plataforma', `B/. ${(kpis.platformFeeRevenue).toFixed(2)}`, 'text.secondary', 'Asignados a comisiones o costos')}
-          {kpiCard('Monto Pendiente (Aprox)', `B/. ${kpis.totalAdeudado.toFixed(2)}`, 'text.primary')}
+          {kpiCard('Recaudación Neta', `B/. ${kpis.baseRevenue.toFixed(2)}`, 'text.primary', 'Corredores + Padrinos')}
+          {kpiCard('Comisión Plataforma', `B/. ${(kpis.platformFeeRevenue).toFixed(2)}`, 'text.secondary', 'Fees estimados')}
         </Box>
       </Box>
 
