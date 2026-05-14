@@ -41,7 +41,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
            totalInscritos++;
        }
 
-       // Participantes con cupo de padrino: están confirmados pero NO generan ingreso
+       // Participantes con cupo de padrino (su cupo fue pagado por el donante)
        const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
        const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
        
@@ -51,33 +51,33 @@ export default function DashboardView({ races, allDistances, participants, onFet
            if (!isPadrinoSolo) pagosPendientes++;
        }
 
-       if (isPadrinoSponsored) return; // No suma a ingresos ni fees
-
-       if (isPadrinoSolo) {
-           // Si es padrino sumamos lo que pago (está en amountPaid)
-           if (isConfirmed) {
-               const amount = Number(p.amountPaid) || 0;
-               baseRevenue += amount;
-               if (p.paymentStatus === 'Yappy' || p.paymentStatus === 'Confirmado') {
-                   platformFeeRevenue += feeConfig;
-               }
-           }
-           return; // No sumar basePrice normal
-       }
-
-       // Buscar el costo real de la distancia (compatible con records viejos que guardan el Nombre y nuevos que guardan el ID)
-       const distObj = allDistances.find(d => d.id === p.distance || (d.name && d.name === p.distance) || (d.title && d.title === p.distance));
-       let basePriceRaw = distObj?.price ?? currentRaceObj?.data?.price ?? 0;
-       let basePrice = Number(basePriceRaw) || 0;
-
-       // Factor de Equipos (Para no multiplicar pagos de grupo)
-       if (p.registrationType === 'team') basePrice = basePrice / 4;
-
+       // --- Cálculo de Finanzas ---
        if (isConfirmed) {
-         baseRevenue += basePrice;
-         if (p.paymentStatus === 'Yappy' || p.paymentStatus === 'Confirmado') {
-           platformFeeRevenue += feeConfig; // Solo se cobra fee a los confirmados (usualmente yappy)
-         }
+           // Si es cupo de padrino no suma dinero (ya lo pagó el donante previamente)
+           if (isPadrinoSponsored) return; 
+
+           // Validamos si usó Yappy para la comisión
+           const isYappy = (p.paymentMethod || '').toLowerCase().includes('yappy') || (p.paymentStatus || '').toLowerCase().includes('yappy');
+
+           if (isPadrinoSolo) {
+               // El padrino donante paga $10 por cupo donado.
+               let amount = Number(p.amountPaid);
+               if (!amount || amount === 0) {
+                   amount = Number(p.donatedTickets || 0) * 10;
+               }
+               baseRevenue += amount;
+               if (isYappy) platformFeeRevenue += feeConfig;
+               return; 
+           }
+
+           // Corredor normal (online o cupón físico)
+           let basePrice = 15; // General
+           if ((p.categoryName || '').toLowerCase().includes('estudiante')) {
+               basePrice = 10;
+           }
+
+           baseRevenue += basePrice;
+           if (isYappy) platformFeeRevenue += feeConfig;
        }
     });
 
