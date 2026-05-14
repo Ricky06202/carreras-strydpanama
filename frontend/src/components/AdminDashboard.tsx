@@ -1905,7 +1905,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                           
                           <TableCell>
                             <Typography variant="body2" sx={{ color: ACCENT, fontWeight: 'bold' }}>
-                              {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
+                              {p.participantType === 'padrino' ? '🎓 Solo Padrino' : (p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General')}
                             </Typography>
                             {p.teamName && <Chip label={p.teamName} size="small" variant="outlined" sx={{ mt: 0.5 }} />}
                           </TableCell>
