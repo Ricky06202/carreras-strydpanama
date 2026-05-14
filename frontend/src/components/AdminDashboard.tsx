@@ -696,64 +696,50 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
     const { jsPDF } = await import('jspdf');
-    // Intentamos importar autotable dinámicamente si está disponible, sino lo hacemos manual
-    const doc = new jsPDF();
+    let autoTable;
+    try {
+        autoTable = (await import('jspdf-autotable')).default;
+    } catch (e) {
+        alert("El módulo jspdf-autotable no está disponible. Ejecuta npm install en el servidor.");
+        return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' });
     
     doc.setFontSize(18);
-    doc.text('Lista de Participantes - STRYD Panama', 14, 20);
+    doc.text('Informe Detallado de Inscritos - STRYD Panama', 14, 20);
     doc.setFontSize(10);
     doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
     
-    let y = 40;
-    doc.setFontSize(9);
-    doc.setFont('', 'bold');
-    doc.text('Dorsal', 14, y);
-    doc.text('Nombre Completo', 28, y);
-    doc.text('Categoría', 70, y);
-    doc.text('Cédula', 113, y);
-    doc.text('Fecha', 142, y);
-    doc.text('Estado de Pago', 168, y);
-    
-    y += 2;
-    doc.line(14, y, 196, y);
-    y += 7;
-    
-    doc.setFont('', 'normal');
-    doc.setFontSize(8.5); // Ligeramente más pequeño para asegurar que 6 columnas entren relajadas
-    filtered.forEach((p, index) => {
-        if (y > 280) {
-            doc.addPage();
-            y = 20;
-        }
-        
-        const fullName = `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || 'Sin nombre';
-        const truncName = fullName.length > 28 ? fullName.substring(0, 26) + '..' : fullName;
-        
-        // La categoría suele estar como el segundo segmento en el title "Nombre - Categoria - Dorsal" o en property
-        let cat = p.categoryName || (p.title && p.title.includes(' - ') ? p.title.split(' - ')[1] : p.category) || 'General';
-        const truncCat = cat.length > 25 ? cat.substring(0, 23) + '..' : cat;
-
-        const cedula = p.cedula || '-';
-        const truncCedula = cedula.length > 17 ? cedula.substring(0, 15) + '..' : cedula;
-        
+    const tableData = filtered.map((p, index) => {
         let fechaStr = '-';
         if (p.createdAt) {
            const d = new Date(p.createdAt);
            fechaStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
         }
         
-        const pago = (p.paymentStatus || '-').length > 18 ? (p.paymentStatus || '-').substring(0, 16) + '..' : (p.paymentStatus || '-');
+        return [
+          index + 1,
+          p.bibNumber || '-',
+          p.firstName || p.title?.split(' ')[0] || '-',
+          p.lastName || p.title?.split(' ').slice(1).join(' ') || '-',
+          `$${p.amountPaid || 0}`,
+          p.categoryName || '-',
+          p.paymentStatus || '-',
+          p.discountCode || '-',
+          fechaStr
+        ];
+    });
 
-        doc.text(String(p.bibNumber || '-'), 14, y);
-        doc.text(truncName, 28, y);
-        doc.text(truncCat, 70, y);
-        doc.text(truncCedula, 113, y);
-        doc.text(fechaStr, 142, y);
-        doc.text(pago, 168, y);
-        y += 8;
+    autoTable(doc, {
+      startY: 35,
+      head: [['#', 'Dorsal', 'Nombre', 'Apellido', 'Pago ($)', 'Categoría', 'Método Pago', 'Cupón', 'Fecha Inscripción']],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
     });
     
-    doc.save(`Participantes_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`Informe_Inscritos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   // Estados para Meta de Llegada y Retorno
