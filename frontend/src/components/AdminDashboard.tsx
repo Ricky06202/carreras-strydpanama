@@ -663,6 +663,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const exportParticipantsCSV = () => {
     const filtered = participants.filter(p => {
+      if (p.participantType === 'padrino') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
       return matchesSearch && matchesRace;
@@ -688,6 +689,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const exportParticipantsPDF = async () => {
     const filtered = participants.filter(p => {
+      if (p.participantType === 'padrino') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
       return matchesSearch && matchesRace;
