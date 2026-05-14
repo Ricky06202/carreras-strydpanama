@@ -62,6 +62,7 @@ export const GET: APIRoute = async ({ request }) => {
       registrationType: item.data?.registrationType || 'individual',
       createdAt: item.created_at || item.createdOn || item.data?.createdAt || 0,
       paymentMethod: item.data?.paymentMethod || '',
+      amountPaid: item.data?.amountPaid || 0,
       isPadrino: item.data?.isPadrino || false,
       donatedTickets: item.data?.donatedTickets || 0,
       discountCode: item.data?.discountCode || '',
