@@ -463,7 +463,24 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
 
   useEffect(() => {
     if (initialRaces && initialRaces.length > 0) {
-      setRaces(initialRaces);
+      // Filter out finished races, but keep the selected race (even if finished) if the user requested it specifically
+      const filtered = initialRaces.filter((r: any) => r.data?.status !== 'finished' || r.id === raceId);
+      setRaces(filtered);
+
+      // Pre-select first accepting race if none was provided in the query param
+      if (!raceId && filtered.length > 0) {
+        setSelectedRace((prev) => {
+          if (prev) return prev;
+          
+          const acceptingRace = filtered.find((r: any) => r.data?.status === 'accepting');
+          if (acceptingRace) return acceptingRace.id;
+          
+          const activeOrUpcoming = filtered.find((r: any) => r.data?.status === 'active' || r.data?.status === 'upcoming');
+          if (activeOrUpcoming) return activeOrUpcoming.id;
+          
+          return filtered[0].id;
+        });
+      }
     }
     // Los equipos ahora se cargan a través de nuestro proxy de info de carrera o un endpoint dedicado
     // Por simplicidad, si el endpoint /api/teams no existe en Astro, fallará silenciosamente como antes
@@ -473,7 +490,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       console.log('Teams endpoint not available (expected):', err.message);
       // Continue without teams - not critical for registration
     });
-  }, [initialRaces]);
+  }, [initialRaces, raceId]);
 
   useEffect(() => {
     if (selectedRace) {
