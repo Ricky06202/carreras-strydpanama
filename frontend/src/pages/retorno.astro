@@ -42,97 +42,126 @@ const clientRaces = JSON.stringify(races);
           <p class="text-sm">{errorMsg}</p>
         </div>
       ) : (
-        <div class="space-y-6">
-          <!-- Tarjeta de Selección y Reloj -->
-          <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-              <div>
-                <label for="race-selector" class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">Seleccionar Carrera</label>
-                <select id="race-selector" class="w-full bg-[#2a2a2a] border border-[#3d3d3d] text-white rounded-xl py-3 px-4 focus:outline-none focus:border-[#FF6B00] transition-colors font-medium">
-                  <option value="" disabled selected>Seleccione una carrera...</option>
-                  {races.map((r: any) => {
-                    const isLive = r.data?.timerStart && !r.data?.timerStop;
-                    return (
-                      <option value={r.id} data-start={r.data?.timerStart || ''} data-stop={r.data?.timerStop || ''}>
-                        {r.data?.title || r.title} {isLive ? '🔴 [EN VIVO]' : ''}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-              
-              <!-- Reloj (Solo Lectura) -->
-              <div class="text-center md:text-right">
-                <span class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Tiempo Transcurrido</span>
-                <div id="chrono-display" class="text-4xl font-mono font-black text-gray-500 select-none">
-                  00:00
-                </div>
-                <div id="chrono-status" class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
-                  Ninguna carrera seleccionada
-                </div>
-              </div>
+        <>
+          <!-- Lock Screen (PIN Entry) -->
+          <div id="lock-screen" class="max-w-md mx-auto bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-6 shadow-lg text-center mt-12 relative overflow-hidden hidden">
+            <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#FF6B00] to-transparent"></div>
+            <span class="inline-block bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+              Acceso Restringido
+            </span>
+            <h2 class="text-xl font-extrabold tracking-tight mb-4">Ingresar Contraseña de Retorno</h2>
+            <form id="lock-form" class="space-y-4">
+              <input 
+                type="password" 
+                id="password-input" 
+                placeholder="Contraseña" 
+                class="w-full bg-[#2a2a2a] border border-[#3d3d3d] rounded-xl text-center text-lg py-3 px-4 focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/20 transition-all text-white placeholder-gray-600 block"
+              />
+              <button 
+                type="submit" 
+                class="w-full bg-[#FF6B00] hover:bg-[#E55A00] text-white font-bold py-3 px-6 rounded-xl transition-all shadow-md active:scale-[0.99]"
+              >
+                Entrar al Sistema
+              </button>
+            </form>
+            <div id="lock-error" class="mt-4 p-2 rounded-xl bg-red-500/10 border border-red-500 text-red-500 text-xs hidden">
+              Contraseña incorrecta. Inténtelo de nuevo.
             </div>
           </div>
 
-          <!-- Formulario de Entrada (Oculto hasta que se seleccione una carrera activa) -->
-          <div id="input-section" class="hidden opacity-0 transition-opacity duration-300">
-            <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-6 shadow-lg text-center relative overflow-hidden">
-              <!-- Glow superior para estética premium -->
-              <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#FF6B00] to-transparent"></div>
-              
-              <h2 class="text-lg font-bold mb-4">Ingresar Número de Dorsal</h2>
-              
-              <form id="checkpoint-form" class="max-w-md mx-auto space-y-4">
-                <input 
-                  type="number" 
-                  id="bib-input" 
-                  placeholder="Ej: 42" 
-                  autocomplete="off"
-                  class="w-full bg-[#2a2a2a] border border-[#3d3d3d] rounded-2xl text-center text-5xl font-mono font-black py-4 px-6 focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/20 transition-all text-white placeholder-gray-600 block"
-                />
+          <!-- Main App Content -->
+          <div id="app-content" class="space-y-6 hidden">
+            <!-- Tarjeta de Selección y Reloj -->
+            <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                <div>
+                  <label for="race-selector" class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">Seleccionar Carrera</label>
+                  <select id="race-selector" class="w-full bg-[#2a2a2a] border border-[#3d3d3d] text-white rounded-xl py-3 px-4 focus:outline-none focus:border-[#FF6B00] transition-colors font-medium">
+                    <option value="" disabled selected>Seleccione una carrera...</option>
+                    {races.map((r: any) => {
+                      const isLive = r.data?.timerStart && !r.data?.timerStop;
+                      return (
+                        <option value={r.id} data-start={r.data?.timerStart || ''} data-stop={r.data?.timerStop || ''}>
+                          {r.data?.title || r.title} {isLive ? '🔴 [EN VIVO]' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
                 
-                <button 
-                  type="submit" 
-                  id="submit-btn" 
-                  class="w-full bg-[#FF6B00] hover:bg-[#E55A00] text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-lg"
-                >
-                  <span>Registrar Retorno</span>
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </form>
+                <!-- Reloj (Solo Lectura) -->
+                <div class="text-center md:text-right">
+                  <span class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Tiempo Transcurrido</span>
+                  <div id="chrono-display" class="text-4xl font-mono font-black text-gray-500 select-none">
+                    00:00
+                  </div>
+                  <div id="chrono-status" class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
+                    Ninguna carrera seleccionada
+                  </div>
+                </div>
+              </div>
+            </div>
 
-              <!-- Feedback visual de estado -->
-              <div id="feedback-alert" class="mt-4 p-3 rounded-xl hidden text-sm font-semibold max-w-md mx-auto animate-pulse"></div>
+            <!-- Formulario de Entrada (Oculto hasta que se seleccione una carrera activa) -->
+            <div id="input-section" class="hidden opacity-0 transition-opacity duration-300">
+              <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-6 shadow-lg text-center relative overflow-hidden">
+                <!-- Glow superior para estética premium -->
+                <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#FF6B00] to-transparent"></div>
+                
+                <h2 class="text-lg font-bold mb-4">Ingresar Número de Dorsal</h2>
+                
+                <form id="checkpoint-form" class="max-w-md mx-auto space-y-4">
+                  <input 
+                    type="number" 
+                    id="bib-input" 
+                    placeholder="Ej: 42" 
+                    autocomplete="off"
+                    class="w-full bg-[#2a2a2a] border border-[#3d3d3d] rounded-2xl text-center text-5xl font-mono font-black py-4 px-6 focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/20 transition-all text-white placeholder-gray-600 block"
+                  />
+                  
+                  <button 
+                    type="submit" 
+                    id="submit-btn" 
+                    class="w-full bg-[#FF6B00] hover:bg-[#E55A00] text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-lg"
+                  >
+                    <span>Registrar Retorno</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </form>
+
+                <!-- Feedback visual de estado -->
+                <div id="feedback-alert" class="mt-4 p-3 rounded-xl hidden text-sm font-semibold max-w-md mx-auto animate-pulse"></div>
+              </div>
+            </div>
+
+            <!-- Historial de Registros -->
+            <div id="history-section" class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg hidden">
+              <div class="flex items-center justify-between border-b border-[#2d2d2d] pb-3 mb-4">
+                <h3 class="text-sm uppercase tracking-wider text-gray-400 font-bold">Historial de Retorno</h3>
+                <span id="history-count" class="bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-2 py-0.5 rounded-full">
+                  0 corredores
+                </span>
+              </div>
+              
+              <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                  <thead>
+                    <tr class="text-xs uppercase text-gray-400 border-b border-[#2d2d2d]">
+                      <th class="py-2 font-semibold">Dorsal</th>
+                      <th class="py-2 font-semibold">Nombre</th>
+                      <th class="py-2 font-semibold text-right">Tiempo Retorno</th>
+                    </tr>
+                  </thead>
+                  <tbody id="history-rows" class="divide-y divide-[#2d2d2d]/50">
+                    <!-- Filas dinámicas -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-
-          <!-- Historial de Registros -->
-          <div id="history-section" class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg hidden">
-            <div class="flex items-center justify-between border-b border-[#2d2d2d] pb-3 mb-4">
-              <h3 class="text-sm uppercase tracking-wider text-gray-400 font-bold">Historial de Retorno</h3>
-              <span id="history-count" class="bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-2 py-0.5 rounded-full">
-                0 corredores
-              </span>
-            </div>
-            
-            <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse">
-                <thead>
-                  <tr class="text-xs uppercase text-gray-400 border-b border-[#2d2d2d]">
-                    <th class="py-2 font-semibold">Dorsal</th>
-                    <th class="py-2 font-semibold">Nombre</th>
-                    <th class="py-2 font-semibold text-right">Tiempo Retorno</th>
-                  </tr>
-                </thead>
-                <tbody id="history-rows" class="divide-y divide-[#2d2d2d]/50">
-                  <!-- Filas dinámicas -->
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   </div>
@@ -159,6 +188,12 @@ const clientRaces = JSON.stringify(races);
     let recentCheckpoints = [];
 
     // Selectores del DOM
+    const lockScreen = document.getElementById('lock-screen');
+    const appContent = document.getElementById('app-content');
+    const lockForm = document.getElementById('lock-form');
+    const passwordInput = document.getElementById('password-input');
+    const lockError = document.getElementById('lock-error');
+
     const selector = document.getElementById('race-selector');
     const chronoDisplay = document.getElementById('chrono-display');
     const chronoStatus = document.getElementById('chrono-status');
@@ -170,6 +205,42 @@ const clientRaces = JSON.stringify(races);
     const historySection = document.getElementById('history-section');
     const historyRows = document.getElementById('history-rows');
     const historyCount = document.getElementById('history-count');
+
+    // Validación de Acceso
+    function checkAuth() {
+      const isAuthed = localStorage.getItem('retorno_authenticated') === 'true';
+      if (isAuthed) {
+        lockScreen.classList.add('hidden');
+        appContent.classList.remove('hidden');
+        if (selectedRaceId) {
+          bibInput.focus();
+        } else {
+          selector.focus();
+        }
+      } else {
+        lockScreen.classList.remove('hidden');
+        appContent.classList.add('hidden');
+        passwordInput.focus();
+      }
+    }
+
+    lockForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const pw = passwordInput.value.trim().toLowerCase();
+      if (pw === 'stryd2026') {
+        localStorage.setItem('retorno_authenticated', 'true');
+        lockError.classList.add('hidden');
+        checkAuth();
+      } else {
+        lockError.classList.remove('hidden');
+        playErrorSound();
+        passwordInput.value = '';
+        passwordInput.focus();
+      }
+    });
+
+    // Validar al cargar
+    checkAuth();
 
     // Inicializar sintetizador de Audio (Web Audio API)
     let audioCtx = null;
@@ -425,7 +496,8 @@ const clientRaces = JSON.stringify(races);
 
     // Mantener el enfoque del input de dorsal en todo momento para facilitar el escaneo rápido
     document.addEventListener('click', (e) => {
-      if (selectedRaceId && e.target !== bibInput && e.target !== selector && !form.contains(e.target)) {
+      const isAuthed = localStorage.getItem('retorno_authenticated') === 'true';
+      if (isAuthed && selectedRaceId && e.target !== bibInput && e.target !== selector && !form.contains(e.target)) {
         bibInput.focus();
       }
     });
