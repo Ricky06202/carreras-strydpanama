@@ -310,14 +310,13 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           <Button
                             component="a"
                             href={`/register?race=${race.id}`}
-                            variant="outlined"
+                            variant="contained"
                             sx={{
                               flex: 1,
                               textDecoration: 'none',
-                              borderColor: ACCENT,
-                              color: ACCENT,
+                              bgcolor: ACCENT,
                               fontWeight: 'bold',
-                              '&:hover': { bgcolor: 'rgba(255, 107, 0, 0.08)', borderColor: ACCENT }
+                              '&:hover': { bgcolor: '#E55A00' }
                             }}
                           >
                             LISTA DE ESPERA
