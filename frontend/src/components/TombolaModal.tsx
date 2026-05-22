@@ -1,9 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dialog, DialogContent, Box, Typography, Button, IconButton, Paper, List, ListItem, Chip } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, Box, Typography, Button, IconButton, Paper, Chip, TextField, CircularProgress } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
+import CameraAltIcon from '@mui/icons-material/CameraAlt';
 
 const ACCENT = '#FF6B00';
+
+const ensureAbsolute = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('data:')) return url;
+  const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
+  if (url.includes('pub-ddaf4243012a44c5a61699bc0719121f.r2.dev')) return url;
+  if (url.includes('/uploads/')) {
+    const parts = url.split('/uploads/');
+    return `${R2_BASE}/uploads/${parts[parts.length - 1]}`;
+  }
+  if (url.startsWith('/')) return `${R2_BASE}${url}`;
+  if (!url.startsWith('http')) return `${R2_BASE}/${url}`;
+  return url;
+};
 
 interface TombolaModalProps {
   open: boolean;
@@ -21,6 +36,7 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
   
   // Winners Memory Cache
   const [winnersCache, setWinnersCache] = useState<any[]>([]);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (open && raceInfo?.data?.raffleWinners) {
@@ -95,11 +111,98 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
         id: finalWinner.id,
         bibNumber: finalWinner.bibNumber,
         name: `${finalWinner.firstName} ${finalWinner.lastName}`,
-        time: new Date().toISOString()
+        gender: finalWinner.gender || '',
+        categoryName: finalWinner.categoryName || '',
+        time: new Date().toISOString(),
+        prizeName: '',
+        prizePhotoUrl: ''
      }];
      setWinnersCache(newCache);
      console.log('Guardando Ganador en SonicJS Backend...');
      await onUpdateRace({ raffleWinners: JSON.stringify(newCache) });
+  };
+
+  const handlePrizeNameChange = (index: number, value: string) => {
+    const newCache = [...winnersCache];
+    newCache[index] = { ...newCache[index], prizeName: value };
+    setWinnersCache(newCache);
+  };
+
+  const handlePrizeNameBlur = async (index: number, value: string) => {
+    const newCache = [...winnersCache];
+    newCache[index] = { ...newCache[index], prizeName: value };
+    setWinnersCache(newCache);
+    await onUpdateRace({ raffleWinners: JSON.stringify(newCache) });
+  };
+
+  const triggerFileInput = (index: number) => {
+    const fileInput = document.getElementById(`prize-photo-input-${index}`);
+    if (fileInput) {
+      fileInput.click();
+    }
+  };
+
+  const handleFileChange = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploadingIndex(index);
+    try {
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        try {
+          const base64String = reader.result as string;
+          const winnerObj = winnersCache[index];
+          const cedulaUnique = `raffle-${raceInfo?.id || 'race'}-${winnerObj.id || index}-${Date.now()}`;
+
+          const response = await fetch('/api/upload-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              imageBase64: base64String,
+              cedula: cedulaUnique
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error('Error al subir la imagen');
+          }
+
+          const result = await response.json();
+          if (result.success && result.url) {
+            const newCache = [...winnersCache];
+            newCache[index] = { ...newCache[index], prizePhotoUrl: result.url };
+            setWinnersCache(newCache);
+            await onUpdateRace({ raffleWinners: JSON.stringify(newCache) });
+          } else {
+            throw new Error(result.error || 'Respuesta de subida inválida');
+          }
+        } catch (uploadError: any) {
+          alert('Error al subir la foto del premio: ' + uploadError.message);
+        } finally {
+          setUploadingIndex(null);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e: any) {
+      alert('Error al procesar el archivo: ' + e.message);
+      setUploadingIndex(null);
+    }
+  };
+
+  const handlePhotoRemove = async (index: number) => {
+    if (!confirm('¿Seguro que deseas eliminar la foto de este premio?')) return;
+    const newCache = [...winnersCache];
+    newCache[index] = { ...newCache[index], prizePhotoUrl: '' };
+    setWinnersCache(newCache);
+    await onUpdateRace({ raffleWinners: JSON.stringify(newCache) });
+  };
+
+  const removeWinner = async (index: number) => {
+    if (!confirm('¿Seguro que deseas eliminar a este ganador del historial?')) return;
+    const newCache = winnersCache.filter((_, idx) => idx !== index);
+    setWinnersCache(newCache);
+    await onUpdateRace({ raffleWinners: JSON.stringify(newCache) });
   };
 
   return (
@@ -199,7 +302,7 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
 
         {/* Historial Memory */}
         <Box sx={{ width: '100%', maxWidth: 800, mt: 6, p: 3, borderRadius: 3, border: '1px solid #333', bgcolor: '#0f0f0f' }}>
-           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 'bold', textTransform: 'uppercase' }}>
                  Historial Permanente de Ganadores ({winnersCache.length})
               </Typography>
@@ -211,15 +314,150 @@ export default function TombolaModal({ open, onClose, participants, raceInfo, on
            </Box>
            
            {winnersCache.length === 0 ? (
-             <Typography variant="body2" sx={{ color: '#555', fontStyle: 'italic', textAlign: 'center' }}>Aún no hay ganadores en esta carrera.</Typography>
+             <Typography variant="body2" sx={{ color: '#555', fontStyle: 'italic', textAlign: 'center', py: 4 }}>
+               Aún no hay ganadores en esta carrera.
+             </Typography>
            ) : (
-             <List dense disablePadding sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 1 }}>
+             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
                {winnersCache.map((w, i) => (
-                 <ListItem key={i} sx={{ bgcolor: '#1a1a1a', borderRadius: 2, p: 1, border: '1px solid #2d2d2d' }}>
-                   <Typography variant="caption" sx={{ color: '#fff', fontWeight: 'bold' }}>#{w.bibNumber} - {w.name}</Typography>
-                 </ListItem>
+                 <Paper 
+                   key={i} 
+                   sx={{ 
+                     bgcolor: '#161616', 
+                     borderRadius: 3, 
+                     p: 2.5, 
+                     border: '1px solid #2d2d2d',
+                     position: 'relative',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     gap: 2,
+                     '&:hover': { borderColor: ACCENT }
+                   }}
+                 >
+                   {/* Header */}
+                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                     <Box sx={{ pr: 4 }}>
+                       <Typography variant="subtitle1" sx={{ color: '#fff', fontWeight: 'bold', lineHeight: 1.2 }}>
+                         {w.name}
+                       </Typography>
+                       <Typography variant="caption" sx={{ color: ACCENT, fontWeight: 'bold', display: 'block', mt: 0.5 }}>
+                         DORSAL #{w.bibNumber}
+                       </Typography>
+                       <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
+                         {w.gender && (
+                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                             {w.gender === 'm' || w.gender === 'masculino' || w.gender === 'M' || w.gender === 'Masculino' ? 'Hombre' : w.gender === 'f' || w.gender === 'femenino' || w.gender === 'F' || w.gender === 'Femenino' ? 'Mujer' : w.gender}
+                           </Typography>
+                         )}
+                         {w.categoryName && (
+                           <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                             • {w.categoryName}
+                           </Typography>
+                         )}
+                       </Box>
+                     </Box>
+                     <IconButton 
+                       size="small" 
+                       color="error" 
+                       onClick={() => removeWinner(i)} 
+                       disabled={isSpinning}
+                       sx={{ position: 'absolute', top: 12, right: 12, bgcolor: 'rgba(255, 23, 68, 0.05)', '&:hover': { bgcolor: 'rgba(255, 23, 68, 0.15)' } }}
+                     >
+                       <DeleteIcon fontSize="small" />
+                     </IconButton>
+                   </Box>
+
+                   {/* Inputs */}
+                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                     <TextField
+                       fullWidth
+                       size="small"
+                       label="Premio Entregado"
+                       placeholder="Ej. Zapatillas STRYD, Certificado B/.50..."
+                       value={w.prizeName || ''}
+                       onChange={(e) => handlePrizeNameChange(i, e.target.value)}
+                       onBlur={(e) => handlePrizeNameBlur(i, e.target.value)}
+                       onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                       InputLabelProps={{ style: { color: '#888', fontSize: '13px' } }}
+                       inputProps={{ style: { color: '#fff', fontSize: '14px' } }}
+                       sx={{
+                         '& .MuiOutlinedInput-root': {
+                           bgcolor: '#0f0f0f',
+                           '& fieldset': { borderColor: '#333' },
+                           '&:hover fieldset': { borderColor: ACCENT },
+                           '&.Mui-focused fieldset': { borderColor: ACCENT },
+                         }
+                       }}
+                     />
+
+                     {/* Photo Section */}
+                     <Box>
+                       {w.prizePhotoUrl ? (
+                         <Box sx={{ position: 'relative', width: '100%', height: 140, borderRadius: 2, overflow: 'hidden', border: '1px solid #333' }}>
+                           <Box 
+                             component="img" 
+                             src={ensureAbsolute(w.prizePhotoUrl)} 
+                             alt="Premio" 
+                             sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                           />
+                           <IconButton 
+                             size="small" 
+                             onClick={() => handlePhotoRemove(i)} 
+                             sx={{ 
+                               position: 'absolute', 
+                               top: 8, 
+                               right: 8, 
+                               bgcolor: 'rgba(0,0,0,0.7)', 
+                               color: '#fff',
+                               '&:hover': { bgcolor: 'rgba(0,0,0,0.9)', color: '#ff1744' } 
+                             }}
+                           >
+                             <DeleteIcon fontSize="small" />
+                           </IconButton>
+                         </Box>
+                       ) : (
+                         <Box 
+                           sx={{ 
+                             width: '100%', 
+                             height: 100, 
+                             borderRadius: 2, 
+                             border: '1px dashed #333', 
+                             display: 'flex', 
+                             flexDirection: 'column', 
+                             alignItems: 'center', 
+                             justifyContent: 'center', 
+                             cursor: 'pointer',
+                             bgcolor: '#0f0f0f',
+                             gap: 1,
+                             '&:hover': { borderColor: ACCENT, bgcolor: 'rgba(255, 107, 0, 0.02)' },
+                             position: 'relative'
+                           }}
+                           onClick={() => triggerFileInput(i)}
+                         >
+                           {uploadingIndex === i ? (
+                             <CircularProgress size={24} sx={{ color: ACCENT }} />
+                           ) : (
+                             <>
+                               <CameraAltIcon sx={{ color: '#555' }} />
+                               <Typography variant="caption" sx={{ color: '#888', fontWeight: 'bold' }}>
+                                 Subir Foto del Ganador
+                               </Typography>
+                             </>
+                           )}
+                           <input 
+                             type="file" 
+                             id={`prize-photo-input-${i}`}
+                             accept="image/*" 
+                             style={{ display: 'none' }} 
+                             onChange={(e) => handleFileChange(i, e)} 
+                           />
+                         </Box>
+                       )}
+                     </Box>
+                   </Box>
+                 </Paper>
                ))}
-             </List>
+             </Box>
            )}
         </Box>
 
