@@ -277,147 +277,141 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     </div>
   )}
 
-  {allFinishers.length > 0 && (
-    <div style="text-align:center;margin-bottom:24px;">
-      <a href={`/premiacion?raceId=${selectedRaceId}`} style="display:inline-flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #FF6B00;color:#FF6B00;padding:10px 22px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#FF6B00';this.style.color='#fff'" onmouseout="this.style.background='#1a1a1a';this.style.color='#FF6B00'">
-        🏆 Ver Informe de Premiación
-      </a>
+  <div id="premiacion-btn-wrap" class={allFinishers.length > 0 ? "" : "hidden"} style="text-align:center;margin-bottom:24px;">
+    <a href={`/premiacion?raceId=${selectedRaceId}`} style="display:inline-flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #FF6B00;color:#FF6B00;padding:10px 22px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#FF6B00';this.style.color='#fff'" onmouseout="this.style.background='#1a1a1a';this.style.color='#FF6B00'">
+      🏆 Ver Informe de Premiación
+    </a>
+  </div>
+
+  <div id="stats-container" class={allFinishers.length > 0 ? "" : "hidden"}>
+    <!-- Stats Hero -->
+    <div class="stats-hero">
+      <div class="stat-card">
+        <div class="stat-value" id="stat-finishers">{totalFinishers}</div>
+        <div class="stat-label">Finishers</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-fastest-m">{fastestM ? formatTime(fastestM.finishTime) : '—'}</div>
+        <div class="stat-label">Mejor Masculino</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-fastest-f">{fastestF ? formatTime(fastestF.finishTime) : '—'}</div>
+        <div class="stat-label">Mejor Femenino</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="stat-avg-time">{avgTime ? formatTime(avgTime) : '—'}</div>
+        <div class="stat-label">Tiempo Promedio</div>
+      </div>
     </div>
-  )}
 
-  {allFinishers.length > 0 && (
-    <>
-      <!-- Stats Hero -->
-      <div class="stats-hero">
-        <div class="stat-card">
-          <div class="stat-value">{totalFinishers}</div>
-          <div class="stat-label">Finishers</div>
+    <!-- Gender Split -->
+    <div class="gender-split">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;white-space:nowrap;">Distribución</div>
+      <div class="gender-bar-wrap">
+        <div class="gender-bar">
+          <div class="gender-bar-m" id="gender-bar-m" style={`width:${mPct}%`}></div>
         </div>
-        <div class="stat-card">
-          <div class="stat-value">{fastestM ? formatTime(fastestM.finishTime) : '—'}</div>
-          <div class="stat-label">Mejor Masculino</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{fastestF ? formatTime(fastestF.finishTime) : '—'}</div>
-          <div class="stat-label">Mejor Femenino</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{avgTime ? formatTime(avgTime) : '—'}</div>
-          <div class="stat-label">Tiempo Promedio</div>
+        <div class="gender-legend">
+          <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#3b82f6;"></span><span id="gender-legend-m-pct">Masculino {mPct}%</span></span>
+          <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#ec4899;"></span><span id="gender-legend-f-pct">Femenino {100-mPct}%</span></span>
         </div>
       </div>
-
-      <!-- Gender Split -->
-      <div class="gender-split">
-        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;white-space:nowrap;">Distribución</div>
-        <div class="gender-bar-wrap">
-          <div class="gender-bar">
-            <div class="gender-bar-m" style={`width:${mPct}%`}></div>
-          </div>
-          <div class="gender-legend">
-            <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#3b82f6;"></span>Masculino {mPct}%</span>
-            <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#ec4899;"></span>Femenino {100-mPct}%</span>
-          </div>
-        </div>
-        <div style="font-size:13px;color:var(--muted);white-space:nowrap;">{males.length}M · {females.length}F</div>
-      </div>
-    </>
-  )}
-
-  {allFinishers.length === 0 ? (
-    <div class="empty-state">
-      <div class="empty-icon">🏁</div>
-      <h2 style="color:#666;margin-bottom:8px;">Aún no hay resultados</h2>
-      <p>Los resultados aparecerán cuando los corredores lleguen a la meta.</p>
+      <div id="gender-split-count" style="font-size:13px;color:var(--muted);white-space:nowrap;">{males.length}M · {females.length}F</div>
     </div>
-  ) : (
-    <div id="results-app">
-      <!-- Tabs -->
-      <div class="tabs">
-        <button class="tab active" data-tab="individual">🏃 Individual</button>
-        <button class="tab" data-tab="equipos">👥 Equipos</button>
+  </div>
+
+  <div id="empty-state" class={`empty-state ${allFinishers.length > 0 ? 'hidden' : ''}`}>
+    <div class="empty-icon">🏁</div>
+    <h2 style="color:#666;margin-bottom:8px;">Aún no hay resultados</h2>
+    <p>Los resultados aparecerán cuando los corredores lleguen a la meta.</p>
+  </div>
+
+  <div id="results-app" class={allFinishers.length > 0 ? "" : "hidden"}>
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="individual">🏃 Individual</button>
+      <button class="tab" data-tab="equipos">👥 Equipos</button>
+    </div>
+
+    <!-- TAB: Individual -->
+    <div class="tab-content active" id="tab-individual">
+      <!-- Podium: Top 3 M + Top 3 F -->
+      <div class="podium-section" id="podium-section">
+        <div class="podium-block">
+          <div class="podium-title">🏆 Podio Masculino</div>
+          <div class="podium-list" id="podium-male"></div>
+        </div>
+        <div class="podium-block">
+          <div class="podium-title">🏆 Podio Femenino</div>
+          <div class="podium-list" id="podium-female"></div>
+        </div>
       </div>
 
-      <!-- TAB: Individual -->
-      <div class="tab-content active" id="tab-individual">
-        <!-- Podium: Top 3 M + Top 3 F -->
-        <div class="podium-section" id="podium-section">
-          <div class="podium-block">
-            <div class="podium-title">🏆 Podio Masculino</div>
-            <div class="podium-list" id="podium-male"></div>
-          </div>
-          <div class="podium-block">
-            <div class="podium-title">🏆 Podio Femenino</div>
-            <div class="podium-list" id="podium-female"></div>
-          </div>
+      <hr class="section-divider" />
+
+      <!-- Filters -->
+      <div class="filters-bar">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#888;font-weight:700;">🔍 Filtrar Resultados</span>
+          <span class="result-count" id="result-count"></span>
         </div>
-
-        <hr class="section-divider" />
-
-        <!-- Filters -->
-        <div class="filters-bar">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-            <span style="font-size:13px;text-transform:uppercase;letter-spacing:2px;color:#888;font-weight:700;">🔍 Filtrar Resultados</span>
-            <span class="result-count" id="result-count"></span>
+        <div class="filter-row">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-box" id="search-input" placeholder="Buscar por nombre, dorsal o equipo..." />
           </div>
-          <div class="filter-row">
-            <div class="search-wrap">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="search-box" id="search-input" placeholder="Buscar por nombre, dorsal o equipo..." />
-            </div>
-            {distanceNames.length > 0 && (
-              <div class="filter-group">
-                <span class="filter-label">Distancia</span>
-                <div class="chip-row" id="dist-chips">
-                  <button class="chip active" data-val="all">Todas</button>
-                  {distanceNames.map(d => <button class="chip" data-val={d}>{d}</button>)}
-                </div>
-              </div>
-            )}
-            {categoryNames.length > 0 && (
-              <div class="filter-group">
-                <span class="filter-label">Categoría</span>
-                <div class="chip-row" id="cat-chips">
-                  <button class="chip active" data-val="all">Todas</button>
-                  {categoryNames.map(c => <button class="chip" data-val={c}>{c}</button>)}
-                </div>
-              </div>
-            )}
+          {distanceNames.length > 0 && (
             <div class="filter-group">
-              <span class="filter-label">Género</span>
-              <div class="chip-row" id="gender-chips">
-                <button class="chip active" data-val="all">Todos</button>
-                <button class="chip" data-val="masculino">Masculino</button>
-                <button class="chip" data-val="femenino">Femenino</button>
+              <span class="filter-label">Distancia</span>
+              <div class="chip-row" id="dist-chips">
+                <button class="chip active" data-val="all">Todas</button>
+                {distanceNames.map(d => <button class="chip" data-val={d}>{d}</button>)}
               </div>
+            </div>
+          )}
+          {categoryNames.length > 0 && (
+            <div class="filter-group">
+              <span class="filter-label">Categoría</span>
+              <div class="chip-row" id="cat-chips">
+                <button class="chip active" data-val="all">Todas</button>
+                {categoryNames.map(c => <button class="chip" data-val={c}>{c}</button>)}
+              </div>
+            </div>
+          )}
+          <div class="filter-group">
+            <span class="filter-label">Género</span>
+            <div class="chip-row" id="gender-chips">
+              <button class="chip active" data-val="all">Todos</button>
+              <button class="chip" data-val="masculino">Masculino</button>
+              <button class="chip" data-val="femenino">Femenino</button>
             </div>
           </div>
         </div>
-
-        <!-- Results Table (desktop) -->
-        <div class="results-wrap">
-          <table class="results-table">
-            <thead><tr>
-              <th>Pos</th><th>Corredor</th><th>Dorsal</th><th>Tiempo</th>{hasCheckpoints && <th>Retorno</th>}<th>Categoría</th><th>Distancia</th><th>Equipo</th>
-            </tr></thead>
-            <tbody id="results-body"></tbody>
-          </table>
-        </div>
-
-        <!-- Results Cards (mobile) -->
-        <div class="card-list" id="card-list"></div>
       </div>
 
-      <!-- TAB: Equipos -->
-      <div class="tab-content" id="tab-equipos">
-        <div id="teams-container"></div>
+      <!-- Results Table (desktop) -->
+      <div class="results-wrap" style="display:block;">
+        <table class="results-table">
+          <thead><tr>
+            <th>Pos</th><th>Corredor</th><th>Dorsal</th><th>Tiempo</th><th id="th-retorno" style={hasCheckpoints ? "" : "display:none;"}>Retorno</th><th>Categoría</th><th>Distancia</th><th>Equipo</th>
+          </tr></thead>
+          <tbody id="results-body"></tbody>
+        </table>
       </div>
+
+      <!-- Results Cards (mobile) -->
+      <div class="card-list" id="card-list" style="display:block;"></div>
     </div>
-  )}
+
+    <!-- TAB: Equipos -->
+    <div class="tab-content" id="tab-equipos">
+      <div id="teams-container"></div>
+    </div>
+  </div>
 </div><!-- results-inner -->
 </div><!-- results-page -->
 
-<script define:vars={{ clientData, hasCheckpoints }}>
+<script define:vars={{ clientData, selectedRaceId }}>
   const data = JSON.parse(clientData);
   const all = data.finishers;
   const teams = data.teamData;
@@ -494,14 +488,20 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     countEl.textContent = filtered.length + ' resultado' + (filtered.length !== 1 ? 's' : '');
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:#555;">Sin resultados para los filtros seleccionados</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#555;">Sin resultados para los filtros seleccionados</td></tr>';
       return;
+    }
+
+    const showCheckpoints = all.some(r => r.checkpointTime);
+    const thRetorno = document.getElementById('th-retorno');
+    if (thRetorno) {
+      thRetorno.style.display = showCheckpoints ? '' : 'none';
     }
 
     tbody.innerHTML = filtered.map(r => {
       const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
       const trCls = r.fPos === 1 ? 'tr-top1' : r.fPos === 2 ? 'tr-top2' : r.fPos === 3 ? 'tr-top3' : '';
-      const cpCell = hasCheckpoints
+      const cpCell = showCheckpoints
         ? `<td class="td-time" style="color:#aaa;font-size:12px;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>`
         : '';
       const ph = r.photoUrl ? `<img src="${ensureAbsolute(r.photoUrl)}" alt="" class="mini-photo"/>` : '';
@@ -612,9 +612,86 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   const si = document.getElementById('search-input');
   if (si) si.addEventListener('input', e => { fSearch = e.target.value; render(); });
 
+  // Polling logic for real-time updates
+  async function pollResults() {
+    if (!selectedRaceId) return;
+    try {
+      const res = await fetch(`/api/results-data?raceId=${selectedRaceId}&_t=${Date.now()}`, {
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      if (json.success) {
+        // Update client data
+        all.length = 0;
+        all.push(...json.finishers);
+        
+        teams.length = 0;
+        teams.push(...json.teamData);
+
+        if (all.length > 0) {
+          const emptyState = document.getElementById('empty-state');
+          const resultsApp = document.getElementById('results-app');
+          const statsContainer = document.getElementById('stats-container');
+          const premiacionBtnWrap = document.getElementById('premiacion-btn-wrap');
+          
+          if (emptyState) emptyState.classList.add('hidden');
+          if (resultsApp) resultsApp.classList.remove('hidden');
+          if (statsContainer) statsContainer.classList.remove('hidden');
+          if (premiacionBtnWrap) premiacionBtnWrap.classList.remove('hidden');
+
+          // Update stats in the DOM
+          const countVal = document.getElementById('stat-finishers');
+          if (countVal) countVal.textContent = all.length;
+
+          const malesList = all.filter(x => x.gender === 'masculino');
+          const fastestM = malesList[0];
+          const mVal = document.getElementById('stat-fastest-m');
+          if (mVal) mVal.textContent = fastestM ? fmt(fastestM.finishTime) : '—';
+
+          const femalesList = all.filter(x => x.gender === 'femenino');
+          const fastestF = femalesList[0];
+          const fVal = document.getElementById('stat-fastest-f');
+          if (fVal) fVal.textContent = fastestF ? fmt(fastestF.finishTime) : '—';
+
+          const avgTime = Math.round(all.reduce((s,f) => s + f.finishTime, 0) / all.length);
+          const avgVal = document.getElementById('stat-avg-time');
+          if (avgVal) avgVal.textContent = fmt(avgTime);
+
+          const mPct = Math.round(malesList.length / all.length * 100);
+          const fPct = 100 - mPct;
+
+          const barM = document.getElementById('gender-bar-m');
+          if (barM) barM.style.width = `${mPct}%`;
+
+          const legendM = document.getElementById('gender-legend-m-pct');
+          if (legendM) legendM.textContent = `Masculino ${mPct}%`;
+
+          const legendF = document.getElementById('gender-legend-f-pct');
+          if (legendF) legendF.textContent = `Femenino ${fPct}%`;
+
+          const splitCount = document.getElementById('gender-split-count');
+          if (splitCount) splitCount.textContent = `${malesList.length}M · ${femalesList.length}F`;
+        }
+
+        renderPodium();
+        render();
+        renderTeams();
+      }
+    } catch (e) {
+      console.error('Error polling results:', e);
+    }
+  }
+
   // Initial render
   renderPodium();
   render();
   renderTeams();
+
+  // Start polling every 5 seconds
+  setInterval(pollResults, 5000);
 </script>
 </Layout>

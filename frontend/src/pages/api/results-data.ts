@@ -1,0 +1,130 @@
+import type { APIRoute } from 'astro';
+import { apiFetch } from '../../lib/api';
+import { env } from 'cloudflare:workers';
+
+export const GET: APIRoute = async ({ request }) => {
+  try {
+    const url = new URL(request.url);
+    const raceId = url.searchParams.get('raceId');
+
+    if (!raceId) {
+      return new Response(JSON.stringify({ error: 'Falta el parámetro raceId' }), { status: 400 });
+    }
+
+    // Consultamos concurrentemente participantes, distancias y categorías
+    const [partsRes, distsRes, catsRes] = await Promise.all([
+      apiFetch(`/api/collections/participants/content?limit=2000`, env, { 
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      }),
+      apiFetch(`/api/collections/distances/content?limit=200`, env, { 
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      }),
+      apiFetch(`/api/collections/categories/content?limit=200`, env, { 
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      }),
+    ]);
+
+    const distanceMap: Record<string, string> = {};
+    const categoryMap: Record<string, string> = {};
+
+    const allDists = (distsRes?.data || []).filter((d: any) => d.data?.race === raceId);
+    for (const d of allDists) {
+      distanceMap[d.id] = d.data?.title || d.title;
+    }
+    const distanceNames = [...new Set(Object.values(distanceMap))].sort();
+
+    const allCats = (catsRes?.data || []).filter((c: any) => c.data?.race === raceId || !c.data?.race);
+    for (const c of allCats) {
+      categoryMap[c.id] = c.data?.title || c.title;
+    }
+
+    const allParts = (partsRes?.data || []).filter((p: any) => 
+      p.status === 'published' &&
+      (p.data?.race === raceId || p.data?.raceId === raceId) && 
+      p.data?.finishTime !== undefined && 
+      p.data?.finishTime !== null && 
+      p.data?.finishTime !== ''
+    );
+
+    const usedCats = new Set<string>();
+    const finishers = allParts
+      .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
+      .map((p: any, i: number) => {
+        const catId = p.data?.category || p.data?.categoryId || '';
+        const catName = p.data?.categoryName || categoryMap[catId] || 'General';
+        const distName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const gender = (p.data?.gender || '').toLowerCase();
+        usedCats.add(catName);
+        
+        return {
+          pos: i + 1,
+          id: p.id,
+          name: `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim(),
+          bib: p.data?.bibNumber,
+          finishTime: Number(p.data?.finishTime),
+          checkpointTime: p.data?.checkpointTime ? Number(p.data.checkpointTime) : null,
+          photoUrl: p.data?.photoUrl || '',
+          country: p.data?.country || '',
+          teamName: p.data?.teamName || '',
+          categoryName: catName,
+          distanceName: distName,
+          gender: gender === 'm' ? 'masculino' : gender === 'f' ? 'femenino' : gender,
+          registrationType: p.data?.registrationType || 'individual',
+        };
+      });
+
+    const categoryNames = [...usedCats].sort();
+
+    // Lógica de equipos
+    const teamMap: Record<string, any[]> = {};
+    for (const f of finishers) {
+      if (f.teamName && f.registrationType === 'team') {
+        if (!teamMap[f.teamName]) {
+          teamMap[f.teamName] = [];
+        }
+        teamMap[f.teamName].push(f);
+      }
+    }
+
+    const teamData = Object.entries(teamMap).map(([name, members]) => {
+      const totalTime = members.reduce((s: number, m: any) => s + m.finishTime, 0);
+      const complete = members.length === 4; // Total 4 miembros por equipo
+      return { 
+        name, 
+        members, 
+        totalTime, 
+        complete, 
+        totalMembers: members.length 
+      };
+    })
+    .sort((a, b) => {
+      if (a.complete && !b.complete) return -1;
+      if (!a.complete && b.complete) return 1;
+      return a.totalTime - b.totalTime;
+    });
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      finishers, 
+      distanceNames, 
+      categoryNames, 
+      teamData 
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      }
+    });
+
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message || 'Error al obtener datos de resultados' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+};

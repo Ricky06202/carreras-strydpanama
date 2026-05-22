@@ -744,7 +744,6 @@ const handleSubmit = async () => {
             termsAccepted: termsAccepted,
             discountCode: code,
             registrationType: registrationType,
-            registrationType: registrationType,
             receiptUrl: formData.receiptUrl,
             studentIdUrl: formData.studentIdUrl,
             matriculaUrl: formData.matriculaUrl,

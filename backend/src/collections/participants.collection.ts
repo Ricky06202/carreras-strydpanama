@@ -42,7 +42,7 @@ export default {
       checkpointTime: { type: 'number', title: 'Tiempo en Retorno (s)' },
       isPadrino: { type: 'boolean', title: 'Es Padrino UTP' },
       donatedTickets: { type: 'number', title: 'Cupos Donados' },
-      shippingAddress: { type: 'string', title: 'Dirección de Envío Kit (Virtual)', ui: { widget: 'textarea' } },
+      shippingAddress: { type: 'textarea', title: 'Dirección de Envío Kit (Virtual)' },
     },
     required: ['title', 'firstName', 'lastName', 'email'],
   },

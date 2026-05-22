@@ -15,7 +15,7 @@ export default {
       amount: { type: 'number', title: 'Monto' },
       status: { type: 'string', title: 'Estado' },
       orderId: { type: 'string', title: 'ID de Orden' },
-      payload: { type: 'string', title: 'Carga de Registro (JSON)', ui: { widget: 'textarea' } },
+      payload: { type: 'textarea', title: 'Carga de Registro (JSON)' },
     },
     required: ['title', 'orderId'],
   },

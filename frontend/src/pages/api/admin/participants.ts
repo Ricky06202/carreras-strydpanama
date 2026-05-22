@@ -67,6 +67,9 @@ export const GET: APIRoute = async ({ request }) => {
       isPadrino: item.data?.isPadrino || false,
       donatedTickets: item.data?.donatedTickets || 0,
       discountCode: item.data?.discountCode || '',
+      finishTime: item.data?.finishTime !== undefined && item.data?.finishTime !== null && item.data?.finishTime !== '' ? Number(item.data.finishTime) : undefined,
+      checkpointTime: item.data?.checkpointTime !== undefined && item.data?.checkpointTime !== null && item.data?.checkpointTime !== '' ? Number(item.data.checkpointTime) : undefined,
+      timerUsed: item.data?.timerUsed !== undefined && item.data?.timerUsed !== null && item.data?.timerUsed !== '' ? Number(item.data.timerUsed) : undefined,
     }));
 
     return new Response(JSON.stringify({ success: true, participants }), {
