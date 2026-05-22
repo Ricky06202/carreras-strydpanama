@@ -22,6 +22,11 @@ let distanceNames: string[] = [];
 let categoryNames: string[] = [];
 let teamData: any[] = [];
 
+let totalRunnersCount = 0;
+let totalFinishedCount = 0;
+let totalMissingCount = 0;
+let progressPercent = 0;
+
 if (selectedRaceId) {
   try {
     const [partsRes, distsRes, catsRes] = await Promise.all([
@@ -37,12 +42,31 @@ if (selectedRaceId) {
     const allCats = (catsRes?.data || []).filter((c: any) => c.data?.race === selectedRaceId || !c.data?.race);
     for (const c of allCats) categoryMap[c.id] = c.data?.title || c.title;
 
-    const allParts = (partsRes?.data || []).filter((p: any) => 
-      (p.data?.race === selectedRaceId || p.data?.raceId === selectedRaceId) && p.data?.finishTime
+    const activeParts = (partsRes?.data || []).filter((p: any) => {
+      const isCorrectRace = (p.data?.race === selectedRaceId || p.data?.raceId === selectedRaceId) && p.status === 'published';
+      if (!isCorrectRace) return false;
+      const isPadrino = p.data?.participantType === 'padrino' || p.data?.isPadrino === true;
+      if (isPadrino) return false;
+      const isConfirmed = p.data?.paymentStatus === 'Confirmado' || 
+                          p.data?.paymentStatus === 'Yappy' || 
+                          p.data?.paymentStatus === 'Completado' || 
+                          p.data?.paymentStatus === 'Cupon Padrino' || 
+                          p.data?.paymentMethod === 'Cupon Padrino';
+      const hasBib = p.data?.bibNumber !== undefined && p.data?.bibNumber !== null && p.data?.bibNumber !== '';
+      return isConfirmed || hasBib;
+    });
+
+    const finishedParts = activeParts.filter((p: any) => 
+      p.data?.finishTime !== undefined && p.data?.finishTime !== null && p.data?.finishTime !== ''
     );
 
+    totalRunnersCount = activeParts.length;
+    totalFinishedCount = finishedParts.length;
+    totalMissingCount = totalRunnersCount - totalFinishedCount;
+    progressPercent = totalRunnersCount > 0 ? Math.round((totalFinishedCount / totalRunnersCount) * 100) : 0;
+
     const usedCats = new Set<string>();
-    allFinishers = allParts
+    allFinishers = finishedParts
       .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
@@ -592,6 +616,21 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       </div>
       <div id="gender-split-count" style="font-size:13px;color:var(--muted);white-space:nowrap;">{males.length}M · {females.length}F</div>
     </div>
+
+    <!-- Progreso Carrera -->
+    <div class="gender-split" style="margin-top: 14px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;white-space:nowrap;">Progreso Carrera</div>
+      <div class="gender-bar-wrap">
+        <div class="gender-bar" style="background: #2d2d2d;">
+          <div id="progress-bar-fill" style={`height:100%; background:var(--accent); border-radius:99px; transition:width 0.6s; width:${progressPercent}%`}></div>
+        </div>
+        <div class="gender-legend">
+          <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:var(--accent);"></span><span id="progress-legend-finished">En Meta: {totalFinishedCount} ({progressPercent}%)</span></span>
+          <span style="font-size:12px;color:#7d8590;"><span class="gender-dot" style="background:#7d8590;"></span><span id="progress-legend-missing">Faltan por llegar: {totalMissingCount} ({100-progressPercent}%)</span></span>
+        </div>
+      </div>
+      <div id="progress-split-count" style="font-size:13px;color:var(--muted);white-space:nowrap;">{totalFinishedCount} / {totalRunnersCount} Corredores</div>
+    </div>
   </div>
 
   <div id="empty-state" class={`empty-state ${allFinishers.length > 0 ? 'hidden' : ''}`}>
@@ -1100,6 +1139,24 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
           const splitCount = document.getElementById('gender-split-count');
           if (splitCount) splitCount.textContent = `${malesList.length}M · ${femalesList.length}F`;
+
+          // Actualizar barra de progreso de carrera
+          const totalRunners = json.totalRunners || 0;
+          const totalFinished = json.totalFinished || 0;
+          const totalMissing = json.totalMissing || 0;
+          const progressPct = json.progressPct !== undefined ? json.progressPct : 0;
+
+          const progressFill = document.getElementById('progress-bar-fill');
+          if (progressFill) progressFill.style.width = `${progressPct}%`;
+
+          const progressFinished = document.getElementById('progress-legend-finished');
+          if (progressFinished) progressFinished.textContent = `En Meta: ${totalFinished} (${progressPct}%)`;
+
+          const progressMissing = document.getElementById('progress-legend-missing');
+          if (progressMissing) progressMissing.textContent = `Faltan por llegar: ${totalMissing} (${100 - progressPct}%)`;
+
+          const progressSplit = document.getElementById('progress-split-count');
+          if (progressSplit) progressSplit.textContent = `${totalFinished} / ${totalRunners} Corredores`;
         }
 
         renderPodium();
