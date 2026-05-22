@@ -127,11 +127,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
               {upcomingRaces.length > 0 && (
                 <Button
                   component="a"
-                  href={(() => {
-                    const accepting = upcomingRaces.find((r: any) => r.data?.status === 'accepting');
-                    const target = accepting || upcomingRaces[0];
-                    return accepting ? `/register?race=${target.id}` : `/race/${target.id}`;
-                  })()}
+                  href="/register"
                   variant="contained"
                   size="large"
                   sx={{
