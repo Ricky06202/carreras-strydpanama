@@ -27,13 +27,54 @@ export const sendRegistrationEmail = async (env: any, data: {
 
   const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode, teamName, registrationType, isPadrino, donatedTickets } = data;
 
+  const isWaitingList = paymentMethod === 'Lista de Espera';
+
   try {
     const response = await resend.emails.send({
       from: 'Carreras Stryd Panama <carreras@strydpanama.com>',
       to: [email],
       bcc: ['carreras@strydpanama.com'],
-      subject: `Confirmación de Registro: ${raceName}`,
-      html: `
+      subject: isWaitingList ? `Lista de Espera: ${raceName}` : `Confirmación de Registro: ${raceName}`,
+      html: isWaitingList ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #000000; padding: 30px; text-align: center;">
+            <h1 style="color: #FF6B00; margin: 0; font-size: 24px;">STRYD PANAMA</h1>
+            <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 14px;">LISTA DE ESPERA</p>
+          </div>
+          
+          <div style="padding: 30px;">
+            <h2 style="color: #333333; margin-top: 0;">¡Hola ${firstName}!</h2>
+            <p style="color: #555555; line-height: 1.6;">
+              Tus datos han sido registrados en la <strong>Lista de Espera</strong> para la carrera <strong>${raceName}</strong>. 
+            </p>
+            <p style="color: #555555; line-height: 1.6;">
+              Actualmente los cupos para este evento están agotados. Te contactaremos si habilitamos más espacios o si se libera algún cupo.
+            </p>
+            
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Nombre:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${firstName} ${lastName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Cédula:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${cedula || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Distancia de Interés:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${distance}</td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          
+          <div style="background-color: #f5f5f5; padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+            <p>&copy; ${new Date().getFullYear()} STRYD Panama. Todos los derechos reservados.</p>
+            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+          </div>
+        </div>
+      ` : `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden;">
           <div style="background-color: #000000; padding: 30px; text-align: center;">
             <h1 style="color: #FF6B00; margin: 0; font-size: 24px;">STRYD PANAMA</h1>
