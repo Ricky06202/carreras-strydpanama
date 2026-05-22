@@ -916,6 +916,30 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const resetRunnerTimes = async (raceId: string) => {
+    if (!confirm('🚨 ¿ESTÁS SEGURO?\\n\\nEsto borrará permanentemente todos los tiempos de llegada (finishTime) y retorno (checkpointTime) de los corredores para esta carrera.\\n\\nNO borrará las inscripciones ni datos personales, solo limpia los tiempos para iniciar la carrera real desde cero.')) return;
+    
+    setLoading(raceId);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/reset-participants-timing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al limpiar tiempos');
+      
+      alert('✅ Todos los tiempos de llegada y retorno de los participantes han sido limpiados.');
+      setRecentFinishes(prev => ({ ...prev, [raceId]: [], [`${raceId}_t2`]: [] }));
+      setRecentCheckpoints(prev => ({ ...prev, [raceId]: [] }));
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
 
   useEffect(() => {
@@ -1231,6 +1255,20 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       </Button>
                     </>
                   )}
+                </Box>
+
+                <Box sx={{ mt: 1.5 }}>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    onClick={() => resetRunnerTimes(race.id)}
+                    disabled={!!loading}
+                    sx={{ fontSize: '0.75rem', borderColor: 'rgba(211, 47, 47, 0.5)' }}
+                  >
+                    Limpiar Tiempos de Corredores
+                  </Button>
                 </Box>
 
                 {/* --- SECCIÓN META DE LLEGADA --- */}
