@@ -17,10 +17,11 @@ export const GET: APIRoute = async ({ request }) => {
     const results = await Promise.allSettled([
       api.getRace(env, raceId),
       api.getCategories(env, raceId),
-      api.getDistances(env, raceId)
+      api.getDistances(env, raceId),
+      api.getParticipants(env, raceId)
     ]);
 
-    const [raceRes, categoriesRes, distancesRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+    const [raceRes, categoriesRes, distancesRes, participantsRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
 
     if (!raceRes) {
       const errorDetail = (results[0] as PromiseRejectedResult)?.reason?.message || 'Carrera no encontrada';
@@ -28,6 +29,18 @@ export const GET: APIRoute = async ({ request }) => {
     }
 
     const race = raceRes?.data || null;
+    
+    // Contar los participantes registrados (excepto padrinos)
+    const rawParticipants = participantsRes?.data || [];
+    const raceParticipants = rawParticipants.filter((p: any) => {
+      const pRaceId = p.data?.race || p.data?.raceId;
+      return pRaceId === raceId;
+    });
+    const registeredRunnersCount = raceParticipants.filter((p: any) => 
+      p.data?.participantType !== 'padrino' && 
+      p.data?.bibNumber
+    ).length;
+
     const categories = (categoriesRes?.data || [])
       // SonicJS no filtra por campos personalizados vía query params — filtrar manualmente
       .filter((item: any) => item.status === 'published' && (item.data?.race === raceId || item.data?.race === undefined))
@@ -48,7 +61,7 @@ export const GET: APIRoute = async ({ request }) => {
         kilometers: item.data?.kilometers ?? null,
       }));
 
-    return new Response(JSON.stringify({ race, categories, distances }), {
+    return new Response(JSON.stringify({ race, categories, distances, registeredRunnersCount }), {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
