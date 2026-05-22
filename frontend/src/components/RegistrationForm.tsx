@@ -434,11 +434,15 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         const count = d.registeredRunnersCount || 0;
         setRegisteredRunnersCount(count);
         
-        // Si la carrera está llena, forzar tipo de participante a padrino y registro a individual
         const max = d.race?.data?.maxParticipants ? Number(d.race.data.maxParticipants) : null;
         if (max !== null && count >= max) {
           setRegistrationType('individual');
-          setFormData(prev => ({ ...prev, participantType: 'padrino' }));
+          setFormData(prev => ({ ...prev, participantType: 'waiting_list' }));
+        } else {
+          setFormData(prev => ({ 
+            ...prev, 
+            participantType: prev.participantType === 'waiting_list' || prev.participantType === 'padrino' ? 'general' : prev.participantType 
+          }));
         }
       })
       .catch(err => console.error('Error loading race info:', err))
@@ -673,7 +677,9 @@ const handleSubmit = async () => {
         raceId: selectedRace,
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
-        paymentMethod: (codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod,
+        paymentMethod: isRaceFull 
+          ? 'Lista de Espera' 
+          : ((codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod),
         termsAccepted: termsAccepted,
         discountCode: code,
         registrationType: registrationType,
@@ -911,7 +917,7 @@ const handleSubmit = async () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {isRaceFull && !isRaceUpcoming && (
               <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
-                ⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Solo están permitidas las inscripciones de tipo "Solo Padrino" (donaciones para becas UTP).
+                ⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Puedes inscribirte en la Lista de Espera para ser contactado si se habilitan más cupos.
               </Alert>
             )}
 
@@ -1010,66 +1016,80 @@ const handleSubmit = async () => {
                   </Alert>
                 )}
 
-                <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, gridColumn: '1 / -1' }}>
-                  <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: ACCENT }}>TIPO DE PARTICIPANTE</Typography>
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                    {[
-                      { value: 'general', label: 'Público General' },
-                      { value: 'estudiante', label: 'Estudiantes UTP' },
-                      { value: 'docente', label: 'Docente UTP' },
-                      { value: 'administrativo', label: 'Administrativo UTP' },
-                      { value: 'niño', label: 'Niño' },
-                      { value: 'virtual', label: 'Virtual' },
-                      { value: 'padrino', label: '🎓 Solo Padrino' },
-                    ].map((t) => (
-                      <Button
-                        key={t.value}
-                        variant={formData.participantType === t.value ? "contained" : "outlined"}
-                        disabled={isRaceFull && t.value !== 'padrino'}
-                        onClick={() => {
-                            const newType = t.value;
-                            let autoDist = formData.distance;
-                            
-                            if (registrationType === 'individual') {
-                                if (newType === 'general' || newType === 'docente' || newType === 'administrativo') {
-                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
-                                    if (dist) autoDist = dist.id;
-                                } else if (newType === 'estudiante') {
-                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
-                                    if (dist) autoDist = dist.id;
-                                } else if (newType === 'niño') {
-                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
-                                    if (dist) autoDist = dist.id;
-                                } else if (newType === 'virtual') {
-                                    const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
-                                    if (dist) autoDist = dist.id;
-                                }
-                            }
-                            
-                            setFormData({...formData, participantType: newType, distance: autoDist});
-                        }}
-                        size="small"
-                        sx={{ 
-                          borderRadius: 5,
-                          fontSize: { xs: '0.65rem', sm: '0.75rem' },
-                          py: 0.5,
-                          px: { xs: 1, sm: 1.5 },
-                          borderColor: formData.participantType === t.value ? ACCENT : 'divider',
-                          bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
-                          color: formData.participantType === t.value ? 'white' : 'text.secondary',
-                          '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' },
-                          '&.Mui-disabled': {
-                            borderColor: 'divider',
-                            bgcolor: 'transparent',
-                            color: 'text.disabled'
-                          }
-                        }}
-                      >
-                        {t.label}
-                      </Button>
-                    ))}
+                {isRaceFull ? (
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 107, 0, 0.08)', borderRadius: 2, gridColumn: '1 / -1', border: '1.5px solid #FF6B00' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: '#FF6B00', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tipo de Participante</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, color: '#FF6B00' }}>
+                        📋 Registro en Lista de Espera
+                      </Typography>
+                    </Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.5 }}>
+                      Los cupos para corredores están agotados. Al registrarte en la lista de espera, guardaremos tus datos y te contactaremos de manera prioritaria si se habilitan más cupos.
+                    </Typography>
                   </Box>
-                </Box>
+                ) : (
+                  <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, gridColumn: '1 / -1' }}>
+                    <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: ACCENT }}>TIPO DE PARTICIPANTE</Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                      {[
+                        { value: 'general', label: 'Público General' },
+                        { value: 'estudiante', label: 'Estudiantes UTP' },
+                        { value: 'docente', label: 'Docente UTP' },
+                        { value: 'administrativo', label: 'Administrativo UTP' },
+                        { value: 'niño', label: 'Niño' },
+                        { value: 'virtual', label: 'Virtual' },
+                        { value: 'padrino', label: '🎓 Solo Padrino' },
+                      ].map((t) => (
+                        <Button
+                          key={t.value}
+                          variant={formData.participantType === t.value ? "contained" : "outlined"}
+                          disabled={isRaceFull && t.value !== 'padrino'}
+                          onClick={() => {
+                              const newType = t.value;
+                              let autoDist = formData.distance;
+                              
+                              if (registrationType === 'individual') {
+                                  if (newType === 'general' || newType === 'docente' || newType === 'administrativo') {
+                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
+                                      if (dist) autoDist = dist.id;
+                                  } else if (newType === 'estudiante') {
+                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
+                                      if (dist) autoDist = dist.id;
+                                  } else if (newType === 'niño') {
+                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
+                                      if (dist) autoDist = dist.id;
+                                  } else if (newType === 'virtual') {
+                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
+                                      if (dist) autoDist = dist.id;
+                                  }
+                              }
+                              
+                              setFormData({...formData, participantType: newType, distance: autoDist});
+                          }}
+                          size="small"
+                          sx={{ 
+                            borderRadius: 5,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                            py: 0.5,
+                            px: { xs: 1, sm: 1.5 },
+                            borderColor: formData.participantType === t.value ? ACCENT : 'divider',
+                            bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
+                            color: formData.participantType === t.value ? 'white' : 'text.secondary',
+                            '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' },
+                            '&.Mui-disabled': {
+                              borderColor: 'divider',
+                              bgcolor: 'transparent',
+                              color: 'text.disabled'
+                            }
+                          }}
+                        >
+                          {t.label}
+                        </Button>
+                      ))}
+                    </Box>
+                  </Box>
+                )}
 
                 <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required error={showErrors && !formData.firstName} helperText={showErrors && !formData.firstName ? 'Campo requerido' : ''} />
                 <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required error={showErrors && !formData.lastName} helperText={showErrors && !formData.lastName ? 'Campo requerido' : ''} />
@@ -1206,7 +1226,7 @@ const handleSubmit = async () => {
                 )}
 
                 {/* Sección Padrino: checkbox para corredores normales, banner fijo para tipo padrino */}
-                {formData.participantType === 'padrino' ? (
+                {!isRaceFull && (formData.participantType === 'padrino' ? (
                   <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
                     <Box sx={{ p: 3, borderRadius: 3, border: '2px solid #FF6B00', bgcolor: 'rgba(255,107,0,0.05)', position: 'relative', overflow: 'hidden' }}>
                       <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>
@@ -1265,7 +1285,7 @@ const handleSubmit = async () => {
                       </Box>
                     </Box>
                   </Box>
-                )}
+                ))}
 
               </Box>
             )}
@@ -1308,7 +1328,7 @@ const handleSubmit = async () => {
                   </FormControl>
                 );
               })()}
-              {formData.distance && formData.participantType !== 'padrino' && (() => {
+              {!isRaceFull && formData.distance && formData.participantType !== 'padrino' && (() => {
                 const selected = distances.find(d => d.id === formData.distance);
                 const price = selected?.price ?? raceInfo?.data?.price ?? null;
                 if (price == null) return null;
@@ -1617,7 +1637,7 @@ const handleSubmit = async () => {
                   const distOk = distances.length === 0 || !!formData.distance;
                   const termsOk = !raceInfo?.data?.termsAndConditions || termsAccepted;
                   if (!valid || !distOk || !termsOk) return;
-                  if (codeValid && codeValid.valid) {
+                  if ((codeValid && codeValid.valid) || isRaceFull) {
                     handleSubmit();
                   } else {
                     setStep(2);
@@ -1627,7 +1647,7 @@ const handleSubmit = async () => {
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
-                {codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar'}
+                {isRaceFull ? 'Unirse a Lista de Espera' : (codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar')}
               </Button>
             </Box>
           </Box>
@@ -1848,7 +1868,7 @@ const handleSubmit = async () => {
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                {recoveredPayment ? 'Estado de tu Registro' : '¡Registro Completado!'} 
+                {recoveredPayment ? 'Estado de tu Registro' : (isRaceFull ? '¡Registro en Lista de Espera Completado!' : '¡Registro Completado!')} 
               </Typography>
 
               {recoveredPayment && (
@@ -1870,11 +1890,19 @@ const handleSubmit = async () => {
                 Tu código de confirmación principal es:
               </Typography>
               
-              <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
-              {(formData.paymentMethod === 'transfer' || isStudentCategorySelected()) && (
-                 <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
-                    Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados (pago o estatus de estudiante) y aprobará tu registro a la brevedad. Puedes verificar tu estado en <b>"Portal del Corredor"</b>.
-                 </Alert>
+              {isRaceFull ? (
+                <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
+                  Has quedado registrado en la <b>Lista de Espera</b>. Te contactaremos por correo electrónico o celular si decidimos abrir más cupos para la carrera. ¡Muchas gracias por tu interés!
+                </Alert>
+              ) : (
+                <>
+                  <Typography color="text.secondary">Tu registro ha sido procesado exitosamente.</Typography>
+                  {(formData.paymentMethod === 'transfer' || isStudentCategorySelected()) && (
+                     <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
+                        Tu inscripción está pendiente de validación. Nuestro equipo revisará los documentos proporcionados (pago o estatus de estudiante) y aprobará tu registro a la brevedad. Puedes verificar tu estado en <b>"Portal del Corredor"</b>.
+                     </Alert>
+                  )}
+                </>
               )}
 
               {/* Resumen Final para el Usuario */}
@@ -1887,7 +1915,9 @@ const handleSubmit = async () => {
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Dorsal Asignado</Typography>
-                    <Typography variant="body2" fontWeight="bold" color={ACCENT} sx={{ fontSize: '1.2rem' }}>#{assignedBib || '—'}</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT} sx={{ fontSize: '1.2rem' }}>
+                      {assignedBib ? `#${assignedBib}` : '—'}
+                    </Typography>
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Distancia</Typography>
@@ -1895,7 +1925,7 @@ const handleSubmit = async () => {
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Categoría</Typography>
-                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{categories.find(c => c.id === formData.category)?.name || 'General'}</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{isRaceFull ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || 'General')}</Typography>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <Typography variant="caption" color="text.secondary">Código de Seguimiento</Typography>
@@ -1936,11 +1966,11 @@ const handleSubmit = async () => {
                     {distances.find(d => d.id === formData.distance)?.name || '-'}
                   </Typography>
                 </Box>
-                {formData.category && (
+                {(formData.category || isRaceFull) && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                     <Typography variant="body2" color="text.secondary">Categoría:</Typography>
                     <Typography variant="body1" fontWeight="bold">
-                      {categories.find(c => c.id === formData.category)?.name || '-'}
+                      {isRaceFull ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || '-')}
                     </Typography>
                   </Box>
                 )}
@@ -1957,9 +1987,11 @@ const handleSubmit = async () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
                   <Typography variant="body1" fontWeight="bold" sx={{ color: ACCENT }}>
-                    {(codeValid && codeValid.valid)
-                      ? 'Boleto Físico (Cupón)'
-                      : (paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod || 'No especificado')}
+                    {isRaceFull
+                      ? 'Sin costo (Lista de Espera)'
+                      : ((codeValid && codeValid.valid)
+                        ? 'Boleto Físico (Cupón)'
+                        : (paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod || 'No especificado'))}
                   </Typography>
                 </Box>
                 {(codeValid && codeValid.valid) && (

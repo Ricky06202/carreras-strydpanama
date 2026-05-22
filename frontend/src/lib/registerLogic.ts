@@ -46,21 +46,24 @@ export const processRegistration = async (env: any, body: any) => {
     }
 
     // Validar límite de inscritos
-    let runnersToBeAdded = 0;
-    if (body.registrationType === 'team' && Array.isArray(body.teamMembers)) {
-      runnersToBeAdded = body.teamMembers.filter((m: any) => m.firstName && m.lastName).length;
-    } else {
-      runnersToBeAdded = body.participantType === 'padrino' ? 0 : 1;
-    }
+    const isWaitingList = body.participantType === 'waiting_list';
+    if (!isWaitingList) {
+      let runnersToBeAdded = 0;
+      if (body.registrationType === 'team' && Array.isArray(body.teamMembers)) {
+        runnersToBeAdded = body.teamMembers.filter((m: any) => m.firstName && m.lastName).length;
+      } else {
+        runnersToBeAdded = body.participantType === 'padrino' ? 0 : 1;
+      }
 
-    const currentRunnersCount = raceParticipants.filter((p: any) => 
-      p.data?.participantType !== 'padrino' && 
-      p.data?.bibNumber
-    ).length;
+      const currentRunnersCount = raceParticipants.filter((p: any) => 
+        p.data?.participantType !== 'padrino' && 
+        p.data?.bibNumber
+      ).length;
 
-    const maxParticipants = raceFields.maxParticipants ? Number(raceFields.maxParticipants) : null;
-    if (maxParticipants !== null && (currentRunnersCount + runnersToBeAdded) > maxParticipants) {
-      throw new Error(`Esta carrera ha alcanzado su límite de inscritos. Cupos disponibles: ${maxParticipants - currentRunnersCount}.`);
+      const maxParticipants = raceFields.maxParticipants ? Number(raceFields.maxParticipants) : null;
+      if (maxParticipants !== null && (currentRunnersCount + runnersToBeAdded) > maxParticipants) {
+        throw new Error(`Esta carrera ha alcanzado su límite de inscritos. Cupos disponibles: ${maxParticipants - currentRunnersCount}.`);
+      }
     }
 
     let nextBib = startingBib;
@@ -156,14 +159,14 @@ export const processRegistration = async (env: any, body: any) => {
     assignedCategoryId = mainCat.catId;
     resolvedCategoryName = mainCat.catName;
 
-    // Padrinos no corren: sin dorsal ni categoría de carrera
+    // Padrinos y lista de espera no corren: sin dorsal ni categoría de carrera
     const isPadrinoOnly = body.participantType === 'padrino';
 
     // Asignar el dorsal y la categoría calculada
-    body.bibNumber = isPadrinoOnly ? null : nextBib;
-    body.categoryId = isPadrinoOnly ? null : assignedCategoryId;
-    body.category = isPadrinoOnly ? null : assignedCategoryId;
-    body.categoryName = isPadrinoOnly ? 'Padrino UTP' : resolvedCategoryName;
+    body.bibNumber = (isPadrinoOnly || isWaitingList) ? null : nextBib;
+    body.categoryId = (isPadrinoOnly || isWaitingList) ? null : assignedCategoryId;
+    body.category = (isPadrinoOnly || isWaitingList) ? null : assignedCategoryId;
+    body.categoryName = isWaitingList ? 'Lista de Espera' : (isPadrinoOnly ? 'Padrino UTP' : resolvedCategoryName);
 
     // Calcular el monto pagado aproximado para los reportes
     let basePrice = 0;
@@ -175,10 +178,10 @@ export const processRegistration = async (env: any, body: any) => {
         basePrice = raceFields.price ? Number(raceFields.price) : 0;
     }
     let finalAmount = basePrice;
-    if (usedCodeData) {
+    if (usedCodeData || isWaitingList) {
         finalAmount = 0;
     }
-    body.amountPaid = finalAmount;
+    body.amountPaid = isWaitingList ? 0 : finalAmount;
 
     // Generar cÃ³digo de confirmaciÃ³n Ãºnico: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
@@ -360,15 +363,17 @@ export const processRegistration = async (env: any, body: any) => {
     } else {
         // Inscripción individual normal
         const uniqueSuffix = crypto.randomUUID().split('-')[0];
-        const participantTitle = isPadrinoOnly
-            ? `${body.firstName} ${body.lastName} - Padrino UTP [${uniqueSuffix}]`
-            : `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
+        const participantTitle = isWaitingList
+            ? `${body.firstName} ${body.lastName} - Lista de Espera [${uniqueSuffix}]`
+            : isPadrinoOnly
+                ? `${body.firstName} ${body.lastName} - Padrino UTP [${uniqueSuffix}]`
+                : `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
-        if (!isPadrinoOnly) teamMemberBibs.push(nextBib);
+        if (!isPadrinoOnly && !isWaitingList) teamMemberBibs.push(nextBib);
 
-        // Guardar en Perfiles Permanentes de Corredores (solo corredores, no padrinos)
-        if (!isPadrinoOnly) await upsertRunnerProfile(body, resolvedCategoryName);
+        // Guardar en Perfiles Permanentes de Corredores (solo corredores, no padrinos ni lista de espera)
+        if (!isPadrinoOnly && !isWaitingList) await upsertRunnerProfile(body, resolvedCategoryName);
 
         // Auto-generar códigos de padrino cuando se inscribe un padrino
         if (isPadrinoOnly && body.donatedTickets && Number(body.donatedTickets) > 0) {
@@ -503,7 +508,7 @@ export const processRegistration = async (env: any, body: any) => {
         firstName: body.firstName,
         lastName: body.lastName,
         raceName: raceName,
-        bibNumber: nextBib,
+        bibNumber: body.bibNumber,
         distance: resolvedDistance,
         category: resolvedCategory,
         cedula: body.cedula,
@@ -521,7 +526,7 @@ export const processRegistration = async (env: any, body: any) => {
     // Retornamos el objeto con el código en la raíz para facilitar la lectura del frontend
     return { 
       success: true,
-      assignedBib: isPadrinoOnly ? null : nextBib,
+      assignedBib: (isPadrinoOnly || isWaitingList) ? null : nextBib,
       confirmationCode: confCode,
       orderId: result?.data?.id || result?.id,
       data: result?.data || result
