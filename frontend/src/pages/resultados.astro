@@ -394,6 +394,65 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   :global(.hidden) {
     display: none !important;
   }
+  :global(.pace-splits-table td) {
+    padding: 10px 14px;
+    border-bottom: 1px solid #2d2d2d;
+  }
+  :global(.pace-splits-table tr:last-child td) {
+    border-bottom: none;
+  }
+  :global(.comparison-row) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111;
+    border: 1px solid #2d2d2d;
+    border-radius: 12px;
+    padding: 12px 16px;
+    transition: border-color 0.2s;
+  }
+  :global(.comparison-row:hover) {
+    border-color: #333;
+  }
+  :global(.comparison-info) {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+  }
+  :global(.comparison-label) {
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+  }
+  :global(.comparison-sub) {
+    font-size: 11px;
+    color: #888;
+  }
+  :global(.comparison-badge) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: ui-monospace, monospace;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  :global(.diff-faster) {
+    background: rgba(46, 160, 67, 0.15);
+    color: #3fb950;
+  }
+  :global(.diff-slower) {
+    background: rgba(248, 81, 73, 0.15);
+    color: #f85149;
+  }
+  :global(.diff-equal) {
+    background: rgba(110, 118, 129, 0.15);
+    color: #8b949e;
+  }
 
   @keyframes fadeIn {
     from { opacity: 0; }
@@ -690,6 +749,34 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
             </div>
           </div>
         </div>
+
+        <!-- Pace Splits Section -->
+        <div class="modal-section-title" style="margin-top: 20px; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #FF6B00; margin-bottom: 8px; text-align: left;">
+          ⏱️ Ritmo y Tramos
+        </div>
+        <div class="modal-stat-box modal-grid-full" style="padding: 0; overflow: hidden; margin-bottom: 20px; text-align: left;">
+          <table class="pace-splits-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 13px;">
+            <thead>
+              <tr style="background: #111; border-bottom: 1px solid #2d2d2d;">
+                <th style="padding: 10px 14px; font-weight: 700; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Tramo</th>
+                <th style="padding: 10px 14px; font-weight: 700; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Distancia</th>
+                <th style="padding: 10px 14px; font-weight: 700; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px;">Tiempo</th>
+                <th style="padding: 10px 14px; font-weight: 700; color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; text-align: right;">Ritmo</th>
+              </tr>
+            </thead>
+            <tbody id="modal-splits-body">
+              <!-- Dinámicamente poblado -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Comparisons Section -->
+        <div class="modal-section-title" style="font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #FF6B00; margin-bottom: 8px; text-align: left;">
+          📊 Comparativas de Ritmo (vs Ganadores y Récord 5K)
+        </div>
+        <div id="modal-comparisons-card" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px;">
+          <!-- Dinámicamente poblado -->
+        </div>
         
         <div class="modal-actions">
           <a class="modal-btn modal-btn-primary" id="modal-cert-btn" href="#">
@@ -723,6 +810,50 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     if (url.startsWith('/')) return `${R2_BASE}${url}`;
     if (!url.startsWith('http')) return `${R2_BASE}/${url}`;
     return url;
+  }
+
+  // World Records for 5K road: Men (12:49), Women (14:13)
+  const WR_M_TIME = 769; // 12:49
+  const WR_F_TIME = 853; // 14:13
+
+  function calculatePace(timeInSecs, distanceInKm) {
+    if (!timeInSecs || !distanceInKm || distanceInKm <= 0) return null;
+    return timeInSecs / distanceInKm;
+  }
+
+  function formatPace(paceSecs) {
+    if (paceSecs === null || paceSecs === undefined || isNaN(paceSecs)) return '—';
+    const mins = Math.floor(paceSecs / 60);
+    const secs = Math.floor(paceSecs % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')} min/km`;
+  }
+
+  function formatPaceDiffBadge(runnerPace, targetPace) {
+    if (!runnerPace || !targetPace) return `<span class="comparison-badge diff-equal">—</span>`;
+    const diff = runnerPace - targetPace;
+    const absDiff = Math.abs(diff);
+    const mins = Math.floor(absDiff / 60);
+    const secs = Math.floor(absDiff % 60);
+    
+    let sign = '';
+    let cls = 'diff-equal';
+    let label = 'igual';
+    
+    if (diff > 0) {
+      sign = '+';
+      cls = 'diff-slower';
+      label = 'más lento';
+    } else if (diff < 0) {
+      sign = '-';
+      cls = 'diff-faster';
+      label = 'más rápido';
+    }
+    
+    if (Math.abs(diff) < 0.5) {
+      return `<span class="comparison-badge diff-equal">Igual</span>`;
+    }
+    
+    return `<span class="comparison-badge ${cls}">${sign}${mins}:${secs.toString().padStart(2, '0')} ${label}</span>`;
   }
 
   let fDist = 'all', fCat = 'all', fGender = 'all', fSearch = '';
@@ -1036,6 +1167,117 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
     document.getElementById('modal-runner-cat-val').textContent = r.categoryName || 'General';
     document.getElementById('modal-runner-dist-val').textContent = r.distanceName || 'General';
+
+    // Parse distance dynamically
+    let distance = 5.0;
+    const distStr = (r.distanceName || '').toLowerCase();
+    const parsedDist = parseFloat(distStr);
+    if (!isNaN(parsedDist) && parsedDist > 0) {
+      distance = parsedDist;
+    }
+    const cpDist = distance / 2;
+
+    // Calculate paces
+    const paceTotal = calculatePace(r.finishTime, distance);
+    const paceIda = r.checkpointTime ? calculatePace(r.checkpointTime, cpDist) : null;
+    const paceRegreso = r.checkpointTime ? calculatePace(r.finishTime - r.checkpointTime, distance - cpDist) : null;
+
+    // Splits table HTML
+    const splitsBody = document.getElementById('modal-splits-body');
+    if (splitsBody) {
+      splitsBody.innerHTML = `
+        <tr style="border-bottom: 1px solid #2d2d2d;">
+          <td style="padding: 10px 14px; color: #fff;">Ida</td>
+          <td style="padding: 10px 14px; color: #888;">${cpDist.toFixed(1)} km</td>
+          <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>
+          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
+            ${formatPace(paceIda)}
+          </td>
+        </tr>
+        <tr style="border-bottom: 1px solid #2d2d2d;">
+          <td style="padding: 10px 14px; color: #fff;">Regreso</td>
+          <td style="padding: 10px 14px; color: #888;">${(distance - cpDist).toFixed(1)} km</td>
+          <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.finishTime - r.checkpointTime) : '—'}</td>
+          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
+            ${formatPace(paceRegreso)}
+          </td>
+        </tr>
+        <tr style="background: rgba(255, 107, 0, 0.06);">
+          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">Total</td>
+          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${distance.toFixed(1)} km</td>
+          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${fmt(r.finishTime)}</td>
+          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 800; color: #FF6B00;">
+            ${formatPace(paceTotal)}
+          </td>
+        </tr>
+      `;
+    }
+
+    // Find winners for comparisons
+    // Note: overallWinner is the first one in "all" with same gender and same distance
+    const overallWinner = all.find(x => x.gender === r.gender && x.distanceName === r.distanceName);
+    const overallWinnerPace = overallWinner ? calculatePace(overallWinner.finishTime, distance) : null;
+
+    // categoryWinner is the first one in "all" with same category, gender, and distance
+    const categoryWinner = all.find(x => x.categoryName === r.categoryName && x.gender === r.gender && x.distanceName === r.distanceName);
+    const categoryWinnerPace = categoryWinner ? calculatePace(categoryWinner.finishTime, distance) : null;
+
+    // World Record comparison (for 5K)
+    const isMale = (r.gender || '').toLowerCase() === 'masculino' || (r.gender || '').toLowerCase() === 'm';
+    const wrTime = isMale ? WR_M_TIME : WR_F_TIME;
+    const wrLabel = isMale ? 'Récord Mundial 5K Calle (M)' : 'Récord Mundial 5K Calle (F)';
+    const wrPace = wrTime / 5;
+
+    const compsCard = document.getElementById('modal-comparisons-card');
+    if (compsCard) {
+      let compsHtml = '';
+
+      // 1. Ganador General (Mismo sexo)
+      if (overallWinner) {
+        const isSelf = overallWinner.id === r.id;
+        const winnerPaceStr = formatPace(overallWinnerPace);
+        const nameDisplay = isSelf ? 'Tú (Ganador General)' : overallWinner.name;
+        compsHtml += `
+          <div class="comparison-row">
+            <div class="comparison-info">
+              <span class="comparison-label">Ganador General (${r.gender === 'masculino' ? 'Masc' : 'Fem'})</span>
+              <span class="comparison-sub">${nameDisplay} · Ritmo: ${winnerPaceStr}</span>
+            </div>
+            ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, overallWinnerPace)}
+          </div>
+        `;
+      }
+
+      // 2. Ganador Categoría (Mismo sexo)
+      if (categoryWinner) {
+        const isSelf = categoryWinner.id === r.id;
+        const catWinnerPaceStr = formatPace(categoryWinnerPace);
+        const nameDisplay = isSelf ? 'Tú (Ganador Categoría)' : categoryWinner.name;
+        compsHtml += `
+          <div class="comparison-row">
+            <div class="comparison-info">
+              <span class="comparison-label">Ganador Categoría (${r.categoryName})</span>
+              <span class="comparison-sub">${nameDisplay} · Ritmo: ${catWinnerPaceStr}</span>
+            </div>
+            ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, categoryWinnerPace)}
+          </div>
+        `;
+      }
+
+      // 3. Récord Mundial
+      const wrPaceStr = formatPace(wrPace);
+      compsHtml += `
+        <div class="comparison-row">
+          <div class="comparison-info">
+            <span class="comparison-label">${wrLabel} (${isMale ? '12:49' : '14:13'})</span>
+            <span class="comparison-sub">Referencia élite · Ritmo: ${wrPaceStr}</span>
+          </div>
+          ${formatPaceDiffBadge(paceTotal, wrPace)}
+        </div>
+      `;
+
+      compsCard.innerHTML = compsHtml;
+    }
 
     const certBtn = document.getElementById('modal-cert-btn');
     if (certBtn) {
