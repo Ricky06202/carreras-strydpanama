@@ -198,8 +198,223 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   .td-bib { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
   .td-time { font-weight: 900; font-variant-numeric: tabular-nums; font-family: ui-monospace, monospace; }
   .td-cat { font-size: 11px; color: var(--muted); background: var(--card2); padding: 3px 9px; border-radius: 10px; display: inline-block; border: 1px solid var(--border); }
-  .mini-photo { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
-  .mini-photo-placeholder { width: 34px; height: 34px; border-radius: 50%; background: #2a2a2a; border: 2px solid #333; vertical-align: middle; margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  :global(.mini-photo) { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
+  :global(.mini-photo-placeholder) { width: 34px; height: 34px; border-radius: 50%; background: #2a2a2a; border: 2px solid #333; vertical-align: middle; margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+  :global(.podium-photo) { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 2px solid var(--accent); vertical-align: middle; margin-right: 8px; flex-shrink: 0; }
+  :global(.podium-photo-placeholder) { width: 44px; height: 44px; border-radius: 50%; background: #2a2a2a; border: 2px solid #333; vertical-align: middle; margin-right: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+
+  /* Detailed Runner Modal */
+  :global(.modal-backdrop) {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 16px;
+    animation: fadeIn 0.2s ease-out;
+  }
+  :global(.modal-backdrop.hidden) {
+    display: none !important;
+  }
+  :global(.modal-content-card) {
+    background: #1a1a1a;
+    border: 1px solid #2d2d2d;
+    border-radius: 24px;
+    width: 100%;
+    max-width: 580px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 45px rgba(255, 107, 0, 0.2);
+    position: relative;
+    animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  :global(.modal-close-btn) {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #2d2d2d;
+    color: #fff;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 700;
+    transition: all 0.2s;
+    z-index: 10;
+  }
+  :global(.modal-close-btn:hover) {
+    background: #FF6B00;
+  }
+  :global(.modal-hero) {
+    background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+    padding: 32px 24px;
+    text-align: center;
+    border-bottom: 1px solid #2d2d2d;
+  }
+  :global(.modal-runner-photo) {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 4px solid #FF6B00;
+    box-shadow: 0 0 15px rgba(255,107,0,0.4);
+    margin: 0 auto 16px;
+    display: block;
+  }
+  :global(.modal-runner-placeholder) {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: #2a2a2a;
+    border: 4px solid #333;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 50px;
+    margin: 0 auto 16px;
+  }
+  :global(.modal-runner-name) {
+    font-size: 26px;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+  :global(.modal-race-name) {
+    color: #FF6B00;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+  :global(.modal-runner-bib-badge) {
+    display: inline-block;
+    background: #FF6B00;
+    color: #fff;
+    padding: 6px 18px;
+    border-radius: 20px;
+    font-weight: 900;
+    font-size: 15px;
+    margin-top: 10px;
+  }
+  :global(.modal-runner-team-badge) {
+    font-size: 13px;
+    color: #888;
+    margin-top: 6px;
+  }
+  :global(.modal-body) {
+    padding: 24px;
+  }
+  :global(.modal-grid) {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  :global(.modal-grid-full) {
+    grid-column: span 2;
+  }
+  :global(.modal-stat-box) {
+    background: #111;
+    border: 1px solid #2d2d2d;
+    border-radius: 14px;
+    padding: 16px;
+    text-align: center;
+  }
+  :global(.modal-stat-box.highlight) {
+    border-color: #FF6B00;
+    background: rgba(255, 107, 0, 0.04);
+  }
+  :global(.modal-stat-label) {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #666;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  :global(.modal-stat-value) {
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+  }
+  :global(.modal-stat-value.orange) {
+    color: #FF6B00;
+  }
+  :global(.modal-stat-sub) {
+    font-size: 10px;
+    color: #555;
+    margin-top: 4px;
+  }
+  :global(.modal-actions) {
+    display: flex;
+    gap: 12px;
+  }
+  :global(.modal-btn) {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    text-decoration: none;
+    border: none;
+    transition: all 0.2s;
+  }
+  :global(.modal-btn-primary) {
+    background: #FF6B00;
+    color: #fff;
+  }
+  :global(.modal-btn-primary:hover) {
+    background: #E55A00;
+    transform: translateY(-1px);
+  }
+  :global(.modal-btn-secondary) {
+    background: transparent;
+    color: #FF6B00;
+    border: 2px solid #FF6B00;
+  }
+  :global(.modal-btn-secondary:hover) {
+    background: rgba(255, 107, 0, 0.1);
+  }
+  :global(.hidden) {
+    display: none !important;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  @media (max-width: 480px) {
+    :global(.modal-grid) {
+      grid-template-columns: 1fr;
+    }
+    :global(.modal-grid-full) {
+      grid-column: span 1;
+    }
+    :global(.modal-actions) {
+      flex-direction: column;
+    }
+  }
 
   /* Mobile card list (hidden on desktop) */
   .card-list { display: none; }
@@ -248,7 +463,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     .podium-block { min-width: 100%; }
     .podium-item { padding: 12px 14px; gap: 10px; }
     .podium-medal { font-size: 22px; min-width: 28px; }
-    .podium-photo, .podium-photo-placeholder { width: 44px; height: 44px; font-size: 18px; }
+    :global(.podium-photo), :global(.podium-photo-placeholder) { width: 44px; height: 44px; font-size: 18px; }
     .podium-name { font-size: 14px; }
     .podium-time { font-size: 15px; }
     /* Table hidden on mobile, cards shown */
@@ -409,9 +624,88 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     </div>
   </div>
 </div><!-- results-inner -->
+
+  <!-- Detailed Runner Modal -->
+  <div id="runner-modal" class="modal-backdrop hidden" onclick="closeRunnerModal()">
+    <div class="modal-content-card" onclick="event.stopPropagation()">
+      <button class="modal-close-btn" onclick="closeRunnerModal()">✕</button>
+      
+      <div class="modal-hero">
+        <img id="modal-runner-img" src="" alt="" class="modal-runner-photo hidden" />
+        <div id="modal-runner-placeholder" class="modal-runner-placeholder hidden">🏃</div>
+        
+        <div class="modal-runner-name" id="modal-runner-name">Corredor</div>
+        <div class="modal-race-name" id="modal-runner-race">Carrera</div>
+        <div class="modal-runner-bib-badge" id="modal-runner-bib">#000</div>
+        <div class="modal-runner-team-badge" id="modal-runner-team">Individual</div>
+      </div>
+      
+      <div class="modal-body">
+        <div class="modal-grid">
+          <!-- Official Time -->
+          <div class="modal-stat-box highlight">
+            <div class="modal-stat-label">Tiempo Oficial</div>
+            <div class="modal-stat-value orange" id="modal-runner-time">--:--</div>
+          </div>
+          
+          <!-- Checkpoint Time -->
+          <div class="modal-stat-box" id="modal-runner-checkpoint-container">
+            <div class="modal-stat-label">Retorno (Checkpoint)</div>
+            <div class="modal-stat-value" id="modal-runner-checkpoint">--:--</div>
+          </div>
+          
+          <!-- Rank Category -->
+          <div class="modal-stat-box">
+            <div class="modal-stat-label">Posición Categoría</div>
+            <div class="modal-stat-value orange" id="modal-rank-cat">#--</div>
+            <div class="modal-stat-sub" id="modal-rank-cat-total">de --</div>
+          </div>
+
+          <!-- Rank Distance -->
+          <div class="modal-stat-box">
+            <div class="modal-stat-label">Posición Distancia</div>
+            <div class="modal-stat-value orange" id="modal-rank-dist">#--</div>
+            <div class="modal-stat-sub" id="modal-rank-dist-total">de --</div>
+          </div>
+
+          <!-- Rank General -->
+          <div class="modal-stat-box">
+            <div class="modal-stat-label">Clasificación General</div>
+            <div class="modal-stat-value" id="modal-rank-general">#--</div>
+            <div class="modal-stat-sub" id="modal-rank-general-total">de --</div>
+          </div>
+
+          <!-- Details -->
+          <div class="modal-stat-box modal-grid-full">
+            <div style="display:flex; justify-content:space-around; align-items:center; gap:8px;">
+              <div>
+                <div class="modal-stat-label">Categoría</div>
+                <div style="font-weight:700; font-size:14px;" id="modal-runner-cat-val">General</div>
+              </div>
+              <div style="border-left:1px solid #2d2d2d; height:30px;"></div>
+              <div>
+                <div class="modal-stat-label">Distancia</div>
+                <div style="font-weight:700; font-size:14px;" id="modal-runner-dist-val">General</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <a class="modal-btn modal-btn-primary" id="modal-cert-btn" href="#">
+            🏆 Ver Certificado y Ficha
+          </a>
+          <button class="modal-btn modal-btn-secondary" onclick="closeRunnerModal()">
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div><!-- results-page -->
 
-<script define:vars={{ clientData, selectedRaceId }}>
+<script define:vars={{ clientData, selectedRaceId, raceName }}>
   const data = JSON.parse(clientData);
   const all = data.finishers;
   const teams = data.teamData;
@@ -468,7 +762,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         const photo = r.photoUrl
           ? `<img src="${ensureAbsolute(r.photoUrl)}" alt="" class="podium-photo" />`
           : `<div class="podium-photo-placeholder">🏃</div>`;
-        return `<a href="/corredor/${r.id}" class="podium-item p${i+1}">
+        return `<div onclick="openRunnerModal('${r.id}')" class="podium-item p${i+1}" style="cursor: pointer;">
           <span class="podium-medal">${medals[i]}</span>
           ${photo}
           <div class="podium-info">
@@ -476,7 +770,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
             <div class="podium-bib">#${r.bib}</div>
           </div>
           <div class="podium-time">${fmt(r.finishTime)}</div>
-        </a>`;
+        </div>`;
       }).join('');
     });
   }
@@ -505,7 +799,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         ? `<td class="td-time" style="color:#aaa;font-size:12px;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>`
         : '';
       const ph = r.photoUrl ? `<img src="${ensureAbsolute(r.photoUrl)}" alt="" class="mini-photo"/>` : '';
-      return `<tr class="${trCls}" onclick="window.location='/corredor/${r.id}'">
+      return `<tr class="${trCls}" onclick="openRunnerModal('${r.id}')">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
         <td style="font-weight:700;">${ph}${r.name}</td>
         <td class="td-bib">#${r.bib}</td>
@@ -524,7 +818,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     if (filtered.length === 0) { list.innerHTML = ''; return; }
     list.innerHTML = filtered.map(r => {
       const rcCls = r.fPos === 1 ? 'rc-top1' : r.fPos === 2 ? 'rc-top2' : r.fPos === 3 ? 'rc-top3' : '';
-      return `<a href="/corredor/${r.id}" class="result-card ${rcCls}">
+      return `<div onclick="openRunnerModal('${r.id}')" class="result-card ${rcCls}" style="cursor: pointer;">
         <div class="rc-pos">${r.fPos <= 3 ? medals[r.fPos-1] : r.fPos}</div>
         <div class="rc-info">
           <div class="rc-name">${r.name}</div>
@@ -532,7 +826,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
           <div class="rc-bib">#${r.bib}${r.checkpointTime ? ` · 🔁 ${fmt(r.checkpointTime)}` : ''}</div>
         </div>
         <div class="rc-time">${fmt(r.finishTime)}</div>
-      </a>`;
+      </div>`;
     }).join('');
   }
 
@@ -565,13 +859,13 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         <div class="team-members-label">Integrantes</div>
         <div class="team-members">
           ${t.members.sort((a,b) => a.finishTime - b.finishTime).map(m => `
-            <a href="/corredor/${m.id}" class="team-member" style="text-decoration:none;color:inherit;">
+            <div onclick="openRunnerModal('${m.id}')" class="team-member" style="cursor:pointer;">
               ${m.photoUrl ? `<img src="${ensureAbsolute(m.photoUrl)}" alt="" class="mini-photo"/>` : ''}
               <span class="member-name">${m.name}</span>
               <span class="member-bib">#${m.bib}</span>
               <span class="member-sep">—</span>
               <span class="member-time">${fmt(m.finishTime)}</span>
-            </a>
+            </div>
           `).join('')}
         </div>
       </div>`;
@@ -684,6 +978,83 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     } catch (e) {
       console.error('Error polling results:', e);
     }
+  }
+
+  window.openRunnerModal = function(runnerId) {
+    const r = all.find(x => x.id === runnerId);
+    if (!r) return;
+
+    // General rank: all is sorted by finishTime, so r.pos is their general rank
+    const generalPos = r.pos;
+    const totalGeneral = all.length;
+
+    // Distance ranking
+    const distFinishers = all.filter(x => x.distanceName === r.distanceName);
+    const distPos = distFinishers.findIndex(x => x.id === r.id) + 1;
+    const totalDist = distFinishers.length;
+
+    // Category ranking
+    const catFinishers = all.filter(x => x.categoryName === r.categoryName && x.distanceName === r.distanceName);
+    const catPos = catFinishers.findIndex(x => x.id === r.id) + 1;
+    const totalCat = catFinishers.length;
+
+    const imgEl = document.getElementById('modal-runner-img');
+    const placeholderEl = document.getElementById('modal-runner-placeholder');
+
+    if (r.photoUrl) {
+      imgEl.src = ensureAbsolute(r.photoUrl);
+      imgEl.classList.remove('hidden');
+      placeholderEl.classList.add('hidden');
+    } else {
+      imgEl.classList.add('hidden');
+      placeholderEl.classList.remove('hidden');
+    }
+
+    document.getElementById('modal-runner-name').textContent = r.name;
+    document.getElementById('modal-runner-bib').textContent = `#${r.bib}`;
+    document.getElementById('modal-runner-race').textContent = raceName;
+    document.getElementById('modal-runner-team').textContent = r.teamName ? `👥 Equipo: ${r.teamName}` : 'Individual';
+    
+    document.getElementById('modal-runner-time').textContent = fmt(r.finishTime);
+
+    const cpContainer = document.getElementById('modal-runner-checkpoint-container');
+    if (r.checkpointTime) {
+      document.getElementById('modal-runner-checkpoint').textContent = fmt(r.checkpointTime);
+      cpContainer.classList.remove('hidden');
+    } else {
+      cpContainer.classList.add('hidden');
+    }
+
+    document.getElementById('modal-rank-cat').textContent = `#${catPos || '—'}`;
+    document.getElementById('modal-rank-cat-total').textContent = `de ${totalCat || 0}`;
+
+    document.getElementById('modal-rank-dist').textContent = `#${distPos || '—'}`;
+    document.getElementById('modal-rank-dist-total').textContent = `de ${totalDist || 0}`;
+
+    document.getElementById('modal-rank-general').textContent = `#${generalPos || '—'}`;
+    document.getElementById('modal-rank-general-total').textContent = `de ${totalGeneral || 0}`;
+
+    document.getElementById('modal-runner-cat-val').textContent = r.categoryName || 'General';
+    document.getElementById('modal-runner-dist-val').textContent = r.distanceName || 'General';
+
+    const certBtn = document.getElementById('modal-cert-btn');
+    if (certBtn) {
+      certBtn.href = `/corredor/${r.id}`;
+    }
+
+    const modal = document.getElementById('runner-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+    }
+    document.body.style.overflow = 'hidden';
+  }
+
+  window.closeRunnerModal = function() {
+    const modal = document.getElementById('runner-modal');
+    if (modal) {
+      modal.classList.add('hidden');
+    }
+    document.body.style.overflow = '';
   }
 
   // Initial render
