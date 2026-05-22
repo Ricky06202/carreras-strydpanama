@@ -41,16 +41,33 @@ export const GET: APIRoute = async ({ request }) => {
       categoryMap[c.id] = c.data?.title || c.title;
     }
 
-    const allParts = (partsRes?.data || []).filter((p: any) => 
-      p.status === 'published' &&
-      (p.data?.race === raceId || p.data?.raceId === raceId) && 
+    const allRaceParticipants = (partsRes?.data || []).filter((p: any) => {
+      const isCorrectRace = (p.data?.race === raceId || p.data?.raceId === raceId) && p.status === 'published';
+      if (!isCorrectRace) return false;
+      const isPadrino = p.data?.participantType === 'padrino' || p.data?.isPadrino === true;
+      if (isPadrino) return false;
+      const isConfirmed = p.data?.paymentStatus === 'Confirmado' || 
+                          p.data?.paymentStatus === 'Yappy' || 
+                          p.data?.paymentStatus === 'Completado' || 
+                          p.data?.paymentStatus === 'Cupon Padrino' || 
+                          p.data?.paymentMethod === 'Cupon Padrino';
+      const hasBib = p.data?.bibNumber !== undefined && p.data?.bibNumber !== null && p.data?.bibNumber !== '';
+      return isConfirmed || hasBib;
+    });
+
+    const finishedParts = allRaceParticipants.filter((p: any) => 
       p.data?.finishTime !== undefined && 
       p.data?.finishTime !== null && 
       p.data?.finishTime !== ''
     );
 
+    const totalRunners = allRaceParticipants.length;
+    const totalFinished = finishedParts.length;
+    const totalMissing = totalRunners - totalFinished;
+    const progressPct = totalRunners > 0 ? Math.round((totalFinished / totalRunners) * 100) : 0;
+
     const usedCats = new Set<string>();
-    const finishers = allParts
+    const finishers = finishedParts
       .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
@@ -111,7 +128,11 @@ export const GET: APIRoute = async ({ request }) => {
       finishers, 
       distanceNames, 
       categoryNames, 
-      teamData 
+      teamData,
+      totalRunners,
+      totalFinished,
+      totalMissing,
+      progressPct
     }), {
       status: 200,
       headers: {

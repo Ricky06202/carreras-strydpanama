@@ -1,0 +1,433 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { env } from 'cloudflare:workers';
+import { apiFetch } from '../lib/api';
+
+let races: any[] = [];
+let errorMsg = '';
+
+try {
+  const res = await apiFetch('/api/collections/races/content?limit=50', env, { method: 'GET' });
+  races = (res?.data || []).sort((a: any, b: any) => {
+    // Colocar las activas/en vivo primero
+    const aLive = a.data?.timerStart && !a.data?.timerStop;
+    const bLive = b.data?.timerStart && !b.data?.timerStop;
+    if (aLive && !bLive) return -1;
+    if (!aLive && bLive) return 1;
+    return 0;
+  });
+} catch (e: any) {
+  errorMsg = e.message || 'Error al conectar con la base de datos.';
+}
+
+const clientRaces = JSON.stringify(races);
+---
+
+<Layout title="Control de Retorno - STRYD Panama">
+  <div class="retorno-page min-h-screen bg-[#0f0f0f] text-white pt-6 pb-12 px-4">
+    <div class="max-w-3xl mx-auto">
+      
+      <!-- Encabezado STRYD -->
+      <div class="text-center mb-6">
+        <span class="inline-block bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+          Punto de Retorno
+        </span>
+        <h1 class="text-3xl font-extrabold tracking-tight">Registro de Checkpoint (Retorno)</h1>
+        <p class="text-gray-400 text-sm mt-1">Control de paso de corredores. Esta pantalla no controla el cronómetro maestro.</p>
+      </div>
+
+      {errorMsg ? (
+        <div class="bg-red-500/10 border border-red-500 text-red-500 rounded-xl p-4 text-center mb-6">
+          <p class="font-bold">Error de Conexión</p>
+          <p class="text-sm">{errorMsg}</p>
+        </div>
+      ) : (
+        <div class="space-y-6">
+          <!-- Tarjeta de Selección y Reloj -->
+          <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+              <div>
+                <label for="race-selector" class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-2">Seleccionar Carrera</label>
+                <select id="race-selector" class="w-full bg-[#2a2a2a] border border-[#3d3d3d] text-white rounded-xl py-3 px-4 focus:outline-none focus:border-[#FF6B00] transition-colors font-medium">
+                  <option value="" disabled selected>Seleccione una carrera...</option>
+                  {races.map((r: any) => {
+                    const isLive = r.data?.timerStart && !r.data?.timerStop;
+                    return (
+                      <option value={r.id} data-start={r.data?.timerStart || ''} data-stop={r.data?.timerStop || ''}>
+                        {r.data?.title || r.title} {isLive ? '🔴 [EN VIVO]' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              
+              <!-- Reloj (Solo Lectura) -->
+              <div class="text-center md:text-right">
+                <span class="block text-xs uppercase tracking-wider text-gray-400 font-bold mb-1">Tiempo Transcurrido</span>
+                <div id="chrono-display" class="text-4xl font-mono font-black text-gray-500 select-none">
+                  00:00
+                </div>
+                <div id="chrono-status" class="text-[10px] text-gray-500 uppercase tracking-widest mt-1">
+                  Ninguna carrera seleccionada
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Formulario de Entrada (Oculto hasta que se seleccione una carrera activa) -->
+          <div id="input-section" class="hidden opacity-0 transition-opacity duration-300">
+            <div class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-6 shadow-lg text-center relative overflow-hidden">
+              <!-- Glow superior para estética premium -->
+              <div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#FF6B00] to-transparent"></div>
+              
+              <h2 class="text-lg font-bold mb-4">Ingresar Número de Dorsal</h2>
+              
+              <form id="checkpoint-form" class="max-w-md mx-auto space-y-4">
+                <input 
+                  type="number" 
+                  id="bib-input" 
+                  placeholder="Ej: 42" 
+                  autocomplete="off"
+                  class="w-full bg-[#2a2a2a] border border-[#3d3d3d] rounded-2xl text-center text-5xl font-mono font-black py-4 px-6 focus:outline-none focus:border-[#FF6B00] focus:ring-2 focus:ring-[#FF6B00]/20 transition-all text-white placeholder-gray-600 block"
+                />
+                
+                <button 
+                  type="submit" 
+                  id="submit-btn" 
+                  class="w-full bg-[#FF6B00] hover:bg-[#E55A00] text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-md active:scale-[0.99] flex items-center justify-center gap-2 text-lg"
+                >
+                  <span>Registrar Retorno</span>
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </form>
+
+              <!-- Feedback visual de estado -->
+              <div id="feedback-alert" class="mt-4 p-3 rounded-xl hidden text-sm font-semibold max-w-md mx-auto animate-pulse"></div>
+            </div>
+          </div>
+
+          <!-- Historial de Registros -->
+          <div id="history-section" class="bg-[#1a1a1a] border border-[#2d2d2d] rounded-2xl p-5 shadow-lg hidden">
+            <div class="flex items-center justify-between border-b border-[#2d2d2d] pb-3 mb-4">
+              <h3 class="text-sm uppercase tracking-wider text-gray-400 font-bold">Historial de Retorno</h3>
+              <span id="history-count" class="bg-[#FF6B00]/10 text-[#FF6B00] text-xs font-bold px-2 py-0.5 rounded-full">
+                0 corredores
+              </span>
+            </div>
+            
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="text-xs uppercase text-gray-400 border-b border-[#2d2d2d]">
+                    <th class="py-2 font-semibold">Dorsal</th>
+                    <th class="py-2 font-semibold">Nombre</th>
+                    <th class="py-2 font-semibold text-right">Tiempo Retorno</th>
+                  </tr>
+                </thead>
+                <tbody id="history-rows" class="divide-y divide-[#2d2d2d]/50">
+                  <!-- Filas dinámicas -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  </div>
+
+  <style>
+    /* Remover flechas del input number */
+    input::-webkit-outer-spin-button,
+    input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type=number] {
+      -moz-appearance: textfield;
+    }
+  </style>
+
+  <script define:vars={{ clientRaces }}>
+    // --- Lógica del cliente ---
+    const races = JSON.parse(clientRaces);
+    let selectedRaceId = '';
+    let timerStart = null;
+    let timerStop = null;
+    let timerInterval = null;
+    let recentCheckpoints = [];
+
+    // Selectores del DOM
+    const selector = document.getElementById('race-selector');
+    const chronoDisplay = document.getElementById('chrono-display');
+    const chronoStatus = document.getElementById('chrono-status');
+    const inputSection = document.getElementById('input-section');
+    const bibInput = document.getElementById('bib-input');
+    const form = document.getElementById('checkpoint-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const feedback = document.getElementById('feedback-alert');
+    const historySection = document.getElementById('history-section');
+    const historyRows = document.getElementById('history-rows');
+    const historyCount = document.getElementById('history-count');
+
+    // Inicializar sintetizador de Audio (Web Audio API)
+    let audioCtx = null;
+    function getAudioContext() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playBeep(frequency, duration, type) {
+      try {
+        const ctx = getAudioContext();
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        
+        osc.type = type;
+        osc.frequency.setValueAtTime(frequency, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+        
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + duration);
+      } catch (e) {
+        console.error('Audio play failed:', e);
+      }
+    }
+
+    function playSuccessSound() {
+      playBeep(880, 0.18, 'sine'); // Un tono alto y claro (A5)
+    }
+
+    function playErrorSound() {
+      playBeep(120, 0.35, 'sawtooth'); // Un zumbido bajo
+    }
+
+    // Formatear Segundos a MM:SS o H:MM:SS
+    function formatTime(totalSeconds) {
+      const s = Math.max(0, Math.floor(totalSeconds));
+      const hrs = Math.floor(s / 3600);
+      const mins = Math.floor((s % 3600) / 60);
+      const secs = s % 60;
+      
+      const pad = (n) => String(n).padStart(2, '0');
+      if (hrs > 0) {
+        return `${hrs}:${pad(mins)}:${pad(secs)}`;
+      }
+      return `${pad(mins)}:${pad(secs)}`;
+    }
+
+    // Actualizar Cronómetro Maestro en pantalla
+    function startChronometer() {
+      if (timerInterval) clearInterval(timerInterval);
+      
+      if (!timerStart) {
+        chronoDisplay.textContent = '00:00';
+        chronoDisplay.className = 'text-4xl font-mono font-black text-gray-500 select-none';
+        chronoStatus.textContent = 'Carrera no iniciada';
+        chronoStatus.className = 'text-[10px] text-gray-500 uppercase tracking-widest mt-1';
+        return;
+      }
+
+      const updateClock = () => {
+        const now = timerStop || Math.floor(Date.now() / 1000);
+        const elapsed = now - timerStart;
+        chronoDisplay.textContent = formatTime(elapsed);
+        
+        if (timerStop) {
+          chronoDisplay.className = 'text-4xl font-mono font-black text-gray-400 select-none';
+          chronoStatus.textContent = 'Carrera Finalizada (Reloj Detenido)';
+          chronoStatus.className = 'text-[10px] text-gray-400 uppercase tracking-widest mt-1';
+        } else {
+          chronoDisplay.className = 'text-4xl font-mono font-black text-red-500 animate-pulse select-none';
+          chronoStatus.textContent = 'Cronómetro en Vivo 🔴';
+          chronoStatus.className = 'text-[10px] text-red-500 font-bold uppercase tracking-widest mt-1';
+        }
+      };
+
+      updateClock();
+      if (!timerStop) {
+        timerInterval = setInterval(updateClock, 1000);
+      }
+    }
+
+    // Mostrar alertas de feedback
+    function showFeedback(text, isError = false) {
+      feedback.classList.remove('hidden', 'bg-red-500/10', 'border-red-500', 'text-red-500', 'bg-green-500/10', 'border-green-500', 'text-green-500');
+      if (isError) {
+        feedback.classList.add('bg-red-500/10', 'border', 'border-red-500', 'text-red-500');
+        playErrorSound();
+      } else {
+        feedback.classList.add('bg-green-500/10', 'border', 'border-green-500', 'text-green-500');
+        playSuccessSound();
+      }
+      feedback.textContent = text;
+      feedback.classList.remove('hidden');
+    }
+
+    // Renderizar la tabla del historial
+    function renderHistory() {
+      if (recentCheckpoints.length === 0) {
+        historyRows.innerHTML = `
+          <tr>
+            <td colspan="3" class="py-4 text-center text-gray-500 text-sm italic">
+              Ningún paso registrado todavía
+            </td>
+          </tr>
+        `;
+        historyCount.textContent = '0 corredores';
+        return;
+      }
+
+      historyCount.textContent = `${recentCheckpoints.length} corredor${recentCheckpoints.length !== 1 ? 'es' : ''}`;
+      historyRows.innerHTML = recentCheckpoints.map(c => `
+        <tr class="hover:bg-white/5 transition-colors">
+          <td class="py-2.5 font-mono font-bold text-[#FF6B00]">#${c.bibNumber}</td>
+          <td class="py-2.5 font-semibold text-gray-200 text-sm truncate max-w-[150px]">${c.name || 'Atleta'}</td>
+          <td class="py-2.5 font-mono font-bold text-white text-right text-sm">${formatTime(c.checkpointTime)}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Cargar historial de checkpoints desde la base de datos
+    async function loadCheckpointHistory() {
+      if (!selectedRaceId) return;
+      try {
+        const res = await fetch(`/api/admin/participants?raceId=${selectedRaceId}&_t=${Date.now()}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        
+        if (json.success && json.participants) {
+          // Filtrar corredores que tienen checkpointTime registrado
+          recentCheckpoints = json.participants
+            .filter(p => p.checkpointTime !== undefined && p.checkpointTime !== null && p.checkpointTime !== '')
+            .map(p => ({
+              id: p.id,
+              name: `${p.firstName} ${p.lastName}`.trim(),
+              bibNumber: p.bibNumber,
+              checkpointTime: Number(p.checkpointTime)
+            }))
+            // Ordenar por checkpointTime descendente (últimos en pasar primero)
+            .sort((a, b) => b.checkpointTime - a.checkpointTime);
+
+          renderHistory();
+        }
+      } catch (e) {
+        console.error('Error cargando historial de retorno:', e);
+      }
+    }
+
+    // Evento al cambiar de carrera
+    selector.addEventListener('change', async (e) => {
+      const option = e.target.selectedOptions[0];
+      selectedRaceId = option.value;
+      timerStart = option.dataset.start ? Number(option.dataset.start) : null;
+      timerStop = option.dataset.stop ? Number(option.dataset.stop) : null;
+
+      // Resetear alertas y foco
+      feedback.classList.add('hidden');
+      bibInput.value = '';
+      
+      // Detener intervalos anteriores
+      if (timerInterval) clearInterval(timerInterval);
+
+      if (selectedRaceId) {
+        // Iniciar cronómetro
+        startChronometer();
+
+        // Cargar historial
+        await loadCheckpointHistory();
+
+        // Mostrar formulario
+        inputSection.classList.remove('hidden');
+        historySection.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          inputSection.classList.remove('opacity-0');
+        });
+        
+        // Auto enfocar input
+        bibInput.focus();
+      } else {
+        inputSection.classList.add('hidden', 'opacity-0');
+        historySection.classList.add('hidden');
+      }
+    });
+
+    // Envío del Formulario (Registrar retorno)
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const bib = bibInput.value.trim();
+      if (!bib) return;
+
+      if (!selectedRaceId || !timerStart) {
+        showFeedback('Error: La carrera seleccionada no ha iniciado el reloj.', true);
+        return;
+      }
+
+      // Evitar registro repetido en el estado local
+      const isAlreadyLogged = recentCheckpoints.some(c => String(c.bibNumber) === String(bib));
+      if (isAlreadyLogged) {
+        showFeedback(`El dorsal #${bib} ya fue registrado en el retorno.`, true);
+        bibInput.value = '';
+        bibInput.focus();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      feedback.classList.add('hidden');
+
+      try {
+        const res = await fetch('/api/admin/register-checkpoint', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ raceId: selectedRaceId, bibNumber: bib, timerStart }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Error al registrar retorno');
+        }
+
+        // Éxito: Añadir al inicio del historial
+        recentCheckpoints.unshift({
+          id: data.participant.id,
+          name: data.participant.name,
+          bibNumber: data.participant.bibNumber,
+          checkpointTime: data.participant.checkpointTime,
+        });
+
+        // Re-renderizar historial
+        renderHistory();
+
+        // Feedback positivo
+        showFeedback(`Dorsal #${bib} (${data.participant.name}) registrado con éxito a los ${formatTime(data.participant.checkpointTime)}.`);
+        
+        // Limpiar input y re-enfocar
+        bibInput.value = '';
+        bibInput.focus();
+
+      } catch (err) {
+        showFeedback(err.message, true);
+        bibInput.focus();
+      } finally {
+        submitBtn.disabled = false;
+      }
+    });
+
+    // Mantener el enfoque del input de dorsal en todo momento para facilitar el escaneo rápido
+    document.addEventListener('click', (e) => {
+      if (selectedRaceId && e.target !== bibInput && e.target !== selector && !form.contains(e.target)) {
+        bibInput.focus();
+      }
+    });
+  </script>
+</Layout>
