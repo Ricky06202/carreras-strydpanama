@@ -85,6 +85,11 @@ const raceData = race?.data || {};
                   🏃 INSCRIBIRSE AHORA
                 </a>
               )}
+              {raceData.status === 'closed' && (
+                <a href={`/register?race=${raceId}`} class="cta-top shrink-0">
+                  📋 LISTA DE ESPERA
+                </a>
+              )}
             </div>
             <p class="text-gray-600 dark:text-gray-400 mb-6">{raceData.description || ''}</p>
             
@@ -175,8 +180,13 @@ const raceData = race?.data || {};
             )}
 
             {raceData.status === 'closed' && (
-              <div class="block w-full text-center px-8 py-4 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
-                Inscripciones Cerradas
+              <div class="space-y-3">
+                <a href={`/register?race=${raceId}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-2xl hover:opacity-90 transition-colors">
+                  Inscribirse a Lista de Espera
+                </a>
+                <p class="text-center text-xs text-gray-500 dark:text-gray-400">
+                  Las inscripciones regulares están cerradas. Regístrate en la lista de espera para ser contactado si se habilitan más cupos.
+                </p>
               </div>
             )}
 
@@ -208,14 +218,14 @@ const raceData = race?.data || {};
     </div>
   </div>
   <!-- Barra sticky mobile (solo visible en móvil cuando inscripciones abiertas) -->
-  {raceData.status === 'accepting' && (
+  {(raceData.status === 'accepting' || raceData.status === 'closed') && (
     <div class="sticky-cta">
       <div class="sticky-cta-info">
         <span class="sticky-cta-name">{raceData.title || race.title}</span>
-        <span class="sticky-cta-price">${raceData.price || 0}</span>
+        <span class="sticky-cta-price">{raceData.status === 'closed' ? 'Lista de Espera' : `$${raceData.price || 0}`}</span>
       </div>
       <a href={`/register?race=${raceId}`} class="sticky-cta-btn">
-        INSCRIBIRSE
+        {raceData.status === 'closed' ? 'LISTA DE ESPERA' : 'INSCRIBIRSE'}
       </a>
     </div>
   )}

@@ -309,18 +309,18 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                         ) : race.data?.status === 'closed' ? (
                           <Button
                             component="a"
-                            href={`/race/${race.id}`}
+                            href={`/register?race=${race.id}`}
                             variant="outlined"
                             sx={{
                               flex: 1,
                               textDecoration: 'none',
-                              borderColor: '#555555',
-                              color: '#888888',
+                              borderColor: ACCENT,
+                              color: ACCENT,
                               fontWeight: 'bold',
-                              '&:hover': { borderColor: '#777777', color: '#aaaaaa', bgcolor: 'rgba(255,255,255,0.05)' }
+                              '&:hover': { bgcolor: 'rgba(255, 107, 0, 0.08)', borderColor: ACCENT }
                             }}
                           >
-                            CERRADA
+                            LISTA DE ESPERA
                           </Button>
                         ) : race.data?.status === 'active' ? (
                           <Button

@@ -437,7 +437,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         setRegisteredRunnersCount(count);
         
         const max = d.race?.data?.maxParticipants ? Number(d.race.data.maxParticipants) : null;
-        if (max !== null && count >= max) {
+        const isClosed = d.race?.data?.status === 'closed';
+        if ((max !== null && count >= max) || isClosed) {
           setRegistrationType('individual');
           setFormData(prev => ({ ...prev, participantType: 'waiting_list' }));
         } else {
@@ -679,7 +680,7 @@ const handleSubmit = async () => {
         raceId: selectedRace,
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
-        paymentMethod: isRaceFull 
+        paymentMethod: (isRaceFull || isRaceClosed) 
           ? 'Lista de Espera' 
           : ((codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod),
         termsAccepted: termsAccepted,
@@ -930,8 +931,8 @@ const handleSubmit = async () => {
             )}
 
             {isRaceClosed && (
-              <Alert severity="error" sx={{ fontWeight: 'bold' }}>
-                🚫 Las inscripciones para esta carrera están cerradas. No se admiten nuevos registros.
+              <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
+                🚫 Las inscripciones para esta carrera están cerradas. Puedes unirte a la Lista de Espera para ser contactado si se habilitan más cupos.
               </Alert>
             )}
 
@@ -972,7 +973,7 @@ const handleSubmit = async () => {
               <Button variant="contained" onClick={async () => {
                 if (code.trim() && codeValid === null) await validateCode();
                 setStep(1);
-              }} disabled={!selectedRace || isRaceUpcoming || isRaceClosed || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              }} disabled={!selectedRace || isRaceUpcoming || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
@@ -987,7 +988,7 @@ const handleSubmit = async () => {
                 <Button variant={registrationType === 'individual' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('individual')} sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}>
                   Individual
                 </Button>
-                {!isRaceFull && raceInfo?.data?.teamEnabled && (
+                {!isRaceFull && !isRaceClosed && raceInfo?.data?.teamEnabled && (
                   <Button variant={registrationType === 'team' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('team')} sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}>
                     Equipo (4 personas)
                   </Button>
@@ -1030,7 +1031,7 @@ const handleSubmit = async () => {
                   </Alert>
                 )}
 
-                {isRaceFull ? (
+                {(isRaceFull || isRaceClosed) ? (
                   <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 107, 0, 0.08)', borderRadius: 2, gridColumn: '1 / -1', border: '1.5px solid #FF6B00' }}>
                     <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: '#FF6B00', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tipo de Participante</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1039,7 +1040,10 @@ const handleSubmit = async () => {
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: 'block', lineHeight: 1.5 }}>
-                      Los cupos para corredores están agotados. Al registrarte en la lista de espera, guardaremos tus datos y te contactaremos de manera prioritaria si se habilitan más cupos.
+                      {isRaceClosed 
+                        ? 'Las inscripciones para esta carrera están cerradas. Al registrarte en la lista de espera, guardaremos tus datos y te contactaremos si se habilitan más cupos.'
+                        : 'Los cupos para corredores están agotados. Al registrarte en la lista de espera, guardaremos tus datos y te contactaremos de manera prioritaria si se habilitan más cupos.'
+                      }
                     </Typography>
                   </Box>
                 ) : (
@@ -1651,7 +1655,7 @@ const handleSubmit = async () => {
                   const distOk = distances.length === 0 || !!formData.distance;
                   const termsOk = !raceInfo?.data?.termsAndConditions || termsAccepted;
                   if (!valid || !distOk || !termsOk) return;
-                  if ((codeValid && codeValid.valid) || isRaceFull) {
+                  if ((codeValid && codeValid.valid) || isRaceFull || isRaceClosed) {
                     handleSubmit();
                   } else {
                     setStep(2);
@@ -1661,7 +1665,7 @@ const handleSubmit = async () => {
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
-                {isRaceFull ? 'Unirse a Lista de Espera' : (codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar')}
+                {(isRaceFull || isRaceClosed) ? 'Unirse a Lista de Espera' : (codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar')}
               </Button>
             </Box>
           </Box>
@@ -1882,7 +1886,7 @@ const handleSubmit = async () => {
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                {recoveredPayment ? 'Estado de tu Registro' : (isRaceFull ? '¡Registro en Lista de Espera Completado!' : '¡Registro Completado!')} 
+                {recoveredPayment ? 'Estado de tu Registro' : ((isRaceFull || isRaceClosed) ? '¡Registro en Lista de Espera Completado!' : '¡Registro Completado!')} 
               </Typography>
 
               {recoveredPayment && (
@@ -1904,9 +1908,9 @@ const handleSubmit = async () => {
                 Tu código de confirmación principal es:
               </Typography>
               
-              {isRaceFull ? (
+              {(isRaceFull || isRaceClosed) ? (
                 <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
-                  Has quedado registrado en la <b>Lista de Espera</b>. Te contactaremos por correo electrónico o celular si decidimos abrir más cupos para la carrera. ¡Muchas gracias por tu interés!
+                  Has quedado registrado en la <b>Lista de Espera</b>. Te contactaremos por correo electrónico o celular si decidimos habilitar cupos para la carrera. ¡Muchas gracias por tu interés!
                 </Alert>
               ) : (
                 <>
@@ -1939,7 +1943,7 @@ const handleSubmit = async () => {
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Categoría</Typography>
-                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{isRaceFull ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || 'General')}</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{(isRaceFull || isRaceClosed) ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || 'General')}</Typography>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <Typography variant="caption" color="text.secondary">Código de Seguimiento</Typography>
@@ -1980,11 +1984,11 @@ const handleSubmit = async () => {
                     {distances.find(d => d.id === formData.distance)?.name || '-'}
                   </Typography>
                 </Box>
-                {(formData.category || isRaceFull) && (
+                {(formData.category || isRaceFull || isRaceClosed) && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                     <Typography variant="body2" color="text.secondary">Categoría:</Typography>
                     <Typography variant="body1" fontWeight="bold">
-                      {isRaceFull ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || '-')}
+                      {(isRaceFull || isRaceClosed) ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || '-')}
                     </Typography>
                   </Box>
                 )}
@@ -2001,7 +2005,7 @@ const handleSubmit = async () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
                   <Typography variant="body1" fontWeight="bold" sx={{ color: ACCENT }}>
-                    {isRaceFull
+                    {(isRaceFull || isRaceClosed)
                       ? 'Sin costo (Lista de Espera)'
                       : ((codeValid && codeValid.valid)
                         ? 'Boleto Físico (Cupón)'

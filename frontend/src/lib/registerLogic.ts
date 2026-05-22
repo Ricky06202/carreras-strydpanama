@@ -44,7 +44,7 @@ export const processRegistration = async (env: any, body: any) => {
     if (raceFields.status === 'upcoming') {
       throw new Error('Las inscripciones para esta carrera aún no están abiertas.');
     }
-    if (raceFields.status === 'closed') {
+    if (raceFields.status === 'closed' && body.participantType !== 'waiting_list') {
       throw new Error('Las inscripciones para esta carrera están cerradas.');
     }
     if (raceFields.status === 'finished') {
