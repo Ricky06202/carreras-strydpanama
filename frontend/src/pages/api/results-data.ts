@@ -11,8 +11,8 @@ export const GET: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: 'Falta el parámetro raceId' }), { status: 400 });
     }
 
-    // Consultamos concurrentemente participantes, distancias y categorías
-    const [partsRes, distsRes, catsRes] = await Promise.all([
+    // Consultamos concurrentemente participantes, distancias, categorías y carrera
+    const [partsRes, distsRes, catsRes, raceRes] = await Promise.all([
       apiFetch(`/api/collections/participants/content?limit=2000`, env, { 
         method: 'GET',
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
@@ -25,7 +25,19 @@ export const GET: APIRoute = async ({ request }) => {
         method: 'GET',
         headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
       }),
+      apiFetch(`/api/content/${raceId}`, env, {
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+      }),
     ]);
+
+    const raffleWinnersRaw = raceRes?.data?.raffleWinners || raceRes?.data?.data?.raffleWinners || '';
+    let raffleWinners: any[] = [];
+    if (raffleWinnersRaw) {
+      try {
+        raffleWinners = JSON.parse(raffleWinnersRaw);
+      } catch (e) {}
+    }
 
     const distanceMap: Record<string, string> = {};
     const categoryMap: Record<string, string> = {};
@@ -132,7 +144,8 @@ export const GET: APIRoute = async ({ request }) => {
       totalRunners,
       totalFinished,
       totalMissing,
-      progressPct
+      progressPct,
+      raffleWinners
     }), {
       status: 200,
       headers: {
