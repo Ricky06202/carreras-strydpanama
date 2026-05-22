@@ -32,13 +32,36 @@ export const processRegistration = async (env: any, body: any) => {
     if (!raceRes) throw new Error('Carrera no encontrada en la base de datos');
     
     // SonicJS item structure: { id, title, data: { ...fields } }
-    const raceFields = raceRes.data || {};
+    const raceFields = raceRes.data?.data || {};
     const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
-    const raceName = raceFields.title || raceRes.title || 'Carrera';
+    const raceName = raceFields.title || raceRes.data?.title || 'Carrera';
     
-    // 2. Obtener el siguiente BIB disponible (una sola lectura con lÃ­mite alto, luego asignaciÃ³n secuencial local)
+    // 2. Obtener el siguiente BIB disponible (una sola lectura con límite alto, luego asignación secuencial local)
     const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
     const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
+
+    // Validar si la carrera está en estado próximamente
+    if (raceFields.status === 'upcoming') {
+      throw new Error('Las inscripciones para esta carrera aún no están abiertas.');
+    }
+
+    // Validar límite de inscritos
+    let runnersToBeAdded = 0;
+    if (body.registrationType === 'team' && Array.isArray(body.teamMembers)) {
+      runnersToBeAdded = body.teamMembers.filter((m: any) => m.firstName && m.lastName).length;
+    } else {
+      runnersToBeAdded = body.participantType === 'padrino' ? 0 : 1;
+    }
+
+    const currentRunnersCount = raceParticipants.filter((p: any) => 
+      p.data?.participantType !== 'padrino' && 
+      p.data?.bibNumber
+    ).length;
+
+    const maxParticipants = raceFields.maxParticipants ? Number(raceFields.maxParticipants) : null;
+    if (maxParticipants !== null && (currentRunnersCount + runnersToBeAdded) > maxParticipants) {
+      throw new Error(`Esta carrera ha alcanzado su límite de inscritos. Cupos disponibles: ${maxParticipants - currentRunnersCount}.`);
+    }
 
     let nextBib = startingBib;
     if (raceParticipants.length > 0) {
@@ -49,7 +72,7 @@ export const processRegistration = async (env: any, body: any) => {
       if (highestBib >= startingBib) nextBib = highestBib + 1;
     }
     
-    // 2.5 Obtener CategorÃ­as de la Carrera
+    // 2.5 Obtener Categorías de la Carrera
     let allCategories: any[] = [];
     try {
         const catRes = await apiFetch(`/api/collections/categories/content?limit=500`, env, { method: 'GET' });

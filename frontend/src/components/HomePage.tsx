@@ -205,14 +205,40 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                       position: 'relative'
                     }}>
                       {!race.data?.imageUrl && <DirectionsRunIcon sx={{ fontSize: 80, opacity: 0.2, color: 'white' }} />}
-                      {race.data?.status === 'active' && (
+                      {race.data?.status === 'active' ? (
                         <Chip
                           label="EN VIVO"
                           color="success"
                           size="small"
                           sx={{ position: 'absolute', top: 12, right: 12, fontWeight: 'bold' }}
                         />
-                      )}
+                      ) : race.data?.status === 'upcoming' ? (
+                        <Chip
+                          label="PRÓXIMAMENTE"
+                          size="small"
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 12, 
+                            right: 12, 
+                            fontWeight: 'bold',
+                            bgcolor: '#555555',
+                            color: '#ffffff'
+                          }}
+                        />
+                      ) : race.data?.status === 'accepting' ? (
+                        <Chip
+                          label="INSCRIPCIONES ABIERTAS"
+                          size="small"
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 12, 
+                            right: 12, 
+                            fontWeight: 'bold',
+                            bgcolor: ACCENT,
+                            color: '#ffffff'
+                          }}
+                        />
+                      ) : null}
                     </Box>
                     <CardContent>
                       <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
@@ -251,20 +277,38 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                         >
                           VER MÁS
                         </Button>
-                        <Button
-                          component="a"
-                          href={race.data?.status === 'accepting' ? `/register?race=${race.id}` : `/race/${race.id}`}
-                          variant="contained"
-                          sx={{
-                            flex: 1,
-                            textDecoration: 'none',
-                            bgcolor: ACCENT,
-                            fontWeight: 'bold',
-                            '&:hover': { bgcolor: '#E55A00' }
-                          }}
-                        >
-                          INSCRIBIRSE
-                        </Button>
+                        {race.data?.status === 'upcoming' ? (
+                          <Button
+                            component="a"
+                            href={`/race/${race.id}`}
+                            variant="outlined"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              borderColor: '#888888',
+                              color: '#888888',
+                              fontWeight: 'bold',
+                              '&:hover': { borderColor: '#aaaaaa', color: '#aaaaaa', bgcolor: 'rgba(255,255,255,0.05)' }
+                            }}
+                          >
+                            PRÓXIMAMENTE
+                          </Button>
+                        ) : (
+                          <Button
+                            component="a"
+                            href={race.data?.status === 'accepting' ? `/register?race=${race.id}` : `/race/${race.id}`}
+                            variant="contained"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              bgcolor: ACCENT,
+                              fontWeight: 'bold',
+                              '&:hover': { bgcolor: '#E55A00' }
+                            }}
+                          >
+                            INSCRIBIRSE
+                          </Button>
+                        )}
                       </Box>
                     </CardContent>
                   </Card>

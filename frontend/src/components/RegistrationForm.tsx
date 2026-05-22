@@ -135,6 +135,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [teamOptions, setTeamOptions] = useState<string[]>([]);
   const [selectedRace, setSelectedRace] = useState(raceId);
   const [raceInfo, setRaceInfo] = useState<Race | null>(null);
+  const [registeredRunnersCount, setRegisteredRunnersCount] = useState(0);
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
   const [codeValidData, setCodeValidData] = useState<{ allowedType?: string; isPadrinoCode?: boolean } | null>(null);
@@ -164,6 +165,10 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [assignedBib, setAssignedBib] = useState<number | null>(null);
   
   const [recoveredPayment, setRecoveredPayment] = useState(false);
+
+  const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
+  const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
+  const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
 
   useEffect(() => {
      // Recuperar sesión de Yappy en navegadores móviles (Safari/Chrome) 
@@ -425,6 +430,16 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         if (d.race) setRaceInfo(d.race);
         if (d.categories) setCategories(d.categories);
         if (d.distances) setDistances(d.distances);
+        
+        const count = d.registeredRunnersCount || 0;
+        setRegisteredRunnersCount(count);
+        
+        // Si la carrera está llena, forzar tipo de participante a padrino y registro a individual
+        const max = d.race?.data?.maxParticipants ? Number(d.race.data.maxParticipants) : null;
+        if (max !== null && count >= max) {
+          setRegistrationType('individual');
+          setFormData(prev => ({ ...prev, participantType: 'padrino' }));
+        }
       })
       .catch(err => console.error('Error loading race info:', err))
       .finally(() => setLoading(false));
@@ -894,6 +909,18 @@ const handleSubmit = async () => {
 
         {step === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {isRaceFull && !isRaceUpcoming && (
+              <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
+                ⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Solo están permitidas las inscripciones de tipo "Solo Padrino" (donaciones para becas UTP).
+              </Alert>
+            )}
+
+            {isRaceUpcoming && (
+              <Alert severity="info" sx={{ fontWeight: 'bold' }}>
+                📢 Las inscripciones para esta carrera estarán abiertas próximamente. Aún no puedes registrarte.
+              </Alert>
+            )}
+
             <FormControl fullWidth>
               <InputLabel>Carrera *</InputLabel>
               <Select
@@ -913,8 +940,8 @@ const handleSubmit = async () => {
             </FormControl>
 
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
-              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" />
-              <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
+              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={isRaceUpcoming} />
+              <Button variant="outlined" onClick={validateCode} disabled={loading || isRaceUpcoming} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
                 Validar
               </Button>
             </Box>
@@ -925,7 +952,7 @@ const handleSubmit = async () => {
               <Button variant="contained" onClick={async () => {
                 if (code.trim() && codeValid === null) await validateCode();
                 setStep(1);
-              }} disabled={!selectedRace} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              }} disabled={!selectedRace || isRaceUpcoming} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
@@ -940,7 +967,7 @@ const handleSubmit = async () => {
                 <Button variant={registrationType === 'individual' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('individual')} sx={{ bgcolor: registrationType === 'individual' ? ACCENT : undefined }}>
                   Individual
                 </Button>
-                {raceInfo?.data?.teamEnabled && (
+                {!isRaceFull && raceInfo?.data?.teamEnabled && (
                   <Button variant={registrationType === 'team' ? 'contained' : 'outlined'} onClick={() => setRegistrationType('team')} sx={{ bgcolor: registrationType === 'team' ? ACCENT : undefined }}>
                     Equipo (4 personas)
                   </Button>
@@ -998,6 +1025,7 @@ const handleSubmit = async () => {
                       <Button
                         key={t.value}
                         variant={formData.participantType === t.value ? "contained" : "outlined"}
+                        disabled={isRaceFull && t.value !== 'padrino'}
                         onClick={() => {
                             const newType = t.value;
                             let autoDist = formData.distance;
@@ -1029,7 +1057,12 @@ const handleSubmit = async () => {
                           borderColor: formData.participantType === t.value ? ACCENT : 'divider',
                           bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
                           color: formData.participantType === t.value ? 'white' : 'text.secondary',
-                          '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' }
+                          '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' },
+                          '&.Mui-disabled': {
+                            borderColor: 'divider',
+                            bgcolor: 'transparent',
+                            color: 'text.disabled'
+                          }
                         }}
                       >
                         {t.label}
