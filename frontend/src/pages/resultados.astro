@@ -415,9 +415,6 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   :global(.modal-btn-secondary:hover) {
     background: rgba(255, 107, 0, 0.1);
   }
-  :global(.hidden) {
-    display: none !important;
-  }
   :global(.pace-splits-table td) {
     padding: 10px 14px;
     border-bottom: 1px solid #2d2d2d;
@@ -538,7 +535,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   .empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
   .empty-icon { font-size: 60px; margin-bottom: 16px; }
   .section-divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
-  .hidden { display: none; }
+  .hidden { display: none !important; }
 
   @media (max-width: 768px) {
     .stats-hero { grid-template-columns: repeat(2, 1fr); }
