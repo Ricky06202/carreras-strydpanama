@@ -40,9 +40,15 @@ export const processRegistration = async (env: any, body: any) => {
     const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
     const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
 
-    // Validar si la carrera está en estado próximamente
+    // Validar si la carrera está en estado próximamente, cerrada o finalizada
     if (raceFields.status === 'upcoming') {
       throw new Error('Las inscripciones para esta carrera aún no están abiertas.');
+    }
+    if (raceFields.status === 'closed') {
+      throw new Error('Las inscripciones para esta carrera están cerradas.');
+    }
+    if (raceFields.status === 'finished') {
+      throw new Error('Las inscripciones para esta carrera están cerradas porque el evento ya finalizó.');
     }
 
     // Validar límite de inscritos

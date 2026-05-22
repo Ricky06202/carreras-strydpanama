@@ -169,6 +169,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
+  const isRaceClosed = raceInfo?.data?.status === 'closed';
+  const isRaceFinished = raceInfo?.data?.status === 'finished';
 
   useEffect(() => {
      // Recuperar sesión de Yappy en navegadores móviles (Safari/Chrome) 
@@ -915,7 +917,7 @@ const handleSubmit = async () => {
 
         {step === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {isRaceFull && !isRaceUpcoming && (
+            {isRaceFull && !isRaceUpcoming && !isRaceClosed && !isRaceFinished && (
               <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
                 ⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Puedes inscribirte en la Lista de Espera para ser contactado si se habilitan más cupos.
               </Alert>
@@ -924,6 +926,18 @@ const handleSubmit = async () => {
             {isRaceUpcoming && (
               <Alert severity="info" sx={{ fontWeight: 'bold' }}>
                 📢 Las inscripciones para esta carrera estarán abiertas próximamente. Aún no puedes registrarte.
+              </Alert>
+            )}
+
+            {isRaceClosed && (
+              <Alert severity="error" sx={{ fontWeight: 'bold' }}>
+                🚫 Las inscripciones para esta carrera están cerradas. No se admiten nuevos registros.
+              </Alert>
+            )}
+
+            {isRaceFinished && (
+              <Alert severity="error" sx={{ fontWeight: 'bold' }}>
+                🏁 Esta carrera ha finalizado. Las inscripciones están cerradas.
               </Alert>
             )}
 
@@ -946,8 +960,8 @@ const handleSubmit = async () => {
             </FormControl>
 
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
-              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={isRaceUpcoming} />
-              <Button variant="outlined" onClick={validateCode} disabled={loading || isRaceUpcoming} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
+              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={isRaceUpcoming || isRaceClosed || isRaceFinished} />
+              <Button variant="outlined" onClick={validateCode} disabled={loading || isRaceUpcoming || isRaceClosed || isRaceFinished} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
                 Validar
               </Button>
             </Box>
@@ -958,7 +972,7 @@ const handleSubmit = async () => {
               <Button variant="contained" onClick={async () => {
                 if (code.trim() && codeValid === null) await validateCode();
                 setStep(1);
-              }} disabled={!selectedRace || isRaceUpcoming} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              }} disabled={!selectedRace || isRaceUpcoming || isRaceClosed || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>

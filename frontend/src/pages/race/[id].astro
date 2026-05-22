@@ -104,7 +104,14 @@ const raceData = race?.data || {};
                 <div class="text-xs sm:text-sm text-gray-500">Fecha</div>
               </div>
               <div class="text-center p-3 sm:p-4 bg-gray-50 dark:bg-slate-800 rounded-2xl">
-                <div class="text-lg sm:text-2xl font-bold text-accent">{raceData.status === 'accepting' ? 'Abierta' : raceData.status}</div>
+                <div class="text-lg sm:text-2xl font-bold text-accent">
+                  {raceData.status === 'accepting' ? 'Abierta' : 
+                   raceData.status === 'upcoming' ? 'Próximamente' : 
+                   raceData.status === 'closed' ? 'Cerrada' : 
+                   raceData.status === 'active' ? 'En Vivo' : 
+                   raceData.status === 'finished' ? 'Finalizada' : 
+                   raceData.status}
+                </div>
                 <div class="text-xs sm:text-sm text-gray-500">Estado</div>
               </div>
             </div>
@@ -164,6 +171,18 @@ const raceData = race?.data || {};
             {raceData.status === 'upcoming' && (
               <div class="block w-full text-center px-8 py-4 bg-gray-300 dark:bg-slate-700 text-gray-500 dark:text-gray-400 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
                 Inscripciones Próximamente
+              </div>
+            )}
+
+            {raceData.status === 'closed' && (
+              <div class="block w-full text-center px-8 py-4 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
+                Inscripciones Cerradas
+              </div>
+            )}
+
+            {(raceData.status === 'active' || raceData.status === 'finished') && (
+              <div class="block w-full text-center px-8 py-4 bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-gray-400 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
+                Inscripciones Cerradas (Evento Finalizado)
               </div>
             )}
           </div>

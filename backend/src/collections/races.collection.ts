@@ -66,7 +66,7 @@ export default {
       status: {
         type: 'select',
         title: 'Estado',
-        enum: ['upcoming', 'accepting', 'active', 'finished'],
+        enum: ['upcoming', 'accepting', 'closed', 'active', 'finished'],
       },
       showTimer: {
         type: 'boolean',

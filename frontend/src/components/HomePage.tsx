@@ -63,7 +63,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
   const [upcomingRaces, setUpcomingRaces] = useState<Race[]>(() => {
     if (initialRaces && initialRaces.length > 0) {
       const upcoming = initialRaces.filter((r: any) => 
-        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.status === 'published'
+        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.data?.status === 'closed' || r.data?.status === 'active' || (r.status === 'published' && r.data?.status !== 'finished')
       );
       return upcoming;
     }
@@ -82,7 +82,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
   useEffect(() => {
     if (initialRaces && initialRaces.length > 0) {
       const upcoming = initialRaces.filter((r: any) => 
-        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.status === 'published'
+        r.data?.status === 'accepting' || r.data?.status === 'upcoming' || r.data?.status === 'closed' || r.data?.status === 'active' || (r.status === 'published' && r.data?.status !== 'finished')
       );
       const completed = initialRaces.filter((r: any) => 
         r.data?.status === 'finished'
@@ -225,6 +225,19 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                             color: '#ffffff'
                           }}
                         />
+                      ) : race.data?.status === 'closed' ? (
+                        <Chip
+                          label="INSCRIPCIONES CERRADAS"
+                          size="small"
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 12, 
+                            right: 12, 
+                            fontWeight: 'bold',
+                            bgcolor: '#555555',
+                            color: '#ffffff'
+                          }}
+                        />
                       ) : race.data?.status === 'accepting' ? (
                         <Chip
                           label="INSCRIPCIONES ABIERTAS"
@@ -292,6 +305,36 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                             }}
                           >
                             PRÓXIMAMENTE
+                          </Button>
+                        ) : race.data?.status === 'closed' ? (
+                          <Button
+                            component="a"
+                            href={`/race/${race.id}`}
+                            variant="outlined"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              borderColor: '#555555',
+                              color: '#888888',
+                              fontWeight: 'bold',
+                              '&:hover': { borderColor: '#777777', color: '#aaaaaa', bgcolor: 'rgba(255,255,255,0.05)' }
+                            }}
+                          >
+                            CERRADA
+                          </Button>
+                        ) : race.data?.status === 'active' ? (
+                          <Button
+                            component="a"
+                            href={`/race/${race.id}`}
+                            variant="contained"
+                            color="success"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            EN VIVO 🔴
                           </Button>
                         ) : (
                           <Button
