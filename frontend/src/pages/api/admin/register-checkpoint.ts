@@ -25,6 +25,10 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: `Corredor con dorsal #${bibNumber} no encontrado en esta carrera.` }), { status: 404 });
     }
 
+    if (participant.data?.checkpointTime !== undefined && participant.data?.checkpointTime !== null && participant.data?.checkpointTime !== '') {
+      return new Response(JSON.stringify({ error: `El corredor con dorsal #${bibNumber} ya tiene un tiempo de checkpoint registrado: ${participant.data.checkpointTime}s.` }), { status: 400 });
+    }
+
     const checkpointTime = Math.floor(Date.now() / 1000) - timerStart;
 
     await apiFetch(`/api/content/${participant.id}`, env, {

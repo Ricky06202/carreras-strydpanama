@@ -764,6 +764,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       return;
     }
 
+    const timerUsed = key.endsWith('_t2') ? 2 : 1;
     setLoading(raceId);
     setError(null);
     const finishTime = Math.floor(Date.now() / 1000) - timerStart;
@@ -772,7 +773,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       const res = await fetch('/api/admin/register-finish', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raceId, bibNumber: bib, finishTime })
+        body: JSON.stringify({ raceId, bibNumber: bib, finishTime, timerUsed })
       });
 
       const data = await res.json();
@@ -923,6 +924,99 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }, 1000);
     return () => clearInterval(interval);
   }, []);
+
+  // Periodic polling for real-time timing & master clock sync (every 5 seconds)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Only poll if tabIndex === 1 (Timing) or in checkpointOnly mode
+    if (tabIndex !== 1 && !isCheckpointOnly) {
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        // 1. Fetch races to sync master timers
+        const racesRes = await fetch(`/api/admin/races?_t=${Date.now()}`, {
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache'
+          }
+        });
+        const racesData = await racesRes.json();
+        if (racesData.success && Array.isArray(racesData.races)) {
+          setRaces(racesData.races);
+
+          // 2. Fetch participants for all active races
+          const activeRaces = racesData.races.filter((r: any) => r.data?.timerStart);
+          for (const race of activeRaces) {
+            const partRes = await fetch(`/api/admin/participants?raceId=${encodeURIComponent(race.id)}&_t=${Date.now()}`, {
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              }
+            });
+            const partData = await partRes.json();
+            if (partData.success && Array.isArray(partData.participants)) {
+              const pts = partData.participants;
+              
+              // Timer 1 finishes: finishTime set, timerUsed !== 2
+              const t1Finishes = pts
+                .filter((p: any) => p.finishTime !== undefined && p.finishTime !== null && p.timerUsed !== 2)
+                .map((p: any) => ({
+                  id: p.id,
+                  bibNumber: p.bibNumber,
+                  name: `${p.firstName} ${p.lastName}`.trim() || p.title,
+                  finishTime: p.finishTime
+                }))
+                .sort((a: any, b: any) => b.finishTime - a.finishTime); // descending so latest is first
+
+              // Timer 2 finishes: finishTime set, timerUsed === 2
+              const t2Finishes = pts
+                .filter((p: any) => p.finishTime !== undefined && p.finishTime !== null && p.timerUsed === 2)
+                .map((p: any) => ({
+                  id: p.id,
+                  bibNumber: p.bibNumber,
+                  name: `${p.firstName} ${p.lastName}`.trim() || p.title,
+                  finishTime: p.finishTime
+                }))
+                .sort((a: any, b: any) => b.finishTime - a.finishTime);
+
+              // Checkpoints: checkpointTime set
+              const checkpoints = pts
+                .filter((p: any) => p.checkpointTime !== undefined && p.checkpointTime !== null)
+                .map((p: any) => ({
+                  id: p.id,
+                  bibNumber: p.bibNumber,
+                  name: `${p.firstName} ${p.lastName}`.trim() || p.title,
+                  checkpointTime: p.checkpointTime
+                }))
+                .sort((a: any, b: any) => b.checkpointTime - a.checkpointTime);
+
+              setRecentFinishes(prev => ({
+                ...prev,
+                [race.id]: t1Finishes.slice(0, 10),
+                [`${race.id}_t2`]: t2Finishes.slice(0, 10)
+              }));
+
+              setRecentCheckpoints(prev => ({
+                ...prev,
+                [race.id]: checkpoints.slice(0, 20)
+              }));
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error polling timing data:", err);
+      }
+    };
+
+    // Run poll immediately on mount/dependency change
+    poll();
+
+    const intervalId = setInterval(poll, 5000);
+    return () => clearInterval(intervalId);
+  }, [tabIndex, isCheckpointOnly]);
 
   const formatTime = (seconds: number) => {
     const hrs = Math.floor(seconds / 3600);

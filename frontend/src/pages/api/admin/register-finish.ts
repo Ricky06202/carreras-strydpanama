@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { raceId, bibNumber, finishTime } = body;
+    const { raceId, bibNumber, finishTime, timerUsed } = body;
     
     if (!raceId || !bibNumber || finishTime === undefined) {
       return new Response(JSON.stringify({ error: 'Faltan parámetros requeridos (raceId, bibNumber, finishTime)' }), { status: 400 });
@@ -34,11 +34,17 @@ export const POST: APIRoute = async ({ request }) => {
       return new Response(JSON.stringify({ error: `Corredor con dorsal #${bibNumber} no encontrado en esta carrera.` }), { status: 404 });
     }
 
+    // Comprobar si ya tiene un tiempo registrado
+    if (participant.data?.finishTime !== undefined && participant.data?.finishTime !== null && participant.data?.finishTime !== '') {
+      return new Response(JSON.stringify({ error: `El corredor con dorsal #${bibNumber} ya tiene un tiempo de llegada registrado: ${participant.data.finishTime}s.` }), { status: 400 });
+    }
+
     // 3. Preparar el payload de actualización
     const currentData = participant.data || {};
     const updatedData = {
       ...currentData,
-      finishTime: finishTime // Tiempo total de carrera cruzando meta
+      finishTime: finishTime, // Tiempo total de carrera cruzando meta
+      timerUsed: timerUsed || 1
     };
 
     const payload = {

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Card, Typography, Grid2 as Grid, useTheme, Button, IconButton, Paper, Divider, List, ListItem, ListItemText, Select, MenuItem } from '@mui/material';
+import { Box, Card, Typography, Grid, useTheme, Button, IconButton, Paper, Divider, List, ListItem, ListItemText, Select, MenuItem } from '@mui/material';
 import TombolaModal from './TombolaModal';
 
 const ACCENT = '#FF6B00';
