@@ -165,12 +165,12 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
     }
 
     .categories-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px;
     }
 
     .category-card {
       background: #111; border: 1px solid #1f1f1f; border-radius: 16px;
-      overflow: hidden; break-inside: avoid;
+      overflow: hidden; break-inside: avoid; page-break-inside: avoid;
     }
     .category-title {
       background: #1a1a1a; padding: 12px 16px; font-weight: 800;
@@ -199,10 +199,11 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
       align-items: center; justify-content: center; font-size: 16px;
     }
     .runner-info { flex: 1; min-width: 0; }
-    .runner-name { font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .runner-name { font-weight: 700; font-size: 13.5px; color: #fff; white-space: normal; word-break: break-word; }
     .runner-bib { font-size: 11px; color: #FF6B00; font-weight: 600; }
-    .runner-time { font-family: monospace; font-weight: 900; font-size: 15px; color: #fff; white-space: nowrap; }
+    .runner-time { font-family: monospace; font-weight: 900; font-size: 15px; color: #fff; white-space: nowrap; margin-left: auto; padding-left: 10px; }
 
+    .screen-only { display: inline-block; }
     .no-results { text-align: center; color: #555; padding: 60px 20px; font-size: 16px; }
 
     /* ===================== PRINT STYLES ===================== */
@@ -220,7 +221,7 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
         background: #eee !important; color: #000 !important;
         border-left: 4px solid #000; -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
-      .category-card { background: #fff !important; border: 1px solid #ccc !important; border-radius: 8px; }
+      .category-card { background: #fff !important; border: 1px solid #ddd !important; border-radius: 8px; break-inside: avoid; page-break-inside: avoid; }
       .category-title { background: #f5f5f5 !important; color: #000 !important; border-bottom: 1px solid #ccc !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
       .podium-row { border: 1px solid #ddd !important; background: #fff !important; }
@@ -231,9 +232,9 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
       .runner-name { color: #000 !important; }
       .runner-bib { color: #e55a00 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
       .runner-time { color: #000 !important; }
-      .runner-placeholder { background: #eee !important; border-color: #ccc !important; }
+      .screen-only { display: none !important; }
 
-      .categories-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+      .categories-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
       .distance-section { margin-bottom: 28px; page-break-inside: avoid; }
       .category-card { page-break-inside: avoid; }
 
@@ -295,8 +296,8 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
                       <div class={`podium-row p${i + 1}`}>
                         <span class="medal-icon">{medals[i]}</span>
                         {runner.photoUrl
-                          ? <img src={runner.photoUrl} alt="" class="runner-photo" />
-                          : <div class="runner-placeholder">🏃</div>
+                          ? <img src={runner.photoUrl} alt="" class="runner-photo screen-only" />
+                          : <div class="runner-placeholder screen-only">🏃</div>
                         }
                         <div class="runner-info">
                           <div class="runner-name">{runner.name}</div>
