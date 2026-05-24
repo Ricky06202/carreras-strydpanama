@@ -89,7 +89,7 @@ if (selectedRaceId) {
     progressPercent = totalRunnersCount > 0 ? Math.round((totalFinishedCount / totalRunnersCount) * 100) : 0;
 
     const usedCats = new Set<string>();
-    allFinishers = finishedParts
+    const allFinishersMapped = finishedParts
       .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
@@ -97,7 +97,6 @@ if (selectedRaceId) {
         const rawDistName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
         const distName = formatDistanceName(rawDistName);
         const gender = (p.data?.gender || '').toLowerCase();
-        usedCats.add(catName);
         return {
           pos: i + 1, id: p.id,
           name: `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim(),
@@ -110,16 +109,25 @@ if (selectedRaceId) {
           registrationType: p.data?.registrationType || 'individual',
         };
       });
-    categoryNames = [...usedCats].sort();
 
     // Build team data
     const teamMap: Record<string, any[]> = {};
-    for (const f of allFinishers) {
+    for (const f of allFinishersMapped) {
       if (f.teamName && f.registrationType === 'team') {
         if (!teamMap[f.teamName]) teamMap[f.teamName] = [];
         teamMap[f.teamName].push(f);
       }
     }
+
+    // Filtrar finalistas individuales (excluir equipos) y recalcular posiciones
+    allFinishers = allFinishersMapped
+      .filter(f => f.registrationType !== 'team')
+      .map((f, idx) => {
+        usedCats.add(f.categoryName);
+        return { ...f, pos: idx + 1 };
+      });
+    categoryNames = [...usedCats].sort();
+
     teamData = Object.entries(teamMap).map(([name, members]) => {
       const totalTime = members.reduce((s: number, m: any) => s + m.finishTime, 0);
       const complete = members.length === 4; // Solo equipos con los 4 completados
