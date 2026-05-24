@@ -55,6 +55,13 @@ function formatDate(dateStr: string) {
   return date.toLocaleDateString('es-PA');
 }
 
+function hasRaceDayArrived(dateStr?: string) {
+  if (!dateStr) return false;
+  // Get current date in Panama (where the races are held)
+  const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+  return todayStr >= dateStr;
+}
+
 interface HomePageProps {
   initialRaces?: Race[];
 }
@@ -208,6 +215,19 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           size="small"
                           sx={{ position: 'absolute', top: 12, right: 12, fontWeight: 'bold' }}
                         />
+                      ) : hasRaceDayArrived(race.data?.date) ? (
+                        <Chip
+                          label="INSCRIPCIONES CERRADAS"
+                          size="small"
+                          sx={{ 
+                            position: 'absolute', 
+                            top: 12, 
+                            right: 12, 
+                            fontWeight: 'bold',
+                            bgcolor: '#555555',
+                            color: '#ffffff'
+                          }}
+                        />
                       ) : race.data?.status === 'upcoming' ? (
                         <Chip
                           label="PRÓXIMAMENTE"
@@ -286,7 +306,36 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                         >
                           VER MÁS
                         </Button>
-                        {race.data?.status === 'upcoming' ? (
+                        {race.data?.status === 'active' ? (
+                          <Button
+                            component="a"
+                            href={`/race/${race.id}`}
+                            variant="contained"
+                            color="success"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            EN VIVO 🔴
+                          </Button>
+                        ) : hasRaceDayArrived(race.data?.date) ? (
+                          <Button
+                            component="a"
+                            href={`/resultados?raceId=${race.id}`}
+                            variant="contained"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              bgcolor: ACCENT,
+                              fontWeight: 'bold',
+                              '&:hover': { bgcolor: '#E55A00' }
+                            }}
+                          >
+                            RESULTADOS
+                          </Button>
+                        ) : race.data?.status === 'upcoming' ? (
                           <Button
                             component="a"
                             href={`/race/${race.id}`}
@@ -316,20 +365,6 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                             }}
                           >
                             LISTA DE ESPERA
-                          </Button>
-                        ) : race.data?.status === 'active' ? (
-                          <Button
-                            component="a"
-                            href={`/race/${race.id}`}
-                            variant="contained"
-                            color="success"
-                            sx={{
-                              flex: 1,
-                              textDecoration: 'none',
-                              fontWeight: 'bold',
-                            }}
-                          >
-                            EN VIVO 🔴
                           </Button>
                         ) : (
                           <Button
