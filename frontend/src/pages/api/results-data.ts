@@ -48,6 +48,14 @@ export const GET: APIRoute = async ({ request }) => {
       } catch (e) {}
     }
 
+    const raceDateStr = raceRes?.data?.date || raceRes?.date || '';
+    const getAge = (birthDateStr: string) => {
+      if (!birthDateStr) return null;
+      const birthYear = new Date(birthDateStr).getFullYear();
+      const raceYear = raceDateStr ? new Date(raceDateStr).getFullYear() : 2026;
+      return isNaN(birthYear) ? null : raceYear - birthYear;
+    };
+
     const distanceMap: Record<string, string> = {};
     const categoryMap: Record<string, string> = {};
 
@@ -111,6 +119,7 @@ export const GET: APIRoute = async ({ request }) => {
           teamName: p.data?.teamName || '',
           categoryName: catName,
           distanceName: distName,
+          age: getAge(p.data?.birthDate),
           gender: gender === 'm' ? 'masculino' : gender === 'f' ? 'femenino' : gender,
           registrationType: p.data?.registrationType || 'individual',
         };
