@@ -7,6 +7,7 @@ const { participantId } = Astro.params;
 let participant: any = null;
 let race: any = null;
 let positionGeneral: number | null = null;
+let positionGender: number | null = null;
 let positionCategory: number | null = null;
 let totalInDistance: number = 0;
 let error = '';
@@ -29,19 +30,32 @@ try {
       p.data?.registrationType !== 'team'
     );
 
-    // Posición general
-    const sortedGeneral = [...raceParts].sort((a, b) => Number(a.data.finishTime) - Number(b.data.finishTime));
-    const genIdx = sortedGeneral.findIndex(p => p.id === participantId);
-    if (genIdx !== -1) positionGeneral = genIdx + 1;
-
-    // Posición en distancia
+    // Posiciones y clasificaciones dentro de la misma distancia
     const myDistance = participant.data?.distance;
     if (myDistance) {
-      const inDist = raceParts.filter(p => p.data?.distance === myDistance)
-        .sort((a, b) => Number(a.data.finishTime) - Number(b.data.finishTime));
+      const inDist = raceParts.filter((p: any) => p.data?.distance === myDistance)
+        .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime));
       totalInDistance = inDist.length;
-      const distIdx = inDist.findIndex(p => p.id === participantId);
-      if (distIdx !== -1) positionCategory = distIdx + 1;
+
+      // 1. Posición General (dentro de la distancia)
+      const distIdx = inDist.findIndex((p: any) => p.id === participantId);
+      if (distIdx !== -1) positionGeneral = distIdx + 1;
+
+      // 2. Posición Rama (dentro de la distancia y mismo género)
+      const myGender = participant.data?.gender || '';
+      if (myGender) {
+        const inGender = inDist.filter((p: any) => (p.data?.gender || '').toLowerCase() === myGender.toLowerCase());
+        const genderIdx = inGender.findIndex((p: any) => p.id === participantId);
+        if (genderIdx !== -1) positionGender = genderIdx + 1;
+      }
+
+      // 3. Posición Categoría (dentro de la distancia y misma categoría)
+      const myCategory = participant.data?.category;
+      if (myCategory) {
+        const inCat = inDist.filter((p: any) => p.data?.category === myCategory);
+        const catIdx = inCat.findIndex((p: any) => p.id === participantId);
+        if (catIdx !== -1) positionCategory = catIdx + 1;
+      }
     }
   }
 } catch (e: any) {
@@ -93,7 +107,6 @@ const ensureAbsolute = (url: string) => {
   return `${R2_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const certArtUrl = ensureAbsolute(race?.data?.certificateArtUrl || '');
 const certLogoUrl = ensureAbsolute(race?.data?.certificateLogoUrl || '');
 
 const finishTime = participant?.data?.finishTime;
@@ -243,22 +256,28 @@ const hasResult = !!finishTime;
           </div>
 
           {hasResult && (
-            <div class="stats-grid">
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
               <div class="stat">
                 <div class="stat-label">Tiempo Oficial</div>
                 <div class="stat-value orange" style="font-size:22px;">{formatTime(finishTime)}</div>
               </div>
-              {positionCategory !== null && (
+              {positionGeneral !== null && (
                 <div class="stat">
-                  <div class="stat-label">Posición</div>
-                  <div class="stat-value orange">#{positionCategory}</div>
+                  <div class="stat-label">Pos. General</div>
+                  <div class="stat-value orange">#{positionGeneral}</div>
                   {totalInDistance > 0 && <div class="stat-sub">de {totalInDistance}</div>}
                 </div>
               )}
-              {positionGeneral !== null && (
+              {positionGender !== null && (
                 <div class="stat">
-                  <div class="stat-label">General</div>
-                  <div class="stat-value">#{positionGeneral}</div>
+                  <div class="stat-label">Pos. Rama</div>
+                  <div class="stat-value">#{positionGender}</div>
+                </div>
+              )}
+              {positionCategory !== null && (
+                <div class="stat">
+                  <div class="stat-label">Pos. Categoría</div>
+                  <div class="stat-value">#{positionCategory}</div>
                 </div>
               )}
             </div>
@@ -290,8 +309,9 @@ const hasResult = !!finishTime;
     finishTimeFormatted: finishTime ? formatTime(finishTime) : "",
     bibNumber,
     fixedImageUrl,
+    positionGeneral,
+    positionGender,
     positionCategory,
-    certArtUrl,
     certLogoUrl,
     categoryName,
     distanceName,
@@ -303,14 +323,13 @@ const hasResult = !!finishTime;
     const FINISH_TIME = finishTimeFormatted;
     const BIB = bibNumber;
     const PHOTO_URL = fixedImageUrl;
-    const POSITION = positionCategory;
-    const CERT_ART_URL = certArtUrl;
-    const CERT_LOGO_URL = certLogoUrl;
-    const CATEGORY_NAME = categoryName;
+    const POSITION_GENERAL = positionGeneral;
+    const POSITION_GENDER = positionGender;
+    const POSITION_CATEGORY = positionCategory;
     const DISTANCE_NAME = distanceName;
+    const CATEGORY_NAME = categoryName;
     const TEAM_NAME = teamName;
-
-    const medals = ['🥇', '🥈', '🥉'];
+    const CERT_LOGO_URL = certLogoUrl;
 
     async function generateCertificate(format) {
       const btn = document.getElementById(format === 'jpg' ? 'jpg-btn' : 'cert-btn');
@@ -325,136 +344,80 @@ const hasResult = !!finishTime;
         await new Promise(resolve => script.onload = resolve);
 
         const { jsPDF } = window.jspdf;
-        const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
 
-        // Fondo: usar arte de carrera si existe, o fondo blanco como fallback
-        let hasBg = false;
-        if (CERT_ART_URL) {
-          try {
-            const artRes = await fetch(CERT_ART_URL);
-            const artBlob = await artRes.blob();
-            const artBase64 = await new Promise(resolve => {
-              const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(artBlob);
-            });
-            doc.addImage(artBase64, 'JPEG', 0, 0, 280, 216, '', 'FAST');
-            hasBg = true;
-          } catch(e) {
-            console.error('Error al cargar arte del certificado:', e);
-          }
-        }
+        if (format === 'pdf') {
+          const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
 
-        if (!hasBg) {
+          // Fondo blanco
           doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, 280, 216, 'F');
-        }
 
-        // Borde naranja (solo si no hay imagen de fondo, para no taparla)
-        if (!hasBg) {
-          doc.setDrawColor(255, 107, 0);
-          doc.setLineWidth(3);
-          doc.rect(8, 8, 264, 200);
-        }
-
-        // Título o Logo
-        let hasLogo = false;
-        if (CERT_LOGO_URL) {
-          try {
-            const logoRes = await fetch(CERT_LOGO_URL);
-            const logoBlob = await logoRes.blob();
-            const logoBase64 = await new Promise(resolve => {
-              const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(logoBlob);
-            });
-            doc.addImage(logoBase64, 'PNG', 60, 15, 160, 35, '', 'FAST');
-            hasLogo = true;
-          } catch(e) {
-            console.error('Error al cargar logo del certificado:', e);
-          }
-        }
-
-        if (!hasLogo) {
-          doc.setTextColor(255, 107, 0);
-          doc.setFontSize(22);
-          doc.setFont('helvetica', 'bold');
-          doc.text(RACE_NAME, 140, 40, { align: 'center' });
-        }
-
-        // Subtítulo certificado (negro/gris oscuro)
-        doc.setTextColor(26, 26, 26);
-        doc.setFontSize(13);
-        doc.setFont('helvetica', 'normal');
-        doc.text('CERTIFICADO DE PARTICIPACIÓN', 140, 55, { align: 'center' });
-
-        // Línea
-        doc.setDrawColor(255, 107, 0);
-        doc.setLineWidth(0.5);
-        doc.line(40, 62, 240, 62);
-
-        // Nombre del corredor (negro)
-        doc.setFontSize(36);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(0, 0, 0);
-        doc.text(PARTICIPANT_NAME, 140, 95, { align: 'center' });
-
-        // Nombre de la carrera
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(255, 107, 0);
-        doc.text(RACE_NAME, 140, 112, { align: 'center' });
-
-        // Stats
-        const stats = [
-          ['DORSAL', `#${BIB}`],
-          ...(FINISH_TIME ? [['TIEMPO OFICIAL', FINISH_TIME]] : []),
-          ...(POSITION ? [['POSICIÓN', `#${POSITION}`]] : []),
-          ...(CATEGORY_NAME ? [['CATEGORÍA', CATEGORY_NAME]] : []),
-        ];
-
-        const statWidth = 60;
-        const totalWidth = stats.length * statWidth + (stats.length - 1) * 20;
-        let startX = 140 - totalWidth / 2 + statWidth / 2;
-
-        stats.forEach(([label, value]) => {
-          // Fondo claro para estadísticas
-          doc.setFillColor(245, 245, 245);
+          // Línea decorativa gris arriba (como el ejemplo)
           doc.setDrawColor(220, 220, 220);
-          doc.setLineWidth(0.3);
-          doc.roundedRect(startX - statWidth/2, 125, statWidth, 40, 4, 4, 'FD');
-          
-          doc.setFontSize(8);
-          doc.setTextColor(100, 100, 100);
-          doc.text(label, startX, 137, { align: 'center' });
-          
-          doc.setFontSize(18);
-          doc.setTextColor(255, 107, 0);
+          doc.setLineWidth(1);
+          doc.line(20, 15, 260, 15);
+
+          // Cabecera: Certificado de Participación
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(26);
+          doc.setTextColor(50, 50, 50);
+          doc.text('Certificado de Participación', 140, 28, { align: 'center' });
+
+          // Subtítulo: Nombre de la carrera
           doc.setFont('helvetica', 'bold');
-          doc.text(value, startX, 155, { align: 'center' });
-          startX += statWidth + 20;
-        });
+          doc.setFontSize(20);
+          doc.setTextColor(0, 0, 0);
+          doc.text(RACE_NAME, 140, 38, { align: 'center' });
 
-        // Firma / URL
-        doc.setFontSize(9);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(120, 120, 120);
-        doc.text('carreras.strydpanama.com', 140, 185, { align: 'center' });
+          // Línea divisoria principal
+          doc.setDrawColor(200, 200, 200);
+          doc.setLineWidth(0.5);
+          doc.line(20, 48, 260, 48);
 
-        // Foto si existe
-        if (PHOTO_URL) {
-          try {
-            const response = await fetch(PHOTO_URL);
-            const blob = await response.blob();
-            const reader = new FileReader();
-            const base64 = await new Promise(resolve => {
-              reader.onload = e => resolve(e.target.result);
-              reader.readAsDataURL(blob);
-            });
-            doc.addImage(base64, 'JPEG', 218, 68, 45, 45, '', 'FAST');
-            doc.setDrawColor(255, 107, 0);
-            doc.setLineWidth(1);
-            doc.circle(240.5, 90.5, 22.5);
-          } catch(e) {}
-        }
+          // Body Details
+          const startY = 65;
+          const lineGap = 11;
+          let currentY = startY;
 
-        if (format === 'jpg') {
+          const drawDetail = (label, value) => {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(50, 50, 50);
+            const fullLabel = label + ': ';
+            doc.text(fullLabel, 25, currentY);
+            
+            const labelWidth = doc.getTextWidth(fullLabel);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(0, 0, 0);
+            doc.text(String(value || '—'), 25 + labelWidth, currentY);
+            currentY += lineGap;
+          };
+
+          drawDetail('Nombre Participante', PARTICIPANT_NAME);
+          drawDetail('Número', BIB);
+          drawDetail('Distancia', DISTANCE_NAME);
+          drawDetail('Categoría', CATEGORY_NAME);
+          drawDetail('Tiempo Oficial', FINISH_TIME || '—');
+          drawDetail('Posición General', POSITION_GENERAL || '—');
+          drawDetail('Posición Rama', POSITION_GENDER || '—');
+          drawDetail('Posición Categoría', POSITION_CATEGORY || '—');
+
+          // Logo a la derecha
+          if (CERT_LOGO_URL) {
+            try {
+              const logoRes = await fetch(CERT_LOGO_URL);
+              const logoBlob = await logoRes.blob();
+              const logoBase64 = await new Promise(resolve => {
+                const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(logoBlob);
+              });
+              doc.addImage(logoBase64, 'PNG', 160, 60, 85, 85, '', 'FAST');
+            } catch(e) {
+              console.error('Error al cargar logo en PDF:', e);
+            }
+          }
+
+          doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
+        } else {
           // Generar directamente vía Canvas para obtener un JPG real de alta calidad
           const canvas = document.createElement('canvas');
           canvas.width = 1120;
@@ -470,150 +433,69 @@ const hasResult = !!finishTime;
             img.src = src;
           });
 
-          // 1. Fondo (arte de carrera si existe, o fondo blanco como fallback)
-          let bgImg = null;
-          if (CERT_ART_URL) {
-            bgImg = await loadImg(CERT_ART_URL);
-          }
-          if (bgImg) {
-            ctx.drawImage(bgImg, 0, 0, 1120, 864);
-          } else {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, 1120, 864);
-          }
+          // Fondo blanco
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, 1120, 864);
 
-          // 2. Borde naranja (solo si no hay fondo de arte)
-          if (!bgImg) {
-            ctx.strokeStyle = '#FF6B00';
-            ctx.lineWidth = 12;
-            ctx.strokeRect(32, 32, 1056, 800);
-          }
-
-          // 3. Logo o Título
-          let logoImg = null;
-          if (CERT_LOGO_URL) {
-            logoImg = await loadImg(CERT_LOGO_URL);
-          }
-          if (logoImg) {
-            ctx.drawImage(logoImg, 240, 60, 640, 140);
-          } else {
-            ctx.fillStyle = '#FF6B00';
-            ctx.font = 'bold 64px helvetica';
-            ctx.textAlign = 'center';
-            ctx.fillText(RACE_NAME, 560, 160);
-          }
-
-          // 4. Subtítulo certificado (negro)
-          ctx.fillStyle = '#000000';
-          ctx.font = '52px helvetica';
-          ctx.textAlign = 'center';
-          ctx.fillText('CERTIFICADO DE PARTICIPACIÓN', 560, 220);
-
-          // 5. Línea
-          ctx.strokeStyle = '#FF6B00';
-          ctx.lineWidth = 2;
+          // Línea decorativa gris arriba
+          ctx.strokeStyle = '#dcdcdc';
+          ctx.lineWidth = 4;
           ctx.beginPath();
-          ctx.moveTo(160, 248);
-          ctx.lineTo(960, 248);
+          ctx.moveTo(80, 60);
+          ctx.lineTo(1040, 60);
           ctx.stroke();
 
-          // 6. Nombre del corredor (negro)
+          // Cabecera: Certificado de Participación
+          ctx.fillStyle = '#323232';
+          ctx.font = 'normal 48px helvetica';
+          ctx.textAlign = 'center';
+          ctx.fillText('Certificado de Participación', 560, 112);
+
+          // Subtítulo: Nombre de la carrera
           ctx.fillStyle = '#000000';
-          ctx.font = 'bold 144px helvetica';
-          ctx.textAlign = 'center';
-          
-          // Auto escalar nombre si es muy largo
-          let nameFontSize = 144;
-          ctx.font = `bold ${nameFontSize}px helvetica`;
-          let measuredWidth = ctx.measureText(PARTICIPANT_NAME).width;
-          while (measuredWidth > 900 && nameFontSize > 60) {
-            nameFontSize -= 10;
-            ctx.font = `bold ${nameFontSize}px helvetica`;
-            measuredWidth = ctx.measureText(PARTICIPANT_NAME).width;
-          }
-          ctx.fillText(PARTICIPANT_NAME, 560, 380);
+          ctx.font = 'bold 40px helvetica';
+          ctx.fillText(RACE_NAME, 560, 152);
 
-          // 7. Nombre de la carrera
-          ctx.fillStyle = '#FF6B00';
-          ctx.font = '64px helvetica';
-          ctx.textAlign = 'center';
-          ctx.fillText(RACE_NAME, 560, 448);
+          // Línea divisoria principal
+          ctx.strokeStyle = '#c8c8c8';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(80, 192);
+          ctx.lineTo(1040, 192);
+          ctx.stroke();
 
-          // 8. Estadísticas
-          const statWidthPx = 240;
-          const statHeightPx = 160;
-          const gapPx = 80;
-          const totalWidthPx = stats.length * statWidthPx + (stats.length - 1) * gapPx;
-          let startXPx = 560 - totalWidthPx / 2 + statWidthPx / 2;
+          // Body Details
+          let currentYPx = 260;
+          const lineGapPx = 44;
 
-          const drawRoundedRect = (c, x, y, w, h, r, fill = true, stroke = false) => {
-            c.beginPath();
-            c.moveTo(x + r, y);
-            c.lineTo(x + w - r, y);
-            c.quadraticCurveTo(x + w, y, x + w, y + r);
-            c.lineTo(x + w, y + h - r);
-            c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-            c.lineTo(x + r, y + h);
-            c.quadraticCurveTo(x, y + h, x, y + h - r);
-            c.lineTo(x, y + r);
-            c.quadraticCurveTo(x, y, x + r, y);
-            c.closePath();
-            if (fill) c.fill();
-            if (stroke) c.stroke();
+          const drawDetailPx = (label, value) => {
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#323232';
+            ctx.font = 'bold 26px helvetica';
+            const fullLabel = label + ': ';
+            ctx.fillText(fullLabel, 100, currentYPx);
+            
+            const labelWidth = ctx.measureText(fullLabel).width;
+            ctx.fillStyle = '#000000';
+            ctx.font = 'normal 26px helvetica';
+            ctx.fillText(String(value || '—'), 100 + labelWidth, currentYPx);
+            currentYPx += lineGapPx;
           };
 
-          for (const [label, value] of stats) {
-            ctx.fillStyle = '#f5f5f5';
-            ctx.strokeStyle = '#dcdcdc';
-            ctx.lineWidth = 2;
-            drawRoundedRect(ctx, startXPx - statWidthPx/2, 500, statWidthPx, statHeightPx, 16, true, true);
-            
-            ctx.fillStyle = '#646464';
-            ctx.font = '32px helvetica';
-            ctx.textAlign = 'center';
-            ctx.fillText(label, startXPx, 548);
-            
-            ctx.fillStyle = '#FF6B00';
-            ctx.font = 'bold 72px helvetica';
-            ctx.textAlign = 'center';
-            
-            // Auto escalar valor de la categoría si es muy largo
-            let valFontSize = 72;
-            ctx.font = `bold ${valFontSize}px helvetica`;
-            let valWidth = ctx.measureText(value).width;
-            while (valWidth > statWidthPx - 20 && valFontSize > 28) {
-              valFontSize -= 6;
-              ctx.font = `bold ${valFontSize}px helvetica`;
-              valWidth = ctx.measureText(value).width;
-            }
-            ctx.fillText(value, startXPx, 620);
-            
-            startXPx += statWidthPx + gapPx;
-          }
+          drawDetailPx('Nombre Participante', PARTICIPANT_NAME);
+          drawDetailPx('Número', BIB);
+          drawDetailPx('Distancia', DISTANCE_NAME);
+          drawDetailPx('Categoría', CATEGORY_NAME);
+          drawDetailPx('Tiempo Oficial', FINISH_TIME || '—');
+          drawDetailPx('Posición General', POSITION_GENERAL || '—');
+          drawDetailPx('Posición Rama', POSITION_GENDER || '—');
+          drawDetailPx('Posición Categoría', POSITION_CATEGORY || '—');
 
-          // 9. Firma / URL
-          ctx.fillStyle = '#666666';
-          ctx.font = '36px helvetica';
-          ctx.textAlign = 'center';
-          ctx.fillText('carreras.strydpanama.com', 560, 740);
-
-          // 10. Foto si existe
-          if (PHOTO_URL) {
-            const photoImg = await loadImg(PHOTO_URL);
-            if (photoImg) {
-              ctx.save();
-              ctx.beginPath();
-              ctx.arc(962, 362, 90, 0, Math.PI * 2);
-              ctx.closePath();
-              ctx.clip();
-              ctx.drawImage(photoImg, 872, 272, 180, 180);
-              ctx.restore();
-
-              ctx.strokeStyle = '#FF6B00';
-              ctx.lineWidth = 4;
-              ctx.beginPath();
-              ctx.arc(962, 362, 90, 0, Math.PI * 2);
-              ctx.stroke();
+          // Logo a la derecha si existe
+          if (CERT_LOGO_URL) {
+            const logoImg = await loadImg(CERT_LOGO_URL);
+            if (logoImg) {
+              ctx.drawImage(logoImg, 640, 240, 340, 340);
             }
           }
 
@@ -624,8 +506,6 @@ const hasResult = !!finishTime;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
-        } else {
-          doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
         }
       } catch(e) {
         alert('Error generando certificado. Intenta de nuevo.');
