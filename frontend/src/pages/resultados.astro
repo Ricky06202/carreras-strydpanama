@@ -819,14 +819,14 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
     <!-- TAB: Individual -->
     <div class="tab-content active" id="tab-individual">
-      <!-- Podium: Top 3 M + Top 3 F -->
+      <!-- Podium: Top 1 M + Top 1 F (Absoluto) -->
       <div class="podium-section" id="podium-section">
         <div class="podium-block">
-          <div class="podium-title">🏆 Podio Masculino</div>
+          <div class="podium-title">🏆 Absoluto Masculino</div>
           <div class="podium-list" id="podium-male"></div>
         </div>
         <div class="podium-block">
-          <div class="podium-title">🏆 Podio Femenino</div>
+          <div class="podium-title">🏆 Absoluto Femenino</div>
           <div class="podium-list" id="podium-female"></div>
         </div>
       </div>
@@ -1019,6 +1019,15 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   const raffleWinnersCache = data.raffleWinners || [];
   const medals = ['🥇', '🥈', '🥉'];
 
+  function isSingleWinnerCategory(categoryName) {
+    if (!categoryName) return false;
+    const lower = categoryName.toLowerCase();
+    return lower.includes('niño') || 
+           lower.includes('estudiante') || 
+           lower.includes('docente') || 
+           lower.includes('administrativo');
+  }
+
   function computeRankings(list) {
     const groups = {};
     list.sort((a, b) => a.finishTime - b.finishTime);
@@ -1124,8 +1133,9 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     const femaleList = document.getElementById('podium-female');
     if (!maleList || !femaleList) return;
 
-    const males = all.filter(x => x.gender === 'masculino').slice(0, 3);
-    const females = all.filter(x => x.gender === 'femenino').slice(0, 3);
+    // En individual general solo gana el absoluto masculino y femenino (1er lugar)
+    const males = all.filter(x => x.gender === 'masculino').slice(0, 1);
+    const females = all.filter(x => x.gender === 'femenino').slice(0, 1);
 
     [{ el: maleList, data: males }, { el: femaleList, data: females }].forEach(({ el, data: list }) => {
       if (list.length === 0) { el.innerHTML = '<div style="text-align:center;color:#555;padding:20px;">Sin resultados</div>'; return; }
@@ -1171,7 +1181,15 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         : '';
       const ph = r.photoUrl ? `<img src="${ensureAbsolute(r.photoUrl)}" alt="" class="mini-photo"/>` : '';
       
-      const medalOrRank = r.catPos <= 3 ? medals[r.catPos - 1] : `#${r.catPos}`;
+      const isSingleWinner = isSingleWinnerCategory(r.categoryName);
+      let medalOrRank = `#${r.catPos}`;
+      if (r.catPos === 1) {
+        medalOrRank = '🥇';
+      } else if (r.catPos === 2) {
+        medalOrRank = isSingleWinner ? '#2' : '🥈';
+      } else if (r.catPos === 3) {
+        medalOrRank = isSingleWinner ? '#3' : '🥉';
+      }
 
       return `<tr class="${trCls}" onclick="openRunnerModal('${r.id}')">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
