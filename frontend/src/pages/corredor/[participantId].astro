@@ -433,21 +433,180 @@ const hasResult = !!finishTime;
         }
 
         if (format === 'jpg') {
-          // Convert PDF to canvas then JPG
-          const pdfData = doc.output('datauristring');
-          // For JPG, use html2canvas approach with a hidden canvas
+          // Generar directamente vía Canvas para obtener un JPG real de alta calidad
           const canvas = document.createElement('canvas');
-          canvas.width = 280 * 4; canvas.height = 216 * 4;
+          canvas.width = 1120;
+          canvas.height = 864;
           const ctx = canvas.getContext('2d');
-          // Simple: save as PDF instead since true PDF-to-JPG needs a library
-          // Use canvas-based approach
-          const pdfBlob = doc.output('blob');
-          const url = URL.createObjectURL(pdfBlob);
-          // Fallback: just save PDF with jpg label for now, or use dataurl
-          const imgData = doc.output('datauristring');
-          // Direct canvas rendering approach
-          doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
-          alert('Tip: Para JPG, abre el PDF y toma una captura de pantalla. Estamos trabajando en la descarga directa JPG.');
+
+          // Función para cargar imágenes con CORS
+          const loadImg = (src) => new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = () => resolve(null);
+            img.src = src;
+          });
+
+          // 1. Fondo (o negro)
+          let bgImg = null;
+          if (CERT_ART_URL) {
+            bgImg = await loadImg(CERT_ART_URL);
+          }
+          if (bgImg) {
+            ctx.drawImage(bgImg, 0, 0, 1120, 864);
+            // Capa semitransparente oscura
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(0, 0, 1120, 864);
+          } else {
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, 1120, 864);
+          }
+
+          // 2. Borde naranja
+          ctx.strokeStyle = '#FF6B00';
+          ctx.lineWidth = 12;
+          ctx.strokeRect(32, 32, 1056, 800);
+
+          // 3. Logo o Título
+          let logoImg = null;
+          if (CERT_LOGO_URL) {
+            logoImg = await loadImg(CERT_LOGO_URL);
+          }
+          if (logoImg) {
+            ctx.drawImage(logoImg, 240, 60, 640, 140);
+          } else {
+            ctx.fillStyle = '#FF6B00';
+            ctx.font = 'bold 112px helvetica';
+            ctx.textAlign = 'center';
+            ctx.fillText('STRYD PANAMA', 560, 160);
+          }
+
+          // 4. Subtítulo certificado
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '52px helvetica';
+          ctx.textAlign = 'center';
+          ctx.fillText('CERTIFICADO DE PARTICIPACIÓN', 560, 220);
+
+          // 5. Línea
+          ctx.strokeStyle = '#FF6B00';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(160, 248);
+          ctx.lineTo(960, 248);
+          ctx.stroke();
+
+          // 6. Nombre del corredor
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 144px helvetica';
+          ctx.textAlign = 'center';
+          
+          // Auto escalar nombre si es muy largo
+          let nameFontSize = 144;
+          ctx.font = `bold ${nameFontSize}px helvetica`;
+          let measuredWidth = ctx.measureText(PARTICIPANT_NAME).width;
+          while (measuredWidth > 900 && nameFontSize > 60) {
+            nameFontSize -= 10;
+            ctx.font = `bold ${nameFontSize}px helvetica`;
+            measuredWidth = ctx.measureText(PARTICIPANT_NAME).width;
+          }
+          ctx.fillText(PARTICIPANT_NAME, 560, 380);
+
+          // 7. Nombre de la carrera
+          ctx.fillStyle = '#FF6B00';
+          ctx.font = '64px helvetica';
+          ctx.textAlign = 'center';
+          ctx.fillText(RACE_NAME, 560, 448);
+
+          // 8. Estadísticas
+          const stats = [
+            ['DORSAL', `#${BIB}`],
+            ...(FINISH_TIME ? [['TIEMPO OFICIAL', FINISH_TIME]] : []),
+            ...(POSITION ? [['POSICIÓN', `#${POSITION}`]] : []),
+            ...(CATEGORY_NAME ? [['CATEGORÍA', CATEGORY_NAME]] : []),
+          ];
+
+          const statWidthPx = 240;
+          const statHeightPx = 160;
+          const gapPx = 80;
+          const totalWidthPx = stats.length * statWidthPx + (stats.length - 1) * gapPx;
+          let startXPx = 560 - totalWidthPx / 2 + statWidthPx / 2;
+
+          const drawRoundedRect = (c, x, y, w, h, r) => {
+            c.beginPath();
+            c.moveTo(x + r, y);
+            c.lineTo(x + w - r, y);
+            c.quadraticCurveTo(x + w, y, x + w, y + r);
+            c.lineTo(x + w, y + h - r);
+            c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            c.lineTo(x + r, y + h);
+            c.quadraticCurveTo(x, y + h, x, y + h - r);
+            c.lineTo(x, y + r);
+            c.quadraticCurveTo(x, y, x + r, y);
+            c.closePath();
+            c.fill();
+          };
+
+          for (const [label, value] of stats) {
+            ctx.fillStyle = '#1e1e1e';
+            drawRoundedRect(ctx, startXPx - statWidthPx/2, 500, statWidthPx, statHeightPx, 16);
+            
+            ctx.fillStyle = '#969696';
+            ctx.font = '32px helvetica';
+            ctx.textAlign = 'center';
+            ctx.fillText(label, startXPx, 548);
+            
+            ctx.fillStyle = '#FF6B00';
+            ctx.font = 'bold 72px helvetica';
+            ctx.textAlign = 'center';
+            
+            // Auto escalar valor de la categoría si es muy largo
+            let valFontSize = 72;
+            ctx.font = `bold ${valFontSize}px helvetica`;
+            let valWidth = ctx.measureText(value).width;
+            while (valWidth > statWidthPx - 20 && valFontSize > 28) {
+              valFontSize -= 6;
+              ctx.font = `bold ${valFontSize}px helvetica`;
+              valWidth = ctx.measureText(value).width;
+            }
+            ctx.fillText(value, startXPx, 620);
+            
+            startXPx += statWidthPx + gapPx;
+          }
+
+          // 9. Firma / URL
+          ctx.fillStyle = '#646464';
+          ctx.font = '36px helvetica';
+          ctx.textAlign = 'center';
+          ctx.fillText('carreras.strydpanama.com', 560, 740);
+
+          // 10. Foto si existe
+          if (PHOTO_URL) {
+            const photoImg = await loadImg(PHOTO_URL);
+            if (photoImg) {
+              ctx.save();
+              ctx.beginPath();
+              ctx.arc(962, 362, 90, 0, Math.PI * 2);
+              ctx.closePath();
+              ctx.clip();
+              ctx.drawImage(photoImg, 872, 272, 180, 180);
+              ctx.restore();
+
+              ctx.strokeStyle = '#FF6B00';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(962, 362, 90, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+          }
+
+          // Descarga directa del JPG
+          const link = document.createElement('a');
+          link.download = `certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.jpg`;
+          link.href = canvas.toDataURL('image/jpeg', 0.95);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
         } else {
           doc.save(`certificado-${PARTICIPANT_NAME.replace(/\s+/g,'-')}.pdf`);
         }
