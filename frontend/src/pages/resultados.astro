@@ -815,11 +815,7 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
     </div>
   )}
 
-  <div id="premiacion-btn-wrap" class={allFinishers.length > 0 ? "" : "hidden"} style="text-align:center;margin-bottom:24px;">
-    <a href={`/premiacion?raceId=${selectedRaceId}`} style="display:inline-flex;align-items:center;gap:8px;background:#1a1a1a;border:1px solid #FF6B00;color:#FF6B00;padding:10px 22px;border-radius:12px;font-weight:700;font-size:14px;text-decoration:none;transition:all 0.2s;" onmouseover="this.style.background='#FF6B00';this.style.color='#fff'" onmouseout="this.style.background='#1a1a1a';this.style.color='#FF6B00'">
-      🏆 Ver Informe de Premiación
-    </a>
-  </div>
+
 
   <div id="stats-container" class={allFinishers.length > 0 ? "" : "hidden"}>
     <!-- Stats Hero -->
@@ -1517,7 +1513,6 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
           const emptyState = document.getElementById('empty-state');
           const resultsApp = document.getElementById('results-app');
           const statsContainer = document.getElementById('stats-container');
-          const premiacionBtnWrap = document.getElementById('premiacion-btn-wrap');
           
           if (emptyState) emptyState.classList.add('hidden');
           if (resultsApp) resultsApp.classList.remove('hidden');
@@ -1525,10 +1520,6 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
           if (statsContainer) {
             if (all.length > 0) statsContainer.classList.remove('hidden');
             else statsContainer.classList.add('hidden');
-          }
-          if (premiacionBtnWrap) {
-            if (all.length > 0) premiacionBtnWrap.classList.remove('hidden');
-            else premiacionBtnWrap.classList.add('hidden');
           }
 
           const finishedList = all.filter(x => x.finishTime > 0);
