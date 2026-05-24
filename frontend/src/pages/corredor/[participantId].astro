@@ -70,6 +70,16 @@ if (rawDistanceName.toLowerCase().includes('1k') || rawDistanceName.toLowerCase(
   distanceName = '5k';
 }
 
+const birthDateStr = participant?.data?.birthDate || '';
+const raceDateStr = race?.data?.date || '';
+let age: number | null = null;
+if (birthDateStr) {
+  const birthYear = new Date(birthDateStr).getFullYear();
+  const raceYear = raceDateStr ? new Date(raceDateStr).getFullYear() : new Date().getFullYear();
+  if (!isNaN(birthYear)) age = raceYear - birthYear;
+}
+
+
 const R2_BASE_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 const rawPhotoUrl = participant?.data?.photoUrl || '';
 let fixedImageUrl = rawPhotoUrl ? rawPhotoUrl.replace("https://api.carreras.strydpanama.com", R2_BASE_URL) : '';
@@ -217,6 +227,7 @@ const hasResult = !!finishTime;
             <div class="race-name">{raceName}</div>
             {raceDate && <div class="race-date">{raceDate}</div>}
             {categoryName && <div style="color:#888;font-size:13px;margin-top:4px;">Categoría: {categoryName}</div>}
+            {age !== null && <div style="color:#888;font-size:13px;margin-top:4px;">Edad: {age} años</div>}
             {teamName && <div style="color:#FF6B00;font-size:13px;margin-top:4px;">👥 Equipo: {teamName}</div>}
             {distanceName && <div style="color:#888;font-size:13px;margin-top:4px;">Distancia: {distanceName}</div>}
             <div class="bib-badge">#{bibNumber}</div>
