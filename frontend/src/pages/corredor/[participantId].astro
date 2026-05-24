@@ -283,19 +283,34 @@ const hasResult = !!finishTime;
     )}
   </div>
 
-  <script>
-    const PARTICIPANT_ID = '{participantId}';
-    const PARTICIPANT_NAME = `{name}`;
-    const RACE_NAME = `{raceName}`;
-    const FINISH_TIME = '{finishTime ? formatTime(finishTime) : ""}';
-    const BIB = '{bibNumber}';
-    const PHOTO_URL = '{fixedImageUrl}';
-    const POSITION = '{positionCategory ?? ""}';
-    const CERT_ART_URL = '{certArtUrl}';
-    const CERT_LOGO_URL = '{certLogoUrl}';
-    const CATEGORY_NAME = '{categoryName}';
-    const DISTANCE_NAME = '{distanceName}';
-    const TEAM_NAME = '{teamName}';
+  <script define:vars={{
+    participantId,
+    name,
+    raceName,
+    finishTimeFormatted: finishTime ? formatTime(finishTime) : "",
+    bibNumber,
+    fixedImageUrl,
+    positionCategory,
+    certArtUrl,
+    certLogoUrl,
+    categoryName,
+    distanceName,
+    teamName
+  }}>
+    const PARTICIPANT_ID = participantId;
+    const PARTICIPANT_NAME = name;
+    const RACE_NAME = raceName;
+    const FINISH_TIME = finishTimeFormatted;
+    const BIB = bibNumber;
+    const PHOTO_URL = fixedImageUrl;
+    const POSITION = positionCategory;
+    const CERT_ART_URL = certArtUrl;
+    const CERT_LOGO_URL = certLogoUrl;
+    const CATEGORY_NAME = categoryName;
+    const DISTANCE_NAME = distanceName;
+    const TEAM_NAME = teamName;
+
+    const medals = ['🥇', '🥈', '🥉'];
 
     async function generateCertificate(format) {
       const btn = document.getElementById(format === 'jpg' ? 'jpg-btn' : 'cert-btn');
@@ -312,28 +327,9 @@ const hasResult = !!finishTime;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
 
-        // Fondo: usar arte de carrera si existe, o fondo negro
-        if (CERT_ART_URL) {
-          try {
-            const artRes = await fetch(CERT_ART_URL);
-            const artBlob = await artRes.blob();
-            const artBase64 = await new Promise(resolve => {
-              const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(artBlob);
-            });
-            doc.addImage(artBase64, 'JPEG', 0, 0, 280, 216, '', 'FAST');
-            // Semi-transparent overlay for readability
-            doc.setFillColor(0, 0, 0);
-            doc.setGState(new doc.GState({ opacity: 0.7 }));
-            doc.rect(0, 0, 280, 216, 'F');
-            doc.setGState(new doc.GState({ opacity: 1 }));
-          } catch(e) {
-            doc.setFillColor(0, 0, 0);
-            doc.rect(0, 0, 280, 216, 'F');
-          }
-        } else {
-          doc.setFillColor(0, 0, 0);
-          doc.rect(0, 0, 280, 216, 'F');
-        }
+        // Fondo blanco (amigable para imprimir)
+        doc.setFillColor(255, 255, 255);
+        doc.rect(0, 0, 280, 216, 'F');
 
         // Borde naranja
         doc.setDrawColor(255, 107, 0);
@@ -363,8 +359,8 @@ const hasResult = !!finishTime;
           doc.text('STRYD PANAMA', 140, 40, { align: 'center' });
         }
 
-        // Subtítulo certificado
-        doc.setTextColor(255, 255, 255);
+        // Subtítulo certificado (negro/gris oscuro)
+        doc.setTextColor(26, 26, 26);
         doc.setFontSize(13);
         doc.setFont('helvetica', 'normal');
         doc.text('CERTIFICADO DE PARTICIPACIÓN', 140, 55, { align: 'center' });
@@ -374,10 +370,10 @@ const hasResult = !!finishTime;
         doc.setLineWidth(0.5);
         doc.line(40, 62, 240, 62);
 
-        // Nombre del corredor
+        // Nombre del corredor (negro)
         doc.setFontSize(36);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(0, 0, 0);
         doc.text(PARTICIPANT_NAME, 140, 95, { align: 'center' });
 
         // Nombre de la carrera
@@ -399,11 +395,16 @@ const hasResult = !!finishTime;
         let startX = 140 - totalWidth / 2 + statWidth / 2;
 
         stats.forEach(([label, value]) => {
-          doc.setFillColor(30, 30, 30);
-          doc.roundedRect(startX - statWidth/2, 125, statWidth, 40, 4, 4, 'F');
+          // Fondo claro para estadísticas
+          doc.setFillColor(245, 245, 245);
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.3);
+          doc.roundedRect(startX - statWidth/2, 125, statWidth, 40, 4, 4, 'FD');
+          
           doc.setFontSize(8);
-          doc.setTextColor(150, 150, 150);
+          doc.setTextColor(100, 100, 100);
           doc.text(label, startX, 137, { align: 'center' });
+          
           doc.setFontSize(18);
           doc.setTextColor(255, 107, 0);
           doc.setFont('helvetica', 'bold');
@@ -411,10 +412,10 @@ const hasResult = !!finishTime;
           startX += statWidth + 20;
         });
 
-        // Firma
+        // Firma / URL
         doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
+        doc.setTextColor(120, 120, 120);
         doc.text('carreras.strydpanama.com', 140, 185, { align: 'center' });
 
         // Foto si existe
@@ -450,20 +451,9 @@ const hasResult = !!finishTime;
             img.src = src;
           });
 
-          // 1. Fondo (o negro)
-          let bgImg = null;
-          if (CERT_ART_URL) {
-            bgImg = await loadImg(CERT_ART_URL);
-          }
-          if (bgImg) {
-            ctx.drawImage(bgImg, 0, 0, 1120, 864);
-            // Capa semitransparente oscura
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-            ctx.fillRect(0, 0, 1120, 864);
-          } else {
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, 1120, 864);
-          }
+          // 1. Fondo blanco amigable para imprimir
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, 1120, 864);
 
           // 2. Borde naranja
           ctx.strokeStyle = '#FF6B00';
@@ -484,8 +474,8 @@ const hasResult = !!finishTime;
             ctx.fillText('STRYD PANAMA', 560, 160);
           }
 
-          // 4. Subtítulo certificado
-          ctx.fillStyle = '#ffffff';
+          // 4. Subtítulo certificado (negro)
+          ctx.fillStyle = '#000000';
           ctx.font = '52px helvetica';
           ctx.textAlign = 'center';
           ctx.fillText('CERTIFICADO DE PARTICIPACIÓN', 560, 220);
@@ -498,8 +488,8 @@ const hasResult = !!finishTime;
           ctx.lineTo(960, 248);
           ctx.stroke();
 
-          // 6. Nombre del corredor
-          ctx.fillStyle = '#ffffff';
+          // 6. Nombre del corredor (negro)
+          ctx.fillStyle = '#000000';
           ctx.font = 'bold 144px helvetica';
           ctx.textAlign = 'center';
           
@@ -521,20 +511,13 @@ const hasResult = !!finishTime;
           ctx.fillText(RACE_NAME, 560, 448);
 
           // 8. Estadísticas
-          const stats = [
-            ['DORSAL', `#${BIB}`],
-            ...(FINISH_TIME ? [['TIEMPO OFICIAL', FINISH_TIME]] : []),
-            ...(POSITION ? [['POSICIÓN', `#${POSITION}`]] : []),
-            ...(CATEGORY_NAME ? [['CATEGORÍA', CATEGORY_NAME]] : []),
-          ];
-
           const statWidthPx = 240;
           const statHeightPx = 160;
           const gapPx = 80;
           const totalWidthPx = stats.length * statWidthPx + (stats.length - 1) * gapPx;
           let startXPx = 560 - totalWidthPx / 2 + statWidthPx / 2;
 
-          const drawRoundedRect = (c, x, y, w, h, r) => {
+          const drawRoundedRect = (c, x, y, w, h, r, fill = true, stroke = false) => {
             c.beginPath();
             c.moveTo(x + r, y);
             c.lineTo(x + w - r, y);
@@ -546,14 +529,17 @@ const hasResult = !!finishTime;
             c.lineTo(x, y + r);
             c.quadraticCurveTo(x, y, x + r, y);
             c.closePath();
-            c.fill();
+            if (fill) c.fill();
+            if (stroke) c.stroke();
           };
 
           for (const [label, value] of stats) {
-            ctx.fillStyle = '#1e1e1e';
-            drawRoundedRect(ctx, startXPx - statWidthPx/2, 500, statWidthPx, statHeightPx, 16);
+            ctx.fillStyle = '#f5f5f5';
+            ctx.strokeStyle = '#dcdcdc';
+            ctx.lineWidth = 2;
+            drawRoundedRect(ctx, startXPx - statWidthPx/2, 500, statWidthPx, statHeightPx, 16, true, true);
             
-            ctx.fillStyle = '#969696';
+            ctx.fillStyle = '#646464';
             ctx.font = '32px helvetica';
             ctx.textAlign = 'center';
             ctx.fillText(label, startXPx, 548);
@@ -577,7 +563,7 @@ const hasResult = !!finishTime;
           }
 
           // 9. Firma / URL
-          ctx.fillStyle = '#646464';
+          ctx.fillStyle = '#666666';
           ctx.font = '36px helvetica';
           ctx.textAlign = 'center';
           ctx.fillText('carreras.strydpanama.com', 560, 740);
