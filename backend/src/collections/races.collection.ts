@@ -104,10 +104,6 @@ export default {
         type: 'boolean',
         title: 'Habilitar Inscripción por Equipos',
       },
-      certificateArtUrl: {
-        type: 'media',
-        title: 'Arte del Certificado (fondo)',
-      },
       certificateLogoUrl: {
         type: 'media',
         title: 'Logo para Certificado',
