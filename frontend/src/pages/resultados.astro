@@ -1475,12 +1475,7 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
   async function pollResults() {
     if (!selectedRaceId) return;
     try {
-      const res = await fetch(`/api/results-data?raceId=${selectedRaceId}&_t=${Date.now()}`, {
-        headers: {
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache'
-        }
-      });
+      const res = await fetch(`/api/results-data?raceId=${selectedRaceId}`);
       if (!res.ok) return;
       const json = await res.json();
       if (json.success) {
@@ -1765,7 +1760,27 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
   renderTeams();
   renderTombola();
 
-  // Start polling every 5 seconds
-  setInterval(pollResults, 5000);
+  // Start polling every 10 seconds, but pause if tab is hidden
+  let pollInterval = null;
+  function startPolling() {
+    if (!pollInterval) {
+      pollInterval = setInterval(pollResults, 10000);
+    }
+  }
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      stopPolling();
+    } else {
+      pollResults();
+      startPolling();
+    }
+  });
+  startPolling();
 </script>
 </Layout>
