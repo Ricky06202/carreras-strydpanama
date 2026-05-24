@@ -2,6 +2,15 @@ import type { APIRoute } from 'astro';
 import { apiFetch } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 
+function formatDistanceName(name: string): string {
+  if (!name) return 'General';
+  const lower = name.toLowerCase();
+  if (lower.includes('1k') || lower.includes('1 k')) return '1k';
+  if (lower.includes('5k') || lower.includes('5 k')) return '5k';
+  return name;
+}
+
+
 export const GET: APIRoute = async ({ request }) => {
   try {
     const url = new URL(request.url);
@@ -44,7 +53,8 @@ export const GET: APIRoute = async ({ request }) => {
 
     const allDists = (distsRes?.data || []).filter((d: any) => d.data?.race === raceId);
     for (const d of allDists) {
-      distanceMap[d.id] = d.data?.title || d.title;
+      const rawTitle = d.data?.title || d.title || '';
+      distanceMap[d.id] = formatDistanceName(rawTitle);
     }
     const distanceNames = [...new Set(Object.values(distanceMap))].sort();
 
@@ -84,7 +94,8 @@ export const GET: APIRoute = async ({ request }) => {
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
         const catName = p.data?.categoryName || categoryMap[catId] || 'General';
-        const distName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const rawDistName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const distName = formatDistanceName(rawDistName);
         const gender = (p.data?.gender || '').toLowerCase();
         usedCats.add(catName);
         
