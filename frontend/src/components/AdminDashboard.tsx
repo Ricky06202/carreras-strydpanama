@@ -54,6 +54,37 @@ interface Race {
   };
 }
 
+const secondsToHHMMSS = (seconds?: number | null) => {
+  if (seconds === undefined || seconds === null || isNaN(seconds) || seconds === 0) return '';
+  const hrs = Math.floor(seconds / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+};
+
+const hhmmssToSeconds = (str?: string) => {
+  if (!str || !str.trim()) return null;
+  const cleanStr = str.trim();
+  const parts = cleanStr.split(':');
+  if (parts.length === 3) {
+    const [h, m, s] = parts.map(Number);
+    if (!isNaN(h) && !isNaN(m) && !isNaN(s)) {
+      return h * 3600 + m * 60 + s;
+    }
+  } else if (parts.length === 2) {
+    const [m, s] = parts.map(Number);
+    if (!isNaN(m) && !isNaN(s)) {
+      return m * 60 + s;
+    }
+  } else if (parts.length === 1) {
+    const [s] = parts.map(Number);
+    if (!isNaN(s)) {
+      return s;
+    }
+  }
+  return null;
+};
+
 function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) {
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
@@ -608,6 +639,23 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     if (!editParticipantObj) return;
     try {
        setParticipantsLoading(true);
+       
+       const finishTimeFormatted = editParticipantObj.finishTimeFormatted?.trim();
+       if (finishTimeFormatted && hhmmssToSeconds(finishTimeFormatted) === null) {
+         alert('El tiempo de llegada debe estar en formato HH:MM:SS (ej: 01:05:30) o estar vacío.');
+         setParticipantsLoading(false);
+         return;
+       }
+       const checkpointTimeFormatted = editParticipantObj.checkpointTimeFormatted?.trim();
+       if (checkpointTimeFormatted && hhmmssToSeconds(checkpointTimeFormatted) === null) {
+         alert('El tiempo de retorno debe estar en formato HH:MM:SS (ej: 00:32:15) o estar vacío.');
+         setParticipantsLoading(false);
+         return;
+       }
+
+       const finishSecs = hhmmssToSeconds(finishTimeFormatted);
+       const checkpointSecs = hhmmssToSeconds(checkpointTimeFormatted);
+
        const titlePrefix = `${editParticipantObj.firstName?.trim() || ''} ${editParticipantObj.lastName?.trim() || ''}`.trim();
        let newTitle = titlePrefix;
        if (editParticipantObj.bibNumber) {
@@ -628,12 +676,20 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
              phone: editParticipantObj.phone,
              teamName: editParticipantObj.teamName,
              birthDate: editParticipantObj.birthDate,
-             title: titlePrefix ? newTitle : editParticipantObj.title
+             title: titlePrefix ? newTitle : editParticipantObj.title,
+             finishTime: finishSecs,
+             checkpointTime: checkpointSecs
            }
          })
        });
        if (res.ok) {
-         setParticipants(prev => prev.map(p => p.id === editParticipantObj.id ? {...p, ...editParticipantObj, title: titlePrefix ? newTitle : editParticipantObj.title} : p));
+         setParticipants(prev => prev.map(p => p.id === editParticipantObj.id ? {
+           ...p, 
+           ...editParticipantObj, 
+           title: titlePrefix ? newTitle : editParticipantObj.title,
+           finishTime: finishSecs !== null ? finishSecs : undefined,
+           checkpointTime: checkpointSecs !== null ? checkpointSecs : undefined
+         } : p));
          setEditParticipantObj(null);
        } else alert('Error al guardar datos modificados');
     } catch(e) { alert('Error de conexión al editar'); }
@@ -2022,7 +2078,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                   )}
                                </Box>
                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                  <Button size="small" variant="outlined" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); setEditParticipantObj(p); }}>EDITAR</Button>
+                                  <Button size="small" variant="outlined" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); setEditParticipantObj({ ...p, finishTimeFormatted: secondsToHHMMSS(p.finishTime), checkpointTimeFormatted: secondsToHHMMSS(p.checkpointTime) }); }}>EDITAR</Button>
                                   <Button size="small" variant="outlined" color="error" sx={{ flex: 1, fontSize: '0.65rem' }} onClick={(e) => { e.stopPropagation(); deleteParticipant(p.id, p.title); }}>BORRAR</Button>
                                </Box>
                             </Box>
@@ -2258,6 +2314,26 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     <Box sx={{ display: 'flex', gap: 2 }}>
                         <TextField label="F. Nacimiento" type="date" InputLabelProps={{ shrink: true }} size="small" value={editParticipantObj.birthDate || ''} onChange={e => setEditParticipantObj({...editParticipantObj, birthDate: e.target.value})} fullWidth />
                         <TextField label="Nombre de Equipo" size="small" value={editParticipantObj.teamName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, teamName: e.target.value})} fullWidth />
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                         <TextField 
+                           label="Tiempo de Llegada (HH:MM:SS)" 
+                           placeholder="Ej: 01:05:30" 
+                           size="small" 
+                           value={editParticipantObj.finishTimeFormatted || ''} 
+                           onChange={e => setEditParticipantObj({...editParticipantObj, finishTimeFormatted: e.target.value})} 
+                           fullWidth 
+                           helperText="Dejar vacío para limpiar"
+                         />
+                         <TextField 
+                           label="Tiempo de Retorno (HH:MM:SS)" 
+                           placeholder="Ej: 00:32:15" 
+                           size="small" 
+                           value={editParticipantObj.checkpointTimeFormatted || ''} 
+                           onChange={e => setEditParticipantObj({...editParticipantObj, checkpointTimeFormatted: e.target.value})} 
+                           fullWidth 
+                           helperText="Dejar vacío para limpiar"
+                         />
                     </Box>
                  </DialogContent>
                  <DialogActions sx={{ p: 2 }}>
