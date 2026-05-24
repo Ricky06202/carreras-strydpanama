@@ -84,13 +84,19 @@ if (selectedRaceId) {
     );
 
     totalRunnersCount = activeParts.length;
-    totalFinishedCount = finishedParts.length;
+    totalFinishedCount = finishedParts.filter((p: any) => Number(p.data?.finishTime) > 0).length;
     totalMissingCount = totalRunnersCount - totalFinishedCount;
     progressPercent = totalRunnersCount > 0 ? Math.round((totalFinishedCount / totalRunnersCount) * 100) : 0;
 
     const usedCats = new Set<string>();
     const allFinishersMapped = finishedParts
-      .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
+      .sort((a: any, b: any) => {
+        const tA = Number(a.data?.finishTime);
+        const tB = Number(b.data?.finishTime);
+        if (tA === -1 && tB !== -1) return 1;
+        if (tA !== -1 && tB === -1) return -1;
+        return tA - tB;
+      })
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
         const catName = p.data?.categoryName || categoryMap[catId] || 'General';
@@ -98,17 +104,55 @@ if (selectedRaceId) {
         const distName = formatDistanceName(rawDistName);
         const gender = (p.data?.gender || '').toLowerCase();
         return {
-          pos: i + 1, id: p.id,
+          pos: Number(p.data?.finishTime) > 0 ? i + 1 : '—',
+          id: p.id,
           name: `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim(),
-          bib: p.data?.bibNumber, finishTime: Number(p.data?.finishTime),
+          bib: p.data?.bibNumber,
+          finishTime: Number(p.data?.finishTime),
           checkpointTime: p.data?.checkpointTime ? Number(p.data.checkpointTime) : null,
-          photoUrl: p.data?.photoUrl || '', country: p.data?.country || '',
-          teamName: p.data?.teamName || '', categoryName: catName,
-          distanceName: distName, age: getAge(p.data?.birthDate, raceDateStr),
+          photoUrl: p.data?.photoUrl || '',
+          country: p.data?.country || '',
+          teamName: p.data?.teamName || '',
+          categoryName: catName,
+          distanceName: distName,
+          age: getAge(p.data?.birthDate, raceDateStr),
           gender: gender === 'm' ? 'masculino' : gender === 'f' ? 'femenino' : gender,
           registrationType: p.data?.registrationType || 'individual',
         };
       });
+
+    // Identificar ganadores absolutos (excluyendo DNF y equipos)
+    const finishedIndividuals = allFinishersMapped.filter((f: any) => f.finishTime > 0 && f.registrationType !== 'team');
+    const absoluteMale = finishedIndividuals.find((f: any) => f.gender === 'masculino');
+    const absoluteFemale = finishedIndividuals.find((f: any) => f.gender === 'femenino');
+    const absoluteMaleId = absoluteMale ? absoluteMale.id : null;
+    const absoluteFemaleId = absoluteFemale ? absoluteFemale.id : null;
+
+    // Calcular posición por categoría excluyendo ganadores absolutos y DNF
+    const groups: Record<string, any[]> = {};
+    allFinishersMapped.forEach((x: any) => {
+      const isAbsolute = x.id === absoluteMaleId || x.id === absoluteFemaleId;
+      if (isAbsolute) {
+        x.catPos = 'Absoluto';
+      } else if (x.finishTime > 0) {
+        const key = `${x.distanceName}|||${x.categoryName}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(x);
+        x.catPos = groups[key].length;
+      } else {
+        x.catPos = '—';
+      }
+    });
+
+    allFinishersMapped.forEach((x: any) => {
+      const isAbsolute = x.catPos === 'Absoluto';
+      if (isAbsolute) {
+        x.totalCat = 0;
+      } else {
+        const key = `${x.distanceName}|||${x.categoryName}`;
+        x.totalCat = groups[key] ? groups[key].length : 0;
+      }
+    });
 
     // Build team data
     const teamMap: Record<string, any[]> = {};
@@ -119,24 +163,34 @@ if (selectedRaceId) {
       }
     }
 
-    // Filtrar finalistas individuales (excluir equipos) y recalcular posiciones
+    // Filtrar finalistas individuales (excluir equipos) y recalcular posiciones generales
+    let finishIdx = 0;
     allFinishers = allFinishersMapped
       .filter(f => f.registrationType !== 'team')
-      .map((f, idx) => {
+      .map((f) => {
         usedCats.add(f.categoryName);
-        return { ...f, pos: idx + 1 };
+        if (f.finishTime > 0) {
+          finishIdx++;
+          return { ...f, pos: finishIdx };
+        } else {
+          return { ...f, pos: '—' };
+        }
       });
     categoryNames = [...usedCats].sort();
 
     teamData = Object.entries(teamMap).map(([name, members]) => {
-      const totalTime = members.reduce((s: number, m: any) => s + m.finishTime, 0);
+      const hasDnf = members.some((m: any) => m.finishTime === -1);
+      const totalTime = hasDnf ? -1 : members.reduce((s: number, m: any) => s + m.finishTime, 0);
       const complete = members.length === 4; // Solo equipos con los 4 completados
-      return { name, members, totalTime, complete, totalMembers: members.length };
+      return { name, members, totalTime, complete, hasDnf, totalMembers: members.length };
     })
     .sort((a, b) => {
-      // Equipos completos primero, luego por tiempo total ascendente
-      if (a.complete && !b.complete) return -1;
-      if (!a.complete && b.complete) return 1;
+      const aScore = a.complete && !a.hasDnf ? 1 : a.complete ? 2 : 3;
+      const bScore = b.complete && !b.hasDnf ? 1 : b.complete ? 2 : 3;
+      if (aScore !== bScore) return aScore - bScore;
+
+      if (a.totalTime === -1 && b.totalTime !== -1) return 1;
+      if (a.totalTime !== -1 && b.totalTime === -1) return -1;
       return a.totalTime - b.totalTime;
     });
   } catch(e) {}
@@ -146,6 +200,7 @@ const selectedRace = races.find(r => r.id === selectedRaceId);
 const raceName = selectedRace?.data?.title || selectedRace?.title || '';
 
 function formatTime(secs: number): string {
+  if (secs === -1) return 'DNF';
   const s = Number(secs);
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
@@ -165,15 +220,16 @@ if (raffleWinnersRaw) {
 const clientData = JSON.stringify({ finishers: allFinishers, distanceNames, categoryNames, teamData, raffleWinners });
 const medals = ['🥇', '🥈', '🥉'];
 
-// Stats para el hero
-const totalFinishers = allFinishers.length;
-const males = allFinishers.filter(f => f.gender === 'masculino');
-const females = allFinishers.filter(f => f.gender === 'femenino');
+// Stats para el hero (excluyendo DNF)
+const finishedRunners = allFinishers.filter(f => f.finishTime > 0);
+const totalFinishers = finishedRunners.length;
+const males = finishedRunners.filter(f => f.gender === 'masculino');
+const females = finishedRunners.filter(f => f.gender === 'femenino');
 const fastestM = males[0];
 const fastestF = females[0];
-const avgTime = totalFinishers > 0 ? Math.round(allFinishers.reduce((s,f) => s + f.finishTime, 0) / totalFinishers) : 0;
+const avgTime = totalFinishers > 0 ? Math.round(finishedRunners.reduce((s,f) => s + f.finishTime, 0) / totalFinishers) : 0;
 const mPct = totalFinishers > 0 ? Math.round(males.length / totalFinishers * 100) : 50;
-const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
+const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
 ---
 
 <Layout title={`Resultados — ${raceName || 'STRYD Panama'}`}>
@@ -1016,17 +1072,50 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
   function computeRankings(list) {
     const groups = {};
-    list.sort((a, b) => a.finishTime - b.finishTime);
-    list.forEach((x, i) => { x.pos = i + 1; });
-    list.forEach(x => {
-      const key = `${x.distanceName}|||${x.categoryName}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(x);
-      x.catPos = groups[key].length;
+    list.sort((a, b) => {
+      if (a.finishTime === -1 && b.finishTime !== -1) return 1;
+      if (a.finishTime !== -1 && b.finishTime === -1) return -1;
+      return a.finishTime - b.finishTime;
     });
+
+    const finishedIndividuals = list.filter(x => x.finishTime > 0 && x.registrationType !== 'team');
+    const absoluteMale = finishedIndividuals.find(x => x.gender === 'masculino');
+    const absoluteFemale = finishedIndividuals.find(x => x.gender === 'femenino');
+    const absoluteMaleId = absoluteMale ? absoluteMale.id : null;
+    const absoluteFemaleId = absoluteFemale ? absoluteFemale.id : null;
+
+    let finishIdx = 0;
+    list.forEach((x) => {
+      if (x.finishTime > 0) {
+        finishIdx++;
+        x.pos = finishIdx;
+      } else {
+        x.pos = '—';
+      }
+    });
+
     list.forEach(x => {
-      const key = `${x.distanceName}|||${x.categoryName}`;
-      x.totalCat = groups[key].length;
+      const isAbsolute = x.id === absoluteMaleId || x.id === absoluteFemaleId;
+      if (isAbsolute) {
+        x.catPos = 'Absoluto';
+      } else if (x.finishTime > 0) {
+        const key = `${x.distanceName}|||${x.categoryName}`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(x);
+        x.catPos = groups[key].length;
+      } else {
+        x.catPos = '—';
+      }
+    });
+
+    list.forEach(x => {
+      const isAbsolute = x.catPos === 'Absoluto';
+      if (isAbsolute) {
+        x.totalCat = 0;
+      } else {
+        const key = `${x.distanceName}|||${x.categoryName}`;
+        x.totalCat = groups[key] ? groups[key].length : 0;
+      }
     });
   }
 
@@ -1094,6 +1183,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   let fDist = 'all', fCat = 'all', fGender = 'all', fSearch = '';
 
   function fmt(secs) {
+    if (secs === -1) return 'DNF';
     const s = Number(secs); const h = Math.floor(s/3600);
     const m = Math.floor((s%3600)/60); const sec = Math.floor(s%60);
     if (h > 0) return h+':'+String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
@@ -1101,16 +1191,36 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   }
 
   function getFiltered() {
+    const finishedIndividuals = all.filter(x => x.finishTime > 0 && x.registrationType !== 'team');
+    const absoluteMale = finishedIndividuals.find(x => x.gender === 'masculino');
+    const absoluteFemale = finishedIndividuals.find(x => x.gender === 'femenino');
+    const absoluteMaleId = absoluteMale ? absoluteMale.id : null;
+    const absoluteFemaleId = absoluteFemale ? absoluteFemale.id : null;
+
     let r = [...all];
     if (fDist !== 'all') r = r.filter(x => x.distanceName === fDist);
-    if (fCat !== 'all') r = r.filter(x => x.categoryName === fCat);
+    if (fCat !== 'all') {
+      r = r.filter(x => x.categoryName === fCat && x.id !== absoluteMaleId && x.id !== absoluteFemaleId);
+    }
     if (fGender !== 'all') r = r.filter(x => x.gender === fGender);
     if (fSearch) {
       const q = fSearch.toLowerCase();
       r = r.filter(x => x.name.toLowerCase().includes(q) || String(x.bib).includes(q) || (x.teamName||'').toLowerCase().includes(q));
     }
-    r.sort((a,b) => a.finishTime - b.finishTime);
-    r.forEach((x,i) => { x.fPos = i+1; });
+    r.sort((a,b) => {
+      if (a.finishTime === -1 && b.finishTime !== -1) return 1;
+      if (a.finishTime !== -1 && b.finishTime === -1) return -1;
+      return a.finishTime - b.finishTime;
+    });
+    let finishIdx = 0;
+    r.forEach((x) => {
+      if (x.finishTime > 0) {
+        finishIdx++;
+        x.fPos = finishIdx;
+      } else {
+        x.fPos = '—';
+      }
+    });
     return r;
   }
 
@@ -1119,9 +1229,8 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     const femaleList = document.getElementById('podium-female');
     if (!maleList || !femaleList) return;
 
-    // En individual general solo gana el absoluto masculino y femenino (1er lugar)
-    const males = all.filter(x => x.gender === 'masculino').slice(0, 1);
-    const females = all.filter(x => x.gender === 'femenino').slice(0, 1);
+    const males = all.filter(x => x.gender === 'masculino' && x.finishTime > 0).slice(0, 1);
+    const females = all.filter(x => x.gender === 'femenino' && x.finishTime > 0).slice(0, 1);
 
     [{ el: maleList, data: males }, { el: femaleList, data: females }].forEach(({ el, data: list }) => {
       if (list.length === 0) { el.innerHTML = '<div style="text-align:center;color:#555;padding:20px;">Sin resultados</div>'; return; }
@@ -1160,7 +1269,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     }
 
     tbody.innerHTML = filtered.map(r => {
-      const pc = r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
+      const pc = typeof r.fPos === 'number' && r.fPos <= 3 ? `pos-${r.fPos}` : 'pos-n';
       const trCls = r.fPos === 1 ? 'tr-top1' : r.fPos === 2 ? 'tr-top2' : r.fPos === 3 ? 'tr-top3' : '';
       const cpCell = showCheckpoints
         ? `<td class="td-time" style="color:#aaa;font-size:12px;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>`
@@ -1169,7 +1278,11 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       
       const isSingleWinner = isSingleWinnerCategory(r.categoryName);
       let medalOrRank = `#${r.catPos}`;
-      if (r.catPos === 1) {
+      if (r.finishTime === -1) {
+        medalOrRank = '—';
+      } else if (r.catPos === 'Absoluto') {
+        medalOrRank = '🏆 Absoluto';
+      } else if (r.catPos === 1) {
         medalOrRank = '🥇';
       } else if (r.catPos === 2) {
         medalOrRank = isSingleWinner ? '#2' : '🥈';
@@ -1177,9 +1290,11 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         medalOrRank = isSingleWinner ? '#3' : '🥉';
       }
 
+      const totalCatText = r.catPos === 'Absoluto' ? '' : `<span style="font-size:10px; font-weight:normal; color:#888;">de ${r.totalCat}</span>`;
+
       return `<tr class="${trCls}" onclick="openRunnerModal('${r.id}')">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
-        <td style="font-weight:800; color:var(--accent); font-size:12px; white-space:nowrap;">${medalOrRank} <span style="font-size:10px; font-weight:normal; color:#888;">de ${r.totalCat}</span></td>
+        <td style="font-weight:800; color:var(--accent); font-size:12px; white-space:nowrap;">${medalOrRank} ${totalCatText}</td>
         <td style="font-weight:700;">${ph}${r.name}</td>
         <td class="td-bib">#${r.bib}</td>
         <td style="color:#888;font-weight:600;">${r.age !== null && r.age !== undefined ? r.age + ' años' : '—'}</td>
@@ -1197,12 +1312,25 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     if (!list) return;
     if (filtered.length === 0) { list.innerHTML = ''; return; }
     list.innerHTML = filtered.map(r => {
-      const rcCls = r.fPos === 1 ? 'rc-top1' : r.fPos === 2 ? 'rc-top2' : r.fPos === 3 ? 'rc-top3' : '';
+      const isDnf = r.finishTime === -1;
+      const isAbsolute = r.catPos === 'Absoluto';
+      const rcCls = typeof r.fPos === 'number' && r.fPos <= 3 ? `rc-top1` : r.fPos === 2 ? 'rc-top2' : r.fPos === 3 ? 'rc-top3' : '';
+      const posText = typeof r.fPos === 'number' ? (r.fPos <= 3 ? medals[r.fPos-1] : r.fPos) : '—';
+      
+      let metaText = '';
+      if (isDnf) {
+        metaText = `${r.age ? r.age + ' años · ' : ''}DNF · ${r.distanceName}`;
+      } else if (isAbsolute) {
+        metaText = `${r.age ? r.age + ' años · ' : ''}🏆 Absoluto · ${r.distanceName}`;
+      } else {
+        metaText = `${r.age ? r.age + ' años · ' : ''}#${r.catPos} en ${r.categoryName} (${r.totalCat}) · ${r.distanceName}`;
+      }
+
       return `<div onclick="openRunnerModal('${r.id}')" class="result-card ${rcCls}" style="cursor: pointer;">
-        <div class="rc-pos">${r.fPos <= 3 ? medals[r.fPos-1] : r.fPos}</div>
+        <div class="rc-pos">${posText}</div>
         <div class="rc-info">
           <div class="rc-name">${r.name}</div>
-          <div class="rc-meta">${r.age ? r.age + ' años · ' : ''}#${r.catPos} en ${r.categoryName} (${r.totalCat}) · ${r.distanceName}</div>
+          <div class="rc-meta">${metaText}</div>
           <div class="rc-bib">#${r.bib}${r.checkpointTime ? ` · 🔁 ${fmt(r.checkpointTime)}` : ''}</div>
         </div>
         <div class="rc-time">${fmt(r.finishTime)}</div>
@@ -1217,28 +1345,41 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       container.innerHTML = '<div style="text-align:center;color:#555;padding:60px;">No hay equipos registrados con tiempos.</div>';
       return;
     }
-    // Separar completos e incompletos
-    const completeTeams = teams.filter(t => t.complete);
+    const completeNoDnf = teams.filter(t => t.complete && !t.hasDnf);
+    const completeDnf = teams.filter(t => t.complete && t.hasDnf);
     const incompleteTeams = teams.filter(t => !t.complete);
-    const ranked = [...completeTeams, ...incompleteTeams];
+    const ranked = [...completeNoDnf, ...completeDnf, ...incompleteTeams];
 
     container.innerHTML = `<div class="teams-grid">${ranked.map((t) => {
       const isComplete = t.complete;
-      const rank = isComplete ? completeTeams.indexOf(t) : -1;
+      const isDnf = t.hasDnf;
+      const rank = isComplete && !isDnf ? completeNoDnf.indexOf(t) : -1;
       const cls = rank === 0 ? 'gold' : rank === 1 ? 'silver' : rank === 2 ? 'bronze' : '';
-      const medal = isComplete && rank < 3 ? medals[rank] : isComplete ? `#${rank+1}` : '⏳';
-      return `<div class="team-card ${cls}" style="${!isComplete ? 'opacity:0.55;' : ''}">
+      const medal = rank >= 0 && rank < 3 ? medals[rank] : rank >= 3 ? `#${rank+1}` : isDnf ? 'DNF' : '⏳';
+      
+      let totalTimeText = '';
+      if (isDnf) {
+        totalTimeText = `Tiempo total: <span class="team-total-time" style="color: #ff4d4d;">DNF</span>`;
+      } else if (isComplete) {
+        totalTimeText = `Tiempo total (suma): <span class="team-total-time">${fmt(t.totalTime)}</span>`;
+      } else {
+        totalTimeText = `En progreso: ${t.totalMembers}/4 en meta`;
+      }
+
+      return `<div class="team-card ${cls}" style="${(!isComplete || isDnf) ? 'opacity:0.65;' : ''}">
         <div class="team-rank">${medal}</div>
         <div class="team-name">${t.name}</div>
         <div class="team-total-label">
-          ${isComplete
-            ? `Tiempo total (suma): <span class="team-total-time">${fmt(t.totalTime)}</span>`
-            : `En progreso: ${t.totalMembers}/4 en meta`}
+          ${totalTimeText}
         </div>
         <hr class="team-divider"/>
         <div class="team-members-label">Integrantes</div>
         <div class="team-members">
-          ${t.members.sort((a,b) => a.finishTime - b.finishTime).map(m => `
+          ${t.members.sort((a,b) => {
+            if (a.finishTime === -1 && b.finishTime !== -1) return 1;
+            if (a.finishTime !== -1 && b.finishTime === -1) return -1;
+            return a.finishTime - b.finishTime;
+          }).map(m => `
             <div onclick="openRunnerModal('${m.id}')" class="team-member" style="cursor:pointer;">
               ${m.photoUrl ? `<img src="${ensureAbsolute(m.photoUrl)}" alt="" class="mini-photo"/>` : ''}
               <span class="member-name">${m.name}</span>
@@ -1343,7 +1484,6 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       if (!res.ok) return;
       const json = await res.json();
       if (json.success) {
-        // Update client data
         all.length = 0;
         all.push(...json.finishers);
         computeRankings(all);
@@ -1351,7 +1491,6 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         teams.length = 0;
         teams.push(...json.teamData);
 
-        // Update raffle winners
         raffleWinnersCache.length = 0;
         if (json.raffleWinners && Array.isArray(json.raffleWinners)) {
           raffleWinnersCache.push(...json.raffleWinners);
@@ -1375,25 +1514,25 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
             else premiacionBtnWrap.classList.add('hidden');
           }
 
-          // Update stats in the DOM
+          const finishedList = all.filter(x => x.finishTime > 0);
           const countVal = document.getElementById('stat-finishers');
-          if (countVal) countVal.textContent = all.length;
+          if (countVal) countVal.textContent = finishedList.length;
 
-          const malesList = all.filter(x => x.gender === 'masculino');
+          const malesList = finishedList.filter(x => x.gender === 'masculino');
           const fastestM = malesList[0];
           const mVal = document.getElementById('stat-fastest-m');
           if (mVal) mVal.textContent = fastestM ? fmt(fastestM.finishTime) : '—';
 
-          const femalesList = all.filter(x => x.gender === 'femenino');
+          const femalesList = finishedList.filter(x => x.gender === 'femenino');
           const fastestF = femalesList[0];
           const fVal = document.getElementById('stat-fastest-f');
           if (fVal) fVal.textContent = fastestF ? fmt(fastestF.finishTime) : '—';
 
-          const avgTime = Math.round(all.reduce((s,f) => s + f.finishTime, 0) / all.length);
+          const avgTime = finishedList.length > 0 ? Math.round(finishedList.reduce((s,f) => s + f.finishTime, 0) / finishedList.length) : 0;
           const avgVal = document.getElementById('stat-avg-time');
-          if (avgVal) avgVal.textContent = fmt(avgTime);
+          if (avgVal) avgVal.textContent = avgTime ? fmt(avgTime) : '—';
 
-          const mPct = Math.round(malesList.length / all.length * 100);
+          const mPct = finishedList.length > 0 ? Math.round(malesList.length / finishedList.length * 100) : 50;
           const fPct = 100 - mPct;
 
           const barM = document.getElementById('gender-bar-m');
@@ -1407,8 +1546,6 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
           const splitCount = document.getElementById('gender-split-count');
           if (splitCount) splitCount.textContent = `${malesList.length}M · ${femalesList.length}F`;
-
-          // Barra de progreso de carrera eliminada
         }
 
         renderPodium();
@@ -1425,16 +1562,13 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     const r = all.find(x => x.id === runnerId);
     if (!r) return;
 
-    // General rank: all is sorted by finishTime, so r.pos is their general rank
     const generalPos = r.pos;
-    const totalGeneral = all.length;
+    const totalGeneral = all.filter(x => x.finishTime > 0).length;
 
-    // Distance ranking
-    const distFinishers = all.filter(x => x.distanceName === r.distanceName);
-    const distPos = distFinishers.findIndex(x => x.id === r.id) + 1;
+    const distFinishers = all.filter(x => x.distanceName === r.distanceName && x.finishTime > 0);
+    const distPos = r.finishTime > 0 ? distFinishers.findIndex(x => x.id === r.id) + 1 : '—';
     const totalDist = distFinishers.length;
 
-    // Category ranking
     const catPos = r.catPos;
     const totalCat = r.totalCat;
 
@@ -1465,8 +1599,8 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       cpContainer.classList.add('hidden');
     }
 
-    document.getElementById('modal-rank-cat').textContent = `#${catPos || '—'}`;
-    document.getElementById('modal-rank-cat-total').textContent = `de ${totalCat || 0}`;
+    document.getElementById('modal-rank-cat').textContent = catPos === 'Absoluto' ? '🏆 Absoluto' : `#${catPos || '—'}`;
+    document.getElementById('modal-rank-cat-total').textContent = catPos === 'Absoluto' ? '' : `de ${totalCat || 0}`;
 
     document.getElementById('modal-rank-dist').textContent = `#${distPos || '—'}`;
     document.getElementById('modal-rank-dist-total').textContent = `de ${totalDist || 0}`;
@@ -1478,7 +1612,6 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     document.getElementById('modal-runner-age-val').textContent = r.age ? `${r.age} años` : '—';
     document.getElementById('modal-runner-dist-val').textContent = r.distanceName || 'General';
 
-    // Parse distance dynamically
     let distance = 5.0;
     const distStr = (r.distanceName || '').toLowerCase();
     const parsedDist = parseFloat(distStr);
@@ -1487,52 +1620,68 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     }
     const cpDist = distance / 2;
 
-    // Calculate paces
-    const paceTotal = calculatePace(r.finishTime, distance);
+    const isDnf = r.finishTime === -1;
+    const paceTotal = isDnf ? null : calculatePace(r.finishTime, distance);
     const paceIda = r.checkpointTime ? calculatePace(r.checkpointTime, cpDist) : null;
-    const paceRegreso = r.checkpointTime ? calculatePace(r.finishTime - r.checkpointTime, distance - cpDist) : null;
+    const paceRegreso = (r.checkpointTime && !isDnf) ? calculatePace(r.finishTime - r.checkpointTime, distance - cpDist) : null;
 
-    // Splits table HTML
     const splitsBody = document.getElementById('modal-splits-body');
     if (splitsBody) {
-      splitsBody.innerHTML = `
-        <tr style="border-bottom: 1px solid #2d2d2d;">
-          <td style="padding: 10px 14px; color: #fff;">Ida</td>
-          <td style="padding: 10px 14px; color: #888;">${cpDist.toFixed(1)} km</td>
-          <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>
-          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
-            ${formatPace(paceIda)}
-          </td>
-        </tr>
-        <tr style="border-bottom: 1px solid #2d2d2d;">
-          <td style="padding: 10px 14px; color: #fff;">Regreso</td>
-          <td style="padding: 10px 14px; color: #888;">${(distance - cpDist).toFixed(1)} km</td>
-          <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.finishTime - r.checkpointTime) : '—'}</td>
-          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
-            ${formatPace(paceRegreso)}
-          </td>
-        </tr>
-        <tr style="background: rgba(255, 107, 0, 0.06);">
-          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">Total</td>
-          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${distance.toFixed(1)} km</td>
-          <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${fmt(r.finishTime)}</td>
-          <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 800; color: #FF6B00;">
-            ${formatPace(paceTotal)}
-          </td>
-        </tr>
-      `;
+      if (isDnf) {
+        splitsBody.innerHTML = `
+          <tr style="border-bottom: 1px solid #2d2d2d;">
+            <td style="padding: 10px 14px; color: #fff;">Ida</td>
+            <td style="padding: 10px 14px; color: #888;">${cpDist.toFixed(1)} km</td>
+            <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>
+            <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
+              ${formatPace(paceIda)}
+            </td>
+          </tr>
+          <tr style="background: rgba(255, 107, 0, 0.06);">
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">Total</td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${distance.toFixed(1)} km</td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">DNF</td>
+            <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 800; color: #FF6B00;">
+              DNF
+            </td>
+          </tr>
+        `;
+      } else {
+        splitsBody.innerHTML = `
+          <tr style="border-bottom: 1px solid #2d2d2d;">
+            <td style="padding: 10px 14px; color: #fff;">Ida</td>
+            <td style="padding: 10px 14px; color: #888;">${cpDist.toFixed(1)} km</td>
+            <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>
+            <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
+              ${formatPace(paceIda)}
+            </td>
+          </tr>
+          <tr style="border-bottom: 1px solid #2d2d2d;">
+            <td style="padding: 10px 14px; color: #fff;">Regreso</td>
+            <td style="padding: 10px 14px; color: #888;">${(distance - cpDist).toFixed(1)} km</td>
+            <td style="padding: 10px 14px; color: #888;">${r.checkpointTime ? fmt(r.finishTime - r.checkpointTime) : '—'}</td>
+            <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 700; color: #fff;">
+              ${formatPace(paceRegreso)}
+            </td>
+          </tr>
+          <tr style="background: rgba(255, 107, 0, 0.06);">
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">Total</td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${distance.toFixed(1)} km</td>
+            <td style="padding: 10px 14px; font-weight: 700; color: #FF6B00;">${fmt(r.finishTime)}</td>
+            <td style="padding: 10px 14px; text-align: right; font-family: ui-monospace, monospace; font-weight: 800; color: #FF6B00;">
+              ${formatPace(paceTotal)}
+            </td>
+          </tr>
+        `;
+      }
     }
 
-    // Find winners for comparisons
-    // Note: overallWinner is the first one in "all" with same gender and same distance
-    const overallWinner = all.find(x => x.gender === r.gender && x.distanceName === r.distanceName);
+    const overallWinner = all.find(x => x.gender === r.gender && x.distanceName === r.distanceName && x.finishTime > 0);
     const overallWinnerPace = overallWinner ? calculatePace(overallWinner.finishTime, distance) : null;
 
-    // categoryWinner is the first one in "all" with same category, gender, and distance
-    const categoryWinner = all.find(x => x.categoryName === r.categoryName && x.gender === r.gender && x.distanceName === r.distanceName);
+    const categoryWinner = all.find(x => x.categoryName === r.categoryName && x.gender === r.gender && x.distanceName === r.distanceName && x.finishTime > 0);
     const categoryWinnerPace = categoryWinner ? calculatePace(categoryWinner.finishTime, distance) : null;
 
-    // World Record comparison (for 5K)
     const isMale = (r.gender || '').toLowerCase() === 'masculino' || (r.gender || '').toLowerCase() === 'm';
     const wrTime = isMale ? WR_M_TIME : WR_F_TIME;
     const wrLabel = isMale ? 'Récord Mundial 5K Calle (M)' : 'Récord Mundial 5K Calle (F)';
@@ -1540,53 +1689,54 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
 
     const compsCard = document.getElementById('modal-comparisons-card');
     if (compsCard) {
-      let compsHtml = '';
+      if (isDnf) {
+        compsCard.innerHTML = `<div style="text-align:center; color:#555; font-size:13px; padding:10px;">No hay comparativas disponibles para corredores DNF.</div>`;
+      } else {
+        let compsHtml = '';
 
-      // 1. Ganador General (Mismo sexo)
-      if (overallWinner) {
-        const isSelf = overallWinner.id === r.id;
-        const winnerPaceStr = formatPace(overallWinnerPace);
-        const nameDisplay = isSelf ? 'Tú (Ganador General)' : overallWinner.name;
+        if (overallWinner) {
+          const isSelf = overallWinner.id === r.id;
+          const winnerPaceStr = formatPace(overallWinnerPace);
+          const nameDisplay = isSelf ? 'Tú (Ganador General)' : overallWinner.name;
+          compsHtml += `
+            <div class="comparison-row">
+              <div class="comparison-info">
+                <span class="comparison-label">Ganador General (${r.gender === 'masculino' ? 'Masc' : 'Fem'})</span>
+                <span class="comparison-sub">${nameDisplay} · Ritmo: ${winnerPaceStr}</span>
+              </div>
+              ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, overallWinnerPace)}
+            </div>
+          `;
+        }
+
+        if (categoryWinner) {
+          const isSelf = categoryWinner.id === r.id;
+          const catWinnerPaceStr = formatPace(categoryWinnerPace);
+          const nameDisplay = isSelf ? 'Tú (Ganador Categoría)' : categoryWinner.name;
+          compsHtml += `
+            <div class="comparison-row">
+              <div class="comparison-info">
+                <span class="comparison-label">Ganador Categoría (${r.categoryName})</span>
+                <span class="comparison-sub">${nameDisplay} · Ritmo: ${catWinnerPaceStr}</span>
+              </div>
+              ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, categoryWinnerPace)}
+            </div>
+          `;
+        }
+
+        const wrPaceStr = formatPace(wrPace);
         compsHtml += `
           <div class="comparison-row">
             <div class="comparison-info">
-              <span class="comparison-label">Ganador General (${r.gender === 'masculino' ? 'Masc' : 'Fem'})</span>
-              <span class="comparison-sub">${nameDisplay} · Ritmo: ${winnerPaceStr}</span>
+              <span class="comparison-label">${wrLabel} (${isMale ? '12:49' : '14:13'})</span>
+              <span class="comparison-sub">Referencia élite · Ritmo: ${wrPaceStr}</span>
             </div>
-            ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, overallWinnerPace)}
+            ${formatPaceDiffBadge(paceTotal, wrPace)}
           </div>
         `;
+
+        compsCard.innerHTML = compsHtml;
       }
-
-      // 2. Ganador Categoría (Mismo sexo)
-      if (categoryWinner) {
-        const isSelf = categoryWinner.id === r.id;
-        const catWinnerPaceStr = formatPace(categoryWinnerPace);
-        const nameDisplay = isSelf ? 'Tú (Ganador Categoría)' : categoryWinner.name;
-        compsHtml += `
-          <div class="comparison-row">
-            <div class="comparison-info">
-              <span class="comparison-label">Ganador Categoría (${r.categoryName})</span>
-              <span class="comparison-sub">${nameDisplay} · Ritmo: ${catWinnerPaceStr}</span>
-            </div>
-            ${isSelf ? '<span class="comparison-badge diff-equal">Ganador</span>' : formatPaceDiffBadge(paceTotal, categoryWinnerPace)}
-          </div>
-        `;
-      }
-
-      // 3. Récord Mundial
-      const wrPaceStr = formatPace(wrPace);
-      compsHtml += `
-        <div class="comparison-row">
-          <div class="comparison-info">
-            <span class="comparison-label">${wrLabel} (${isMale ? '12:49' : '14:13'})</span>
-            <span class="comparison-sub">Referencia élite · Ritmo: ${wrPaceStr}</span>
-          </div>
-          ${formatPaceDiffBadge(paceTotal, wrPace)}
-        </div>
-      `;
-
-      compsCard.innerHTML = compsHtml;
     }
 
     const certBtn = document.getElementById('modal-cert-btn');
