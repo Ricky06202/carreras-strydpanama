@@ -24,7 +24,9 @@ try {
 
     const allPartsRes = await apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' });
     const raceParts = (allPartsRes?.data || []).filter((p: any) =>
-      (p.data?.race === raceId || p.data?.raceId === raceId) && p.data?.finishTime
+      (p.data?.race === raceId || p.data?.raceId === raceId) && 
+      p.data?.finishTime && 
+      p.data?.registrationType !== 'team'
     );
 
     // Posición general

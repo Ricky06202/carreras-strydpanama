@@ -97,7 +97,7 @@ export const GET: APIRoute = async ({ request }) => {
     const progressPct = totalRunners > 0 ? Math.round((totalFinished / totalRunners) * 100) : 0;
 
     const usedCats = new Set<string>();
-    const finishers = finishedParts
+    const allFinishersMapped = finishedParts
       .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime))
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
@@ -105,7 +105,6 @@ export const GET: APIRoute = async ({ request }) => {
         const rawDistName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
         const distName = formatDistanceName(rawDistName);
         const gender = (p.data?.gender || '').toLowerCase();
-        usedCats.add(catName);
         
         return {
           pos: i + 1,
@@ -125,11 +124,9 @@ export const GET: APIRoute = async ({ request }) => {
         };
       });
 
-    const categoryNames = [...usedCats].sort();
-
     // Lógica de equipos
     const teamMap: Record<string, any[]> = {};
-    for (const f of finishers) {
+    for (const f of allFinishersMapped) {
       if (f.teamName && f.registrationType === 'team') {
         if (!teamMap[f.teamName]) {
           teamMap[f.teamName] = [];
@@ -137,6 +134,16 @@ export const GET: APIRoute = async ({ request }) => {
         teamMap[f.teamName].push(f);
       }
     }
+
+    // Filtrar finalistas individuales (excluir equipos) y recalcular posiciones
+    const finishers = allFinishersMapped
+      .filter(f => f.registrationType !== 'team')
+      .map((f, idx) => {
+        usedCats.add(f.categoryName);
+        return { ...f, pos: idx + 1 };
+      });
+
+    const categoryNames = [...usedCats].sort();
 
     const teamData = Object.entries(teamMap).map(([name, members]) => {
       const totalTime = members.reduce((s: number, m: any) => s + m.finishTime, 0);
