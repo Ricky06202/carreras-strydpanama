@@ -6,11 +6,16 @@ const { participantId } = Astro.params;
 
 let participant: any = null;
 let race: any = null;
+let distanceObj: any = null;
 let positionGeneral: number | null = null;
 let positionGender: number | null = null;
 let positionCategory: number | null = null;
 let totalInDistance: number = 0;
+let totalInGender: number = 0;
+let totalInCategory: number = 0;
 let error = '';
+let categoryName = '';
+let rawDistanceName = '';
 
 try {
   const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
@@ -23,36 +28,82 @@ try {
     const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
     race = raceRes?.data;
 
-    const allPartsRes = await apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' });
+    // Fetch all race participants, distances and categories in parallel
+    const [allPartsRes, distsRes, catsRes] = await Promise.all([
+      apiFetch(`/api/collections/participants/content?limit=2000`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/distances/content?limit=200`, env, { method: 'GET' }),
+      apiFetch(`/api/collections/categories/content?limit=200`, env, { method: 'GET' }),
+    ]);
+
+    const allDists = (distsRes?.data || []).filter((d: any) => d.data?.race === raceId);
+    const allCats = (catsRes?.data || []).filter((c: any) => c.data?.race === raceId || !c.data?.race);
+
+    const distanceMap: Record<string, string> = {};
+    for (const d of allDists) {
+      distanceMap[d.id] = d.data?.title || d.title || '';
+    }
+
+    const categoryMap: Record<string, string> = {};
+    for (const c of allCats) {
+      categoryMap[c.id] = c.data?.title || c.title || '';
+    }
+
+    const myDistanceId = participant.data?.distance || '';
+    const myCategoryId = participant.data?.category || participant.data?.categoryId || '';
+
+    if (myDistanceId) {
+      distanceObj = allDists.find((d: any) => d.id === myDistanceId);
+    }
+
+    categoryName = participant.data?.categoryName || categoryMap[myCategoryId] || 'General';
+    rawDistanceName = participant.data?.distanceName || distanceObj?.data?.title || distanceObj?.title || distanceMap[myDistanceId] || '';
+
     const raceParts = (allPartsRes?.data || []).filter((p: any) =>
       (p.data?.race === raceId || p.data?.raceId === raceId) && 
       p.data?.finishTime && 
       p.data?.registrationType !== 'team'
     );
 
-    // Posiciones y clasificaciones dentro de la misma distancia
-    const myDistance = participant.data?.distance;
-    if (myDistance) {
-      const inDist = raceParts.filter((p: any) => p.data?.distance === myDistance)
+    // Normalize comparison for distance and category to avoid ID vs String issues
+    const getNormDistance = (p: any) => {
+      const dVal = p.data?.distance || '';
+      if (!dVal) return '';
+      if (distanceMap[dVal]) return distanceMap[dVal].toLowerCase().trim();
+      return dVal.toLowerCase().trim();
+    };
+
+    const getNormCategory = (p: any) => {
+      const cVal = p.data?.category || p.data?.categoryId || '';
+      if (!cVal) return '';
+      if (categoryMap[cVal]) return categoryMap[cVal].toLowerCase().trim();
+      return cVal.toLowerCase().trim();
+    };
+
+    const myNormDistance = getNormDistance(participant);
+    const myNormCategory = getNormCategory(participant);
+
+    if (myNormDistance) {
+      const inDist = raceParts.filter((p: any) => getNormDistance(p) === myNormDistance)
         .sort((a: any, b: any) => Number(a.data.finishTime) - Number(b.data.finishTime));
       totalInDistance = inDist.length;
 
-      // 1. Posición General (dentro de la distancia)
+      // 1. Posición General
       const distIdx = inDist.findIndex((p: any) => p.id === participantId);
       if (distIdx !== -1) positionGeneral = distIdx + 1;
 
-      // 2. Posición Rama (dentro de la distancia y mismo género)
+      // 2. Posición Rama
       const myGender = participant.data?.gender || '';
       if (myGender) {
         const inGender = inDist.filter((p: any) => (p.data?.gender || '').toLowerCase() === myGender.toLowerCase());
+        totalInGender = inGender.length;
         const genderIdx = inGender.findIndex((p: any) => p.id === participantId);
         if (genderIdx !== -1) positionGender = genderIdx + 1;
       }
 
-      // 3. Posición Categoría (dentro de la distancia y misma categoría)
-      const myCategory = participant.data?.category;
-      if (myCategory) {
-        const inCat = inDist.filter((p: any) => p.data?.category === myCategory);
+      // 3. Posición Categoría
+      if (myNormCategory) {
+        const inCat = inDist.filter((p: any) => getNormCategory(p) === myNormCategory);
+        totalInCategory = inCat.length;
         const catIdx = inCat.findIndex((p: any) => p.id === participantId);
         if (catIdx !== -1) positionCategory = catIdx + 1;
       }
@@ -74,9 +125,8 @@ function formatTime(secs: number | string): string {
 
 const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
 const raceName = race?.data?.title || 'Carrera';
-const categoryName = participant?.data?.categoryName || '';
 const teamName = participant?.data?.teamName || '';
-const rawDistanceName = participant?.data?.distanceName || '';
+
 let distanceName = rawDistanceName;
 if (rawDistanceName.toLowerCase().includes('1k') || rawDistanceName.toLowerCase().includes('1 k')) {
   distanceName = '1k';
@@ -93,6 +143,22 @@ if (birthDateStr) {
   if (!isNaN(birthYear)) age = raceYear - birthYear;
 }
 
+function formatPace(paceSecs: number): string {
+  const mins = Math.floor(paceSecs / 60);
+  const secs = Math.round(paceSecs % 60);
+  return `${mins}:${String(secs).padStart(2, '0')} min/km`;
+}
+
+function getDistanceInKm(name: string): number {
+  if (!name) return 0;
+  const match = name.match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+const distKm = getDistanceInKm(distanceName);
+const finishTime = participant?.data?.finishTime;
+const paceSecs = (finishTime && distKm > 0) ? Number(finishTime) / distKm : null;
+const paceFormatted = paceSecs !== null ? formatPace(paceSecs) : '—';
 
 const R2_BASE_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 const rawPhotoUrl = participant?.data?.photoUrl || '';
@@ -108,8 +174,6 @@ const ensureAbsolute = (url: string) => {
 };
 
 const certLogoUrl = ensureAbsolute(race?.data?.certificateLogoUrl || '');
-
-const finishTime = participant?.data?.finishTime;
 const bibNumber = participant?.data?.bibNumber;
 const raceDate = race?.data?.date ? new Date(race.data.date).toLocaleDateString('es-PA', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
 const hasResult = !!finishTime;
@@ -272,12 +336,20 @@ const hasResult = !!finishTime;
                 <div class="stat">
                   <div class="stat-label">Pos. Rama</div>
                   <div class="stat-value">#{positionGender}</div>
+                  {totalInGender > 0 && <div class="stat-sub">de {totalInGender}</div>}
                 </div>
               )}
               {positionCategory !== null && (
                 <div class="stat">
                   <div class="stat-label">Pos. Categoría</div>
                   <div class="stat-value">#{positionCategory}</div>
+                  {totalInCategory > 0 && <div class="stat-sub">de {totalInCategory}</div>}
+                </div>
+              )}
+              {paceFormatted && paceFormatted !== '—' && (
+                <div class="stat">
+                  <div class="stat-label">Ritmo Promedio</div>
+                  <div class="stat-value orange" style="font-size:20px;">{paceFormatted}</div>
                 </div>
               )}
             </div>
@@ -312,10 +384,15 @@ const hasResult = !!finishTime;
     positionGeneral,
     positionGender,
     positionCategory,
+    totalInDistance,
+    totalInGender,
+    totalInCategory,
     certLogoUrl,
     categoryName,
     distanceName,
-    teamName
+    teamName,
+    age,
+    paceFormatted
   }}>
     const PARTICIPANT_ID = participantId;
     const PARTICIPANT_NAME = name;
@@ -326,10 +403,65 @@ const hasResult = !!finishTime;
     const POSITION_GENERAL = positionGeneral;
     const POSITION_GENDER = positionGender;
     const POSITION_CATEGORY = positionCategory;
+    const TOTAL_IN_DISTANCE = totalInDistance;
+    const TOTAL_IN_GENDER = totalInGender;
+    const TOTAL_IN_CATEGORY = totalInCategory;
     const DISTANCE_NAME = distanceName;
     const CATEGORY_NAME = categoryName;
     const TEAM_NAME = teamName;
     const CERT_LOGO_URL = certLogoUrl;
+    const AGE = age;
+    const PACE = paceFormatted;
+
+    // Helper to crop image to a circle with an orange border
+    function cropToCircle(img, size, borderWidth = 8, borderColor = '#FF6B00') {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Draw circular image with centered crop
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(size / 2, size / 2, size / 2 - borderWidth, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+      ctx.restore();
+      
+      // Draw border
+      if (borderWidth > 0) {
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = borderWidth;
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2 - borderWidth / 2, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      
+      return canvas.toDataURL('image/png');
+    }
+
+    // Helper to load image
+    const loadImg = (src) => new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(null);
+      img.src = src;
+    });
+
+    const getImgBase64 = (img) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    };
 
     async function generateCertificate(format) {
       const btn = document.getElementById(format === 'jpg' ? 'jpg-btn' : 'cert-btn');
@@ -337,13 +469,34 @@ const hasResult = !!finishTime;
       btn.textContent = 'Generando...';
       
       try {
-        // Cargar jsPDF dinámicamente
-        const script = document.createElement('script');
-        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-        document.head.appendChild(script);
-        await new Promise(resolve => script.onload = resolve);
+        if (!window.jspdf) {
+          const script = document.createElement('script');
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+          document.head.appendChild(script);
+          await new Promise(resolve => script.onload = resolve);
+        }
 
         const { jsPDF } = window.jspdf;
+
+        let hasPhoto = false;
+        let photoImg = null;
+        if (PHOTO_URL) {
+          try {
+            photoImg = await loadImg(PHOTO_URL);
+            if (photoImg) hasPhoto = true;
+          } catch(e) {
+            console.error('Error loading runner photo:', e);
+          }
+        }
+
+        let logoImg = null;
+        if (CERT_LOGO_URL) {
+          try {
+            logoImg = await loadImg(CERT_LOGO_URL);
+          } catch(e) {
+            console.error('Error loading logo:', e);
+          }
+        }
 
         if (format === 'pdf') {
           const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
@@ -352,7 +505,7 @@ const hasResult = !!finishTime;
           doc.setFillColor(255, 255, 255);
           doc.rect(0, 0, 280, 216, 'F');
 
-          // Línea decorativa gris arriba (como el ejemplo)
+          // Línea decorativa gris arriba
           doc.setDrawColor(220, 220, 220);
           doc.setLineWidth(1);
           doc.line(20, 15, 260, 15);
@@ -374,45 +527,62 @@ const hasResult = !!finishTime;
           doc.setLineWidth(0.5);
           doc.line(20, 48, 260, 48);
 
-          // Body Details
-          const startY = 65;
-          const lineGap = 11;
+          // Grid coordinates
+          const detailsX = hasPhoto ? 20 : 25;
+          const lineGap = hasPhoto ? 9.5 : 10.5;
+          const startY = hasPhoto ? 60 : 62;
           let currentY = startY;
 
           const drawDetail = (label, value) => {
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(13);
+            doc.setFontSize(hasPhoto ? 12 : 13);
             doc.setTextColor(50, 50, 50);
             const fullLabel = label + ': ';
-            doc.text(fullLabel, 25, currentY);
+            doc.text(fullLabel, detailsX, currentY);
             
             const labelWidth = doc.getTextWidth(fullLabel);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(0, 0, 0);
-            doc.text(String(value || '—'), 25 + labelWidth, currentY);
+            doc.text(String(value || '—'), detailsX + labelWidth, currentY);
             currentY += lineGap;
           };
 
           drawDetail('Nombre Participante', PARTICIPANT_NAME);
+          drawDetail('Edad', AGE ? `${AGE} años` : '—');
           drawDetail('Número', BIB);
-          drawDetail('Distancia', DISTANCE_NAME);
-          drawDetail('Categoría', CATEGORY_NAME);
+          drawDetail('Distancia', DISTANCE_NAME || '—');
+          drawDetail('Categoría', CATEGORY_NAME || '—');
           drawDetail('Tiempo Oficial', FINISH_TIME || '—');
-          drawDetail('Posición General', POSITION_GENERAL || '—');
-          drawDetail('Posición Rama', POSITION_GENDER || '—');
-          drawDetail('Posición Categoría', POSITION_CATEGORY || '—');
+          drawDetail('Ritmo Promedio', PACE || '—');
+          
+          const genPos = POSITION_GENERAL ? `${POSITION_GENERAL} de ${TOTAL_IN_DISTANCE}` : '—';
+          const genderPos = POSITION_GENDER ? `${POSITION_GENDER} de ${TOTAL_IN_GENDER}` : '—';
+          const catPos = POSITION_CATEGORY ? `${POSITION_CATEGORY} de ${TOTAL_IN_CATEGORY}` : '—';
 
-          // Logo a la derecha
-          if (CERT_LOGO_URL) {
+          drawDetail('Posición General', genPos);
+          drawDetail('Posición Rama', genderPos);
+          drawDetail('Posición Categoría', catPos);
+
+          // Draw Photo if present
+          if (hasPhoto && photoImg) {
             try {
-              const logoRes = await fetch(CERT_LOGO_URL);
-              const logoBlob = await logoRes.blob();
-              const logoBase64 = await new Promise(resolve => {
-                const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(logoBlob);
-              });
-              doc.addImage(logoBase64, 'PNG', 160, 60, 85, 85, '', 'FAST');
+              const photoBase64 = cropToCircle(photoImg, 300, 10, '#FF6B00');
+              doc.addImage(photoBase64, 'PNG', 125, 65, 50, 50, '', 'FAST');
             } catch(e) {
-              console.error('Error al cargar logo en PDF:', e);
+              console.error('Error adding photo to PDF:', e);
+            }
+          }
+
+          // Draw Logo
+          if (logoImg) {
+            try {
+              const logoBase64 = getImgBase64(logoImg);
+              const logoX = hasPhoto ? 190 : 160;
+              const logoY = hasPhoto ? 65 : 60;
+              const logoSize = hasPhoto ? 75 : 85;
+              doc.addImage(logoBase64, 'PNG', logoX, logoY, logoSize, logoSize, '', 'FAST');
+            } catch(e) {
+              console.error('Error adding logo to PDF:', e);
             }
           }
 
@@ -423,15 +593,6 @@ const hasResult = !!finishTime;
           canvas.width = 1120;
           canvas.height = 864;
           const ctx = canvas.getContext('2d');
-
-          // Función para cargar imágenes con CORS
-          const loadImg = (src) => new Promise((resolve) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => resolve(img);
-            img.onerror = () => resolve(null);
-            img.src = src;
-          });
 
           // Fondo blanco
           ctx.fillStyle = '#ffffff';
@@ -464,38 +625,63 @@ const hasResult = !!finishTime;
           ctx.lineTo(1040, 192);
           ctx.stroke();
 
-          // Body Details
-          let currentYPx = 260;
-          const lineGapPx = 44;
+          // Grid coordinates
+          const detailsX = hasPhoto ? 80 : 100;
+          const lineGapPx = hasPhoto ? 38 : 42;
+          let currentYPx = hasPhoto ? 240 : 248;
 
           const drawDetailPx = (label, value) => {
             ctx.textAlign = 'left';
             ctx.fillStyle = '#323232';
-            ctx.font = 'bold 26px helvetica';
+            ctx.font = 'bold 24px helvetica';
             const fullLabel = label + ': ';
-            ctx.fillText(fullLabel, 100, currentYPx);
+            ctx.fillText(fullLabel, detailsX, currentYPx);
             
             const labelWidth = ctx.measureText(fullLabel).width;
             ctx.fillStyle = '#000000';
-            ctx.font = 'normal 26px helvetica';
-            ctx.fillText(String(value || '—'), 100 + labelWidth, currentYPx);
+            ctx.font = 'normal 24px helvetica';
+            ctx.fillText(String(value || '—'), detailsX + labelWidth, currentYPx);
             currentYPx += lineGapPx;
           };
 
           drawDetailPx('Nombre Participante', PARTICIPANT_NAME);
+          drawDetailPx('Edad', AGE ? `${AGE} años` : '—');
           drawDetailPx('Número', BIB);
-          drawDetailPx('Distancia', DISTANCE_NAME);
-          drawDetailPx('Categoría', CATEGORY_NAME);
+          drawDetailPx('Distancia', DISTANCE_NAME || '—');
+          drawDetailPx('Categoría', CATEGORY_NAME || '—');
           drawDetailPx('Tiempo Oficial', FINISH_TIME || '—');
-          drawDetailPx('Posición General', POSITION_GENERAL || '—');
-          drawDetailPx('Posición Rama', POSITION_GENDER || '—');
-          drawDetailPx('Posición Categoría', POSITION_CATEGORY || '—');
+          drawDetailPx('Ritmo Promedio', PACE || '—');
+          
+          const genPos = POSITION_GENERAL ? `${POSITION_GENERAL} de ${TOTAL_IN_DISTANCE}` : '—';
+          const genderPos = POSITION_GENDER ? `${POSITION_GENDER} de ${TOTAL_IN_GENDER}` : '—';
+          const catPos = POSITION_CATEGORY ? `${POSITION_CATEGORY} de ${TOTAL_IN_CATEGORY}` : '—';
 
-          // Logo a la derecha si existe
-          if (CERT_LOGO_URL) {
-            const logoImg = await loadImg(CERT_LOGO_URL);
-            if (logoImg) {
-              ctx.drawImage(logoImg, 640, 240, 340, 340);
+          drawDetailPx('Posición General', genPos);
+          drawDetailPx('Posición Rama', genderPos);
+          drawDetailPx('Posición Categoría', catPos);
+
+          // Draw Photo if present
+          if (hasPhoto && photoImg) {
+            try {
+              const photoBase64 = cropToCircle(photoImg, 400, 16, '#FF6B00');
+              const circularPhotoImg = await loadImg(photoBase64);
+              if (circularPhotoImg) {
+                ctx.drawImage(circularPhotoImg, 500, 260, 200, 200);
+              }
+            } catch(e) {
+              console.error('Error drawing photo on Canvas:', e);
+            }
+          }
+
+          // Draw Logo
+          if (logoImg) {
+            try {
+              const logoX = hasPhoto ? 760 : 640;
+              const logoY = hasPhoto ? 260 : 240;
+              const logoSize = hasPhoto ? 300 : 340;
+              ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+            } catch(e) {
+              console.error('Error drawing logo on Canvas:', e);
             }
           }
 
