@@ -39,5 +39,13 @@
   },
   "devDependencies": {
     "wrangler": "^4.76.0"
+  },
+  "optionalDependencies": {
+    "@cloudflare/workerd-windows-64": "^1.20260524.1",
+    "@esbuild/win32-x64": "^0.28.0",
+    "@rolldown/binding-win32-x64-msvc": "^1.0.2",
+    "@rollup/rollup-win32-x64-msvc": "^4.60.4",
+    "@tailwindcss/oxide-win32-x64-msvc": "^4.3.0",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   }
 }

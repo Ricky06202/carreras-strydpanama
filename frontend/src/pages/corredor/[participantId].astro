@@ -62,7 +62,13 @@ const certArtUrl = race?.data?.certificateArtUrl || '';
 const certLogoUrl = race?.data?.certificateLogoUrl || '';
 const categoryName = participant?.data?.categoryName || '';
 const teamName = participant?.data?.teamName || '';
-const distanceName = participant?.data?.distanceName || '';
+const rawDistanceName = participant?.data?.distanceName || '';
+let distanceName = rawDistanceName;
+if (rawDistanceName.toLowerCase().includes('1k') || rawDistanceName.toLowerCase().includes('1 k')) {
+  distanceName = '1k';
+} else if (rawDistanceName.toLowerCase().includes('5k') || rawDistanceName.toLowerCase().includes('5 k')) {
+  distanceName = '5k';
+}
 
 const R2_BASE_URL = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
 const rawPhotoUrl = participant?.data?.photoUrl || '';

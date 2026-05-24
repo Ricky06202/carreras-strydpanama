@@ -3,6 +3,15 @@ import Layout from '../layouts/Layout.astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch } from '../lib/api';
 
+function formatDistanceName(name: string): string {
+  if (!name) return 'General';
+  const lower = name.toLowerCase();
+  if (lower.includes('1k') || lower.includes('1 k')) return '1k';
+  if (lower.includes('5k') || lower.includes('5 k')) return '5k';
+  return name;
+}
+
+
 let races: any[] = [];
 let selectedRaceId = Astro.url.searchParams.get('raceId') || '';
 
@@ -36,7 +45,10 @@ if (selectedRaceId) {
     ]);
 
     const allDists = (distsRes?.data || []).filter((d: any) => d.data?.race === selectedRaceId);
-    for (const d of allDists) distanceMap[d.id] = d.data?.title || d.title;
+    for (const d of allDists) {
+      const rawTitle = d.data?.title || d.title || '';
+      distanceMap[d.id] = formatDistanceName(rawTitle);
+    }
     distanceNames = [...new Set(Object.values(distanceMap))].sort();
 
     const allCats = (catsRes?.data || []).filter((c: any) => c.data?.race === selectedRaceId || !c.data?.race);
@@ -71,7 +83,8 @@ if (selectedRaceId) {
       .map((p: any, i: number) => {
         const catId = p.data?.category || p.data?.categoryId || '';
         const catName = p.data?.categoryName || categoryMap[catId] || 'General';
-        const distName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const rawDistName = p.data?.distanceName || distanceMap[p.data?.distance] || 'General';
+        const distName = formatDistanceName(rawDistName);
         const gender = (p.data?.gender || '').toLowerCase();
         usedCats.add(catName);
         return {
