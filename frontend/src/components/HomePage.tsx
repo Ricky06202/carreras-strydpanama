@@ -420,20 +420,40 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
               {completedRaces.slice(0, 6).map((race) => (
                 <Grid size={{ xs: 12, md: 6 }} key={race.id}>
                   <Card sx={{
-                    p: 3,
+                    p: 2,
                     bgcolor: 'background.default',
                     '&:hover': { bgcolor: 'action.hover' },
                     cursor: 'pointer',
-                    textDecoration: 'none'
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2.5
                   }} component="a" href={`/resultados?raceId=${race.id}`}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box>
-                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>{race.data?.title || race.title}</Typography>
-                        <Typography variant="body2" color="text.secondary">
-                         Publicado: {race.data?.date ? formatDate(race.data.date) : ''}
-                        </Typography>
-                      </Box>
-                      <Typography sx={{ color: ACCENT, fontWeight: 'medium' }}>
+                    <Box sx={{
+                      width: { xs: 80, sm: 90 },
+                      height: { xs: 80, sm: 90 },
+                      borderRadius: '12px',
+                      flexShrink: 0,
+                      background: race.data?.imageUrl 
+                        ? `#0f0f0f url(${race.data.imageUrl}) center/cover no-repeat`
+                        : 'linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%)',
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      overflow: 'hidden'
+                    }}>
+                      {!race.data?.imageUrl && <DirectionsRunIcon sx={{ fontSize: 36, opacity: 0.2, color: 'white' }} />}
+                    </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, minWidth: 0, flexGrow: 1 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 'bold', fontSize: { xs: '0.95rem', sm: '1.1rem' }, lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                        {race.data?.title || race.title}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
+                       Publicado: {race.data?.date ? formatDate(race.data.date) : ''}
+                      </Typography>
+                      <Typography sx={{ color: ACCENT, fontWeight: 'bold', fontSize: '0.85rem', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                         Ver resultados →
                       </Typography>
                     </Box>
