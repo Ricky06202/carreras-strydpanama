@@ -181,9 +181,40 @@ export default function DashboardView({ races, allDistances, participants, onFet
       </Box>
 
       {/* Button Row */}
-      <Button disabled={!selectedRace} onClick={() => setTombolaOpen(true)} variant="contained" fullWidth sx={{ py: 2, mb: 4, borderRadius: 3, bgcolor: ACCENT, color: '#FFFFFF', '&:hover': { bgcolor: '#E55A00' }, fontWeight: 900, fontSize: '1.2rem', letterSpacing: 2 }}>
-        🏆 IR A TÓMBOLA DE PREMIOS 🏆
-      </Button>
+      <Box sx={{ display: 'flex', gap: 2, mb: 4, flexDirection: { xs: 'column', sm: 'row' } }}>
+        <Button 
+          disabled={!selectedRace} 
+          onClick={() => setTombolaOpen(true)} 
+          variant="contained" 
+          fullWidth 
+          sx={{ py: 2, borderRadius: 3, bgcolor: ACCENT, color: '#FFFFFF', '&:hover': { bgcolor: '#E55A00' }, fontWeight: 900, fontSize: '1.1rem', letterSpacing: 1 }}
+        >
+          🏆 IR A TÓMBOLA DE PREMIOS 🏆
+        </Button>
+        <Button 
+          disabled={!selectedRace} 
+          component="a"
+          href={`/premiacion?raceId=${selectedRace}`}
+          variant="outlined" 
+          fullWidth 
+          sx={{ 
+            py: 2, 
+            borderRadius: 3, 
+            color: ACCENT, 
+            borderColor: ACCENT, 
+            '&:hover': { bgcolor: 'rgba(255,107,0,0.08)', borderColor: ACCENT }, 
+            fontWeight: 900, 
+            fontSize: '1.1rem', 
+            letterSpacing: 1, 
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          📊 INFORME DE PREMIACIÓN 📊
+        </Button>
+      </Box>
       
       <TombolaModal 
         open={tombolaOpen} 
