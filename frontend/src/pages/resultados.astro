@@ -1183,16 +1183,16 @@ const hasCheckpoints = finishedRunners.some(f => f.checkpointTime);
     
     let sign = '';
     let cls = 'diff-equal';
-    let label = 'detrás';
+    let label = 'más lento';
     
     if (diff > 0) {
       sign = '+';
       cls = 'diff-slower';
-      label = 'detrás';
+      label = 'más lento';
     } else if (diff < 0) {
       sign = '-';
       cls = 'diff-faster';
-      label = 'delante';
+      label = 'más rápido';
     }
     
     if (Math.abs(diff) < 0.5) {
