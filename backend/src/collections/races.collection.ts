@@ -105,12 +105,12 @@ export default {
         title: 'Habilitar Inscripción por Equipos',
       },
       certificateArtUrl: {
-        type: 'string',
-        title: 'URL Arte del Certificado (fondo)',
+        type: 'media',
+        title: 'Arte del Certificado (fondo)',
       },
       certificateLogoUrl: {
-        type: 'string',
-        title: 'URL Logo para Certificado',
+        type: 'media',
+        title: 'Logo para Certificado',
       },
       raffleWinners: {
         type: 'textarea',
