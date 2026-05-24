@@ -2,6 +2,15 @@
 import { env } from 'cloudflare:workers';
 import { apiFetch } from '../lib/api';
 
+function formatDistanceName(name: string): string {
+  if (!name) return 'General';
+  const lower = name.toLowerCase();
+  if (lower.includes('1k') || lower.includes('1 k')) return '1k';
+  if (lower.includes('5k') || lower.includes('5 k')) return '5k';
+  return name;
+}
+
+
 let races: any[] = [];
 let selectedRaceId = Astro.url.searchParams.get('raceId') || '';
 
@@ -32,7 +41,8 @@ if (selectedRaceId) {
 
     const distanceMap: Record<string, string> = {};
     for (const d of (distsRes?.data || []).filter((d: any) => d.data?.race === selectedRaceId)) {
-      distanceMap[d.id] = d.data?.title || d.title;
+      const rawTitle = d.data?.title || d.title || '';
+      distanceMap[d.id] = formatDistanceName(rawTitle);
     }
 
     const categoryMap: Record<string, string> = {};
@@ -53,7 +63,7 @@ if (selectedRaceId) {
         photoUrl: p.data?.photoUrl || '',
         country: p.data?.country || '',
         categoryName: p.data?.categoryName || categoryMap[p.data?.category || ''] || 'General',
-        distanceName: p.data?.distanceName || distanceMap[p.data?.distance || ''] || 'General',
+        distanceName: formatDistanceName(p.data?.distanceName || distanceMap[p.data?.distance || ''] || 'General'),
         gender: (p.data?.gender || '').toLowerCase(),
       }))
       .sort((a: any, b: any) => a.finishTime - b.finishTime);
