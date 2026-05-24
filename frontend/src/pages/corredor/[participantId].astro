@@ -58,8 +58,6 @@ function formatTime(secs: number | string): string {
 
 const name = participant ? `${participant.data?.firstName || ''} ${participant.data?.lastName || ''}`.trim() : 'Corredor';
 const raceName = race?.data?.title || 'Carrera';
-const certArtUrl = race?.data?.certificateArtUrl || '';
-const certLogoUrl = race?.data?.certificateLogoUrl || '';
 const categoryName = participant?.data?.categoryName || '';
 const teamName = participant?.data?.teamName || '';
 const rawDistanceName = participant?.data?.distanceName || '';
@@ -86,6 +84,15 @@ let fixedImageUrl = rawPhotoUrl ? rawPhotoUrl.replace("https://api.carreras.stry
 if (fixedImageUrl && !fixedImageUrl.startsWith('http')) {
   fixedImageUrl = `${R2_BASE_URL}${fixedImageUrl.startsWith('/') ? '' : '/'}${fixedImageUrl}`;
 }
+
+const ensureAbsolute = (url: string) => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `${R2_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const certArtUrl = ensureAbsolute(race?.data?.certificateArtUrl || '');
+const certLogoUrl = ensureAbsolute(race?.data?.certificateLogoUrl || '');
 
 const finishTime = participant?.data?.finishTime;
 const bibNumber = participant?.data?.bibNumber;
@@ -331,11 +338,28 @@ const hasResult = !!finishTime;
         doc.setLineWidth(3);
         doc.rect(8, 8, 264, 200);
 
-        // Título STRYD PANAMA
-        doc.setTextColor(255, 107, 0);
-        doc.setFontSize(28);
-        doc.setFont('helvetica', 'bold');
-        doc.text('STRYD PANAMA', 140, 40, { align: 'center' });
+        // Título o Logo
+        let hasLogo = false;
+        if (CERT_LOGO_URL) {
+          try {
+            const logoRes = await fetch(CERT_LOGO_URL);
+            const logoBlob = await logoRes.blob();
+            const logoBase64 = await new Promise(resolve => {
+              const r = new FileReader(); r.onload = e => resolve(e.target.result); r.readAsDataURL(logoBlob);
+            });
+            doc.addImage(logoBase64, 'PNG', 60, 15, 160, 35, '', 'FAST');
+            hasLogo = true;
+          } catch(e) {
+            console.error('Error al cargar logo del certificado:', e);
+          }
+        }
+
+        if (!hasLogo) {
+          doc.setTextColor(255, 107, 0);
+          doc.setFontSize(28);
+          doc.setFont('helvetica', 'bold');
+          doc.text('STRYD PANAMA', 140, 40, { align: 'center' });
+        }
 
         // Subtítulo certificado
         doc.setTextColor(255, 255, 255);
