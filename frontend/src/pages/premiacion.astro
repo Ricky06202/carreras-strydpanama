@@ -74,7 +74,10 @@ if (selectedRaceId) {
         country: p.data?.country || '',
         categoryName: p.data?.categoryName || categoryMap[p.data?.category || ''] || 'General',
         distanceName: formatDistanceName(p.data?.distanceName || distanceMap[p.data?.distance || ''] || 'General'),
-        gender: (p.data?.gender || '').toLowerCase(),
+        gender: (() => {
+          const g = (p.data?.gender || '').toLowerCase();
+          return g === 'm' ? 'masculino' : g === 'f' ? 'femenino' : g;
+        })(),
       }))
       .sort((a: any, b: any) => a.finishTime - b.finishTime);
 
@@ -248,7 +251,7 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
       .screen-only { display: none !important; }
 
       .categories-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-      .distance-section { margin-bottom: 28px; page-break-inside: avoid; }
+      .distance-section { margin-bottom: 28px; }
       .category-card { page-break-inside: avoid; }
 
       @page { margin: 18mm 14mm; size: letter portrait; }
