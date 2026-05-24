@@ -169,8 +169,17 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
-  const isRaceClosed = raceInfo?.data?.status === 'closed';
-  const isRaceFinished = raceInfo?.data?.status === 'finished';
+  
+  const hasRaceDayArrived = (dateStr?: string) => {
+    if (!dateStr) return false;
+    // Get current date in Panama (where the races are held)
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+    return todayStr >= dateStr;
+  };
+  
+  const isFinishedOrDayArrived = raceInfo?.data?.status === 'finished' || hasRaceDayArrived(raceInfo?.data?.date);
+  const isRaceClosed = raceInfo?.data?.status === 'closed' && !isFinishedOrDayArrived;
+  const isRaceFinished = isFinishedOrDayArrived;
 
   useEffect(() => {
      // Recuperar sesión de Yappy en navegadores móviles (Safari/Chrome) 
@@ -955,7 +964,7 @@ const handleSubmit = async () => {
 
             {isRaceFinished && (
               <Alert severity="error" sx={{ fontWeight: 'bold' }}>
-                🏁 Esta carrera ha finalizado. Las inscripciones están cerradas.
+                🏁 Esta carrera ya se encuentra en curso o ha finalizado. Las inscripciones están cerradas.
               </Alert>
             )}
 

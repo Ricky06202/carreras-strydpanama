@@ -40,7 +40,16 @@ export const processRegistration = async (env: any, body: any) => {
     const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
     const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === body.raceId || p.data?.raceId === body.raceId);
 
+    const hasRaceDayArrived = (dateStr?: string) => {
+      if (!dateStr) return false;
+      const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+      return todayStr >= dateStr;
+    };
+
     // Validar si la carrera está en estado próximamente, cerrada o finalizada
+    if (hasRaceDayArrived(raceFields.date)) {
+      throw new Error('Las inscripciones para esta carrera están cerradas porque el evento ya se encuentra en curso o ha finalizado.');
+    }
     if (raceFields.status === 'upcoming') {
       throw new Error('Las inscripciones para esta carrera aún no están abiertas.');
     }
