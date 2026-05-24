@@ -869,7 +869,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
       <div class="results-wrap" style="display:block;">
         <table class="results-table">
           <thead><tr>
-            <th>Pos</th><th>Corredor</th><th>Dorsal</th><th>Edad</th><th>Tiempo</th><th id="th-retorno" style={hasCheckpoints ? "" : "display:none;"}>Retorno</th><th>Categoría</th><th>Distancia</th><th>Equipo</th>
+            <th>Pos</th><th>Pos. Cat.</th><th>Corredor</th><th>Dorsal</th><th>Edad</th><th>Tiempo</th><th id="th-retorno" style={hasCheckpoints ? "" : "display:none;"}>Retorno</th><th>Categoría</th><th>Distancia</th><th>Equipo</th>
           </tr></thead>
           <tbody id="results-body"></tbody>
         </table>
@@ -1011,6 +1011,25 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
   const raffleWinnersCache = data.raffleWinners || [];
   const medals = ['🥇', '🥈', '🥉'];
 
+  function computeRankings(list) {
+    const groups = {};
+    list.sort((a, b) => a.finishTime - b.finishTime);
+    list.forEach((x, i) => { x.pos = i + 1; });
+    list.forEach(x => {
+      const key = `${x.distanceName}|||${x.categoryName}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(x);
+      x.catPos = groups[key].length;
+    });
+    list.forEach(x => {
+      const key = `${x.distanceName}|||${x.categoryName}`;
+      x.totalCat = groups[key].length;
+    });
+  }
+
+  computeRankings(all);
+
+
   const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
   function ensureAbsolute(url) {
     if (!url) return '';
@@ -1126,7 +1145,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     countEl.textContent = filtered.length + ' resultado' + (filtered.length !== 1 ? 's' : '');
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#555;">Sin resultados para los filtros seleccionados</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#555;">Sin resultados para los filtros seleccionados</td></tr>';
       return;
     }
 
@@ -1143,8 +1162,12 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         ? `<td class="td-time" style="color:#aaa;font-size:12px;">${r.checkpointTime ? fmt(r.checkpointTime) : '—'}</td>`
         : '';
       const ph = r.photoUrl ? `<img src="${ensureAbsolute(r.photoUrl)}" alt="" class="mini-photo"/>` : '';
+      
+      const medalOrRank = r.catPos <= 3 ? medals[r.catPos - 1] : `#${r.catPos}`;
+
       return `<tr class="${trCls}" onclick="openRunnerModal('${r.id}')">
         <td><span class="pos-badge ${pc}">${r.fPos}</span></td>
+        <td style="font-weight:800; color:var(--accent); font-size:12px; white-space:nowrap;">${medalOrRank} <span style="font-size:10px; font-weight:normal; color:#888;">de ${r.totalCat}</span></td>
         <td style="font-weight:700;">${ph}${r.name}</td>
         <td class="td-bib">#${r.bib}</td>
         <td style="color:#888;font-weight:600;">${r.age !== null && r.age !== undefined ? r.age + ' años' : '—'}</td>
@@ -1167,7 +1190,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         <div class="rc-pos">${r.fPos <= 3 ? medals[r.fPos-1] : r.fPos}</div>
         <div class="rc-info">
           <div class="rc-name">${r.name}</div>
-          <div class="rc-meta">${r.age ? r.age + ' años · ' : ''}${r.categoryName} · ${r.distanceName}${r.teamName ? ' · ' + r.teamName : ''}</div>
+          <div class="rc-meta">${r.age ? r.age + ' años · ' : ''}#${r.catPos} en ${r.categoryName} (${r.totalCat}) · ${r.distanceName}</div>
           <div class="rc-bib">#${r.bib}${r.checkpointTime ? ` · 🔁 ${fmt(r.checkpointTime)}` : ''}</div>
         </div>
         <div class="rc-time">${fmt(r.finishTime)}</div>
@@ -1311,6 +1334,7 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
         // Update client data
         all.length = 0;
         all.push(...json.finishers);
+        computeRankings(all);
         
         teams.length = 0;
         teams.push(...json.teamData);
@@ -1415,9 +1439,8 @@ const hasCheckpoints = allFinishers.some(f => f.checkpointTime);
     const totalDist = distFinishers.length;
 
     // Category ranking
-    const catFinishers = all.filter(x => x.categoryName === r.categoryName && x.distanceName === r.distanceName);
-    const catPos = catFinishers.findIndex(x => x.id === r.id) + 1;
-    const totalCat = catFinishers.length;
+    const catPos = r.catPos;
+    const totalCat = r.totalCat;
 
     const imgEl = document.getElementById('modal-runner-img');
     const placeholderEl = document.getElementById('modal-runner-placeholder');
