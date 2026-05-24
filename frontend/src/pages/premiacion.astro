@@ -11,6 +11,15 @@ function formatDistanceName(name: string): string {
 }
 
 
+function isSingleWinnerCategory(name: string): boolean {
+  if (!name) return false;
+  const lower = name.toLowerCase();
+  return lower.includes('niño') || 
+         lower.includes('estudiante') || 
+         lower.includes('docente') || 
+         lower.includes('administrativo');
+}
+
 let races: any[] = [];
 let selectedRaceId = Astro.url.searchParams.get('raceId') || '';
 
@@ -26,6 +35,7 @@ try {
 let raceName = '';
 let raceDate = '';
 let podiumByCategory: Array<{ category: string; distance: string; top: any[] }> = [];
+let allFinishers: any[] = [];
 
 if (selectedRaceId) {
   try {
@@ -76,10 +86,13 @@ if (selectedRaceId) {
       groups[key].push(f);
     }
 
+    allFinishers = finishers;
+
     podiumByCategory = Object.entries(groups)
       .map(([key, members]) => {
         const [distance, category] = key.split('|||');
-        return { distance, category, top: members.slice(0, 3) };
+        const limit = isSingleWinnerCategory(category) ? 1 : 3;
+        return { distance, category, top: members.slice(0, limit) };
       })
       .sort((a, b) => {
         if (a.distance !== b.distance) return a.distance.localeCompare(b.distance);
@@ -288,6 +301,50 @@ const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
           <div class="distance-section">
             <div class="distance-title">📏 {distance}</div>
             <div class="categories-grid">
+              {(() => {
+                const absMales = allFinishers.filter(f => f.distanceName === distance && f.gender === 'masculino').slice(0, 1);
+                const absFemales = allFinishers.filter(f => f.distanceName === distance && f.gender === 'femenino').slice(0, 1);
+                return (
+                  <div class="category-card" style="border-color: #FF6B00; background: rgba(255, 107, 0, 0.03);">
+                    <div class="category-title" style="background: rgba(255, 107, 0, 0.08); color: #FF6B00; font-weight: 900;">🏆 ABSOLUTO GENERAL</div>
+                    <div class="podium-list">
+                      {absMales.map((runner) => (
+                        <div class="podium-row p1" style="border-color: rgba(255,107,0,0.2);">
+                          <span class="medal-icon">🥇</span>
+                          <span style="font-size: 11px; font-weight: bold; color: #FF6B00; margin-right: 6px; align-self: center;">MASC</span>
+                          {runner.photoUrl
+                            ? <img src={runner.photoUrl} alt="" class="runner-photo screen-only" />
+                            : <div class="runner-placeholder screen-only">🏃</div>
+                          }
+                          <div class="runner-info">
+                            <div class="runner-name">{runner.name}</div>
+                            <div class="runner-bib">#{runner.bib}</div>
+                          </div>
+                          <div class="runner-time">{formatTime(runner.finishTime)}</div>
+                        </div>
+                      ))}
+                      {absFemales.map((runner) => (
+                        <div class="podium-row p1" style="border-color: rgba(255,107,0,0.2);">
+                          <span class="medal-icon">🥇</span>
+                          <span style="font-size: 11px; font-weight: bold; color: #FF6B00; margin-right: 6px; align-self: center;">FEM</span>
+                          {runner.photoUrl
+                            ? <img src={runner.photoUrl} alt="" class="runner-photo screen-only" />
+                            : <div class="runner-placeholder screen-only">🏃</div>
+                          }
+                          <div class="runner-info">
+                            <div class="runner-name">{runner.name}</div>
+                            <div class="runner-bib">#{runner.bib}</div>
+                          </div>
+                          <div class="runner-time">{formatTime(runner.finishTime)}</div>
+                        </div>
+                      ))}
+                      {absMales.length === 0 && absFemales.length === 0 && (
+                        <div style="color:#555;font-size:12px;padding:12px;text-align:center;">Sin clasificados</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
               {groups.map(({ category, top }) => (
                 <div class="category-card">
                   <div class="category-title">{category}</div>
