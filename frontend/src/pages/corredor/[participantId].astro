@@ -644,6 +644,10 @@ const hasResult = !!finishTime;
       btn.disabled = false;
       btn.textContent = '📧 Enviar al Email';
     }
+
+    // Expose functions globally for HTML onclick attributes
+    window.generateCertificate = generateCertificate;
+    window.sendByEmail = sendByEmail;
   </script>
 </body>
 </html>
