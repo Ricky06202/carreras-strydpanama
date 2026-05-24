@@ -50,6 +50,69 @@ export const POST: APIRoute = async ({ request }) => {
 
     console.log('SonicJS response:', JSON.stringify(result));
 
+    // Si la carrera se cierra (status === 'finished'), ponemos DNF (-1) a los corredores sin tiempo
+    if (status === 'finished') {
+      try {
+        console.log('Race status is finished. Finding unfinished participants for auto-DNF...');
+        const partsRes = await apiFetch('/api/collections/participants/content?limit=2000', env, {
+          method: 'GET',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+        const participants = partsRes?.data || [];
+
+        const activeUnfinishedParts = participants.filter((p: any) => {
+          const isCorrectRace = (p.data?.race === id || p.data?.raceId === id) && p.status === 'published';
+          if (!isCorrectRace) return false;
+
+          const isPadrino = p.data?.participantType === 'padrino' || p.data?.isPadrino === true;
+          if (isPadrino) return false;
+
+          const isConfirmed = p.data?.paymentStatus === 'Confirmado' || 
+                              p.data?.paymentStatus === 'Yappy' || 
+                              p.data?.paymentStatus === 'Completado' || 
+                              p.data?.paymentStatus === 'Cupon Padrino' || 
+                              p.data?.paymentMethod === 'Cupon Padrino';
+          const hasBib = p.data?.bibNumber !== undefined && p.data?.bibNumber !== null && p.data?.bibNumber !== '';
+
+          if (!isConfirmed && !hasBib) return false;
+
+          const hasFinishTime = p.data?.finishTime !== undefined && p.data?.finishTime !== null && p.data?.finishTime !== '';
+          return !hasFinishTime;
+        });
+
+        console.log(`Auto-DNF: Found ${activeUnfinishedParts.length} active unfinished runners to update.`);
+
+        if (activeUnfinishedParts.length > 0) {
+          const updatePromises = activeUnfinishedParts.map((p: any) => {
+            const updatedPartData = {
+              ...p.data,
+              finishTime: -1
+            };
+            const participantPayload = {
+              id: p.id,
+              collectionId: p.collectionId || p.collection_id || 'col-participants-93d1ac21',
+              collection_id: p.collectionId || p.collection_id || 'col-participants-93d1ac21',
+              title: p.title || p.data?.title || `${p.data?.firstName || ''} ${p.data?.lastName || ''}`.trim() || 'Participante',
+              status: 'published',
+              data: updatedPartData
+            };
+            return apiFetch(`/api/content/${p.id}`, env, {
+              method: 'PUT',
+              body: JSON.stringify(participantPayload)
+            }).catch(err => {
+              console.error(`Error updating participant ${p.id} to DNF:`, err);
+              return null;
+            });
+          });
+
+          await Promise.all(updatePromises);
+          console.log(`Successfully completed auto-DNF updates.`);
+        }
+      } catch (err) {
+        console.error('Error in auto-DNF execution:', err);
+      }
+    }
+
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
