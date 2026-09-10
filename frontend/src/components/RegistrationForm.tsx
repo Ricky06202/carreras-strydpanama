@@ -86,6 +86,7 @@ interface Race {
     showTimer?: boolean;
     showShirtSize?: boolean;
     teamEnabled?: boolean;
+    padrinoEnabled?: boolean;
     status?: string;
   };
 }
@@ -169,6 +170,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
+  const padrinoEnabled = raceInfo?.data?.padrinoEnabled === true;
   
   const hasRaceDayArrived = (dateStr?: string) => {
     if (!dateStr) return false;
@@ -455,6 +457,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
             ...prev, 
             participantType: prev.participantType === 'waiting_list' || prev.participantType === 'padrino' ? 'general' : prev.participantType 
           }));
+          if (d.race?.data?.padrinoEnabled !== true) setIsPadrino(false);
         }
       })
       .catch(err => console.error('Error loading race info:', err))
@@ -1083,7 +1086,7 @@ const handleSubmit = async () => {
                         { value: 'administrativo', label: 'Administrativo UTP' },
                         { value: 'niño', label: 'Niño' },
                         { value: 'virtual', label: 'Virtual' },
-                        { value: 'padrino', label: '🎓 Solo Padrino' },
+                        ...(padrinoEnabled ? [{ value: 'padrino', label: '🎓 Solo Padrino' }] : []),
                       ].map((t) => (
                         <Button
                           key={t.value}
@@ -1269,8 +1272,8 @@ const handleSubmit = async () => {
                   </Box>
                 )}
 
-                {/* Sección Padrino: checkbox para corredores normales, banner fijo para tipo padrino */}
-                {!isRaceFull && (formData.participantType === 'padrino' ? (
+                {/* Sección Padrino (solo si la carrera tiene habilitado el flag padrinoEnabled): checkbox para corredores normales, banner fijo para tipo padrino */}
+                {padrinoEnabled && !isRaceFull && (formData.participantType === 'padrino' ? (
                   <Box sx={{ gridColumn: '1 / -1', mt: 2, mb: 1 }}>
                     <Box sx={{ p: 3, borderRadius: 3, border: '2px solid #FF6B00', bgcolor: 'rgba(255,107,0,0.05)', position: 'relative', overflow: 'hidden' }}>
                       <Box sx={{ position: 'absolute', top: 0, right: 0, bgcolor: '#FF6B00', color: 'white', px: 2, py: 0.5, borderBottomLeftRadius: 12, fontWeight: 'bold', fontSize: '0.75rem' }}>

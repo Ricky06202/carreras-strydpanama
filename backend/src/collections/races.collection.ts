@@ -104,6 +104,10 @@ export default {
         type: 'boolean',
         title: 'Habilitar Inscripción por Equipos',
       },
+      padrinoEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Padrino UTP (mostrar cuadro en el formulario)',
+      },
       certificateLogoUrl: {
         type: 'media',
         title: 'Logo para Certificado',
