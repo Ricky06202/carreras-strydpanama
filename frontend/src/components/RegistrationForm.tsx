@@ -113,6 +113,27 @@ const paymentMethods = [
   { value: 'transfer', label: 'Transferencia Bancaria' },
 ];
 
+interface ParticipantType {
+  key: string;
+  title: string;
+  order?: number;
+  enabled?: boolean;
+  categoryKeyword?: string;
+  distanceKeyword?: string;
+}
+
+// Catálogo por defecto usado cuando la carrera NO tiene tipos configurados en el CMS.
+// Si la carrera tiene registros en la colección 'participant_types', se usan esos en su lugar.
+const DEFAULT_PARTICIPANT_TYPES: ParticipantType[] = [
+  { key: 'general', title: 'Público General', distanceKeyword: 'general' },
+  { key: 'estudiante', title: 'Estudiantes UTP', categoryKeyword: 'estudiante', distanceKeyword: 'estudiante' },
+  { key: 'docente', title: 'Docente UTP', categoryKeyword: 'docente', distanceKeyword: 'general' },
+  { key: 'administrativo', title: 'Administrativo UTP', categoryKeyword: 'administrativo', distanceKeyword: 'general' },
+  { key: 'niño', title: 'Niño', distanceKeyword: 'niño' },
+  { key: 'virtual', title: 'Virtual', distanceKeyword: 'virtual' },
+  { key: 'padrino', title: '🎓 Solo Padrino' },
+];
+
 const countriesList = [
   "Panamá", "Costa Rica", "Colombia", "Venezuela", "Estados Unidos", "México", "Argentina", "España", "Chile", "Perú",
   "Ecuador", "Guatemala", "Honduras", "Nicaragua", "El Salvador", "Brasil", "Uruguay", "Paraguay", "Bolivia", "Canadá", "Otro"
@@ -171,6 +192,12 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
   const padrinoEnabled = raceInfo?.data?.padrinoEnabled === true;
+
+  const [configuredParticipantTypes, setConfiguredParticipantTypes] = useState<ParticipantType[]>([]);
+  const hasConfiguredParticipantTypes = configuredParticipantTypes.length > 0;
+  const enabledConfiguredTypes = configuredParticipantTypes.filter(t => t.enabled !== false);
+  const availableTypes = (hasConfiguredParticipantTypes ? enabledConfiguredTypes : DEFAULT_PARTICIPANT_TYPES)
+    .filter(t => t.key !== 'padrino' || padrinoEnabled);
   
   const hasRaceDayArrived = (dateStr?: string) => {
     if (!dateStr) return false;
@@ -443,6 +470,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         if (d.race) setRaceInfo(d.race);
         if (d.categories) setCategories(d.categories);
         if (d.distances) setDistances(d.distances);
+        setConfiguredParticipantTypes(d.participantTypes || []);
         
         const count = d.registeredRunnersCount || 0;
         setRegisteredRunnersCount(count);
@@ -453,9 +481,16 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
           setRegistrationType('individual');
           setFormData(prev => ({ ...prev, participantType: 'waiting_list' }));
         } else {
-          setFormData(prev => ({ 
-            ...prev, 
-            participantType: prev.participantType === 'waiting_list' || prev.participantType === 'padrino' ? 'general' : prev.participantType 
+          const configured = d.participantTypes || [];
+          const typesForRace = configured.length > 0 ? configured.filter((t: any) => t.enabled !== false) : DEFAULT_PARTICIPANT_TYPES;
+          const validKeys = typesForRace
+            .filter((t: any) => t.key !== 'padrino' || d.race?.data?.padrinoEnabled === true)
+            .map((t: any) => t.key);
+          setFormData(prev => ({
+            ...prev,
+            participantType: (prev.participantType === 'waiting_list' || prev.participantType === 'padrino' || !validKeys.includes(prev.participantType))
+              ? 'general'
+              : prev.participantType,
           }));
           if (d.race?.data?.padrinoEnabled !== true) setIsPadrino(false);
         }
@@ -522,35 +557,24 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       }
     } else if (registrationType === 'individual' && !formData.distance && formData.participantType !== 'padrino') {
       // Auto-seleccionar distancia basada en el tipo de participante si no hay ninguna seleccionada
-      let autoDist = formData.distance;
-      const tType = formData.participantType;
-      
-      if (tType === 'general' || tType === 'docente' || tType === 'administrativo') {
-          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
-          if (dist) autoDist = dist.id;
-      } else if (tType === 'estudiante') {
-          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
-          if (dist) autoDist = dist.id;
-      } else if (tType === 'niño') {
-          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
-          if (dist) autoDist = dist.id;
-      } else if (tType === 'virtual') {
-          const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
-          if (dist) autoDist = dist.id;
-      }
-
-      if (autoDist && autoDist !== formData.distance) {
-          setFormData(prev => ({ ...prev, distance: autoDist }));
+      const typeDef = availableTypes.find(t => t.key === formData.participantType);
+      const token = (typeDef?.distanceKeyword || formData.participantType || '').toLowerCase();
+      if (token) {
+        const dist = distances.find(d => (d.name || d.title || '').toLowerCase().includes(token));
+        if (dist && dist.id !== formData.distance) {
+          setFormData(prev => ({ ...prev, distance: dist.id }));
+        }
       }
     }
-  }, [registrationType, distances, formData.participantType, formData.distance]);
+  }, [registrationType, distances, formData.participantType, formData.distance, availableTypes]);
 
-  // Mapeo de participantType del botón → término de búsqueda en nombres de categorías
-  const TYPE_SEARCH_TERMS: Record<string, string> = {
-    'estudiante': 'estudiante',
-    'docente': 'docente',
-    'administrativo': 'administrativo',
-  };
+  // Mapeo de participantType del botón → término de búsqueda en nombres de categorías.
+  // Se construye dinámicamente desde los tipos habilitados (usa su categoryKeyword).
+  const TYPE_SEARCH_TERMS: Record<string, string> = Object.fromEntries(
+    availableTypes
+      .filter(t => t.categoryKeyword)
+      .map(t => [t.key, t.categoryKeyword as string])
+  );
 
   // ASIGNACIÓN AUTOMÁTICA DE CATEGORÍA (INDIVIDUAL)
   useEffect(() => {
@@ -579,8 +603,9 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         }
       }
 
-      // 2. FALLBACK (solo para Público General / Niño): Match por Edad y Género (Edad Competitiva Internacional)
-      if ((formData.participantType === 'general' || formData.participantType === 'niño') && formData.birthDay && formData.birthMonth && formData.birthYear && runnerGender && raceInfo?.data?.date) {
+      // 2. FALLBACK: tip sin keyword de categoría (ej: Público General, Niño o tipos custom):
+      // Match por Edad y Género (Edad Competitiva Internacional)
+      if (formData.participantType !== 'padrino' && !TYPE_SEARCH_TERMS[formData.participantType] && formData.birthDay && formData.birthMonth && formData.birthYear && runnerGender && raceInfo?.data?.date) {
         const raceDate = new Date(raceInfo.data.date);
         const birthDate = new Date(`${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`);
         
@@ -611,7 +636,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         }
       }
     }
-  }, [registrationType, formData.birthDay, formData.birthMonth, formData.birthYear, formData.gender, formData.participantType, categories, raceInfo]);
+  }, [registrationType, formData.birthDay, formData.birthMonth, formData.birthYear, formData.gender, formData.participantType, categories, raceInfo, configuredParticipantTypes]);
 
   const validateCode = async () => {
     if (!code.trim() || !selectedRace) {
@@ -1075,39 +1100,23 @@ const handleSubmit = async () => {
                       }
                     </Typography>
                   </Box>
-                ) : (
+                ) : availableTypes.length > 0 ? (
                   <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 2, gridColumn: '1 / -1' }}>
                     <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: ACCENT }}>TIPO DE PARTICIPANTE</Typography>
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                      {[
-                        { value: 'general', label: 'Público General' },
-                        { value: 'estudiante', label: 'Estudiantes UTP' },
-                        { value: 'docente', label: 'Docente UTP' },
-                        { value: 'administrativo', label: 'Administrativo UTP' },
-                        { value: 'niño', label: 'Niño' },
-                        { value: 'virtual', label: 'Virtual' },
-                        ...(padrinoEnabled ? [{ value: 'padrino', label: '🎓 Solo Padrino' }] : []),
-                      ].map((t) => (
+                      {availableTypes.map((t) => (
                         <Button
-                          key={t.value}
-                          variant={formData.participantType === t.value ? "contained" : "outlined"}
-                          disabled={isRaceFull && t.value !== 'padrino'}
+                          key={t.key}
+                          variant={formData.participantType === t.key ? "contained" : "outlined"}
+                          disabled={isRaceFull && t.key !== 'padrino'}
                           onClick={() => {
-                              const newType = t.value;
+                              const newType = t.key;
                               let autoDist = formData.distance;
                               
-                              if (registrationType === 'individual') {
-                                  if (newType === 'general' || newType === 'docente' || newType === 'administrativo') {
-                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('general'));
-                                      if (dist) autoDist = dist.id;
-                                  } else if (newType === 'estudiante') {
-                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('estudiante'));
-                                      if (dist) autoDist = dist.id;
-                                  } else if (newType === 'niño') {
-                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('niño'));
-                                      if (dist) autoDist = dist.id;
-                                  } else if (newType === 'virtual') {
-                                      const dist = distances.find(d => (d.name || d.data?.name || d.title || '').toLowerCase().includes('virtual'));
+                              if (registrationType === 'individual' && newType !== 'padrino') {
+                                  const token = (t.distanceKeyword || t.key || '').toLowerCase();
+                                  if (token) {
+                                      const dist = distances.find(d => (d.name || d.title || '').toLowerCase().includes(token));
                                       if (dist) autoDist = dist.id;
                                   }
                               }
@@ -1120,10 +1129,10 @@ const handleSubmit = async () => {
                             fontSize: { xs: '0.65rem', sm: '0.75rem' },
                             py: 0.5,
                             px: { xs: 1, sm: 1.5 },
-                            borderColor: formData.participantType === t.value ? ACCENT : 'divider',
-                            bgcolor: formData.participantType === t.value ? ACCENT : 'transparent',
-                            color: formData.participantType === t.value ? 'white' : 'text.secondary',
-                            '&:hover': { bgcolor: formData.participantType === t.value ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' },
+                            borderColor: formData.participantType === t.key ? ACCENT : 'divider',
+                            bgcolor: formData.participantType === t.key ? ACCENT : 'transparent',
+                            color: formData.participantType === t.key ? 'white' : 'text.secondary',
+                            '&:hover': { bgcolor: formData.participantType === t.key ? '#E55A00' : 'rgba(255, 107, 0, 0.05)' },
                             '&.Mui-disabled': {
                               borderColor: 'divider',
                               bgcolor: 'transparent',
@@ -1131,12 +1140,12 @@ const handleSubmit = async () => {
                             }
                           }}
                         >
-                          {t.label}
+                          {t.title}
                         </Button>
                       ))}
                     </Box>
                   </Box>
-                )}
+                ) : null}
 
                 <TextField label="Nombre *" value={formData.firstName} onChange={(e) => setFormData({...formData, firstName: e.target.value})} placeholder="Ej: Juan" required error={showErrors && !formData.firstName} helperText={showErrors && !formData.firstName ? 'Campo requerido' : ''} />
                 <TextField label="Apellido *" value={formData.lastName} onChange={(e) => setFormData({...formData, lastName: e.target.value})} placeholder="Ej: Pérez" required error={showErrors && !formData.lastName} helperText={showErrors && !formData.lastName ? 'Campo requerido' : ''} />

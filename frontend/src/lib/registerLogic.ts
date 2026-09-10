@@ -99,18 +99,31 @@ export const processRegistration = async (env: any, body: any) => {
         console.error('Failed to fetch categories during registration:', e);
     }
 
+    // 2.6 Obtener Tipos de Participante configurados para la carrera.
+    // Permite que tipos custom tengan su keyword de categoría automática (categoryKeyword).
+    const TYPE_SEARCH_TERMS: Record<string, string> = {
+        'estudiante': 'estudiante',
+        'docente': 'docente',
+        'administrativo': 'administrativo',
+    };
+    try {
+        const ptRes = await apiFetch(`/api/collections/participant_types/content?limit=500`, env, { method: 'GET' });
+        const ptForRace = (ptRes?.data || []).filter((it: any) => it.status === 'published' && it.data?.race === body.raceId && it.data?.enabled !== false);
+        for (const it of ptForRace) {
+            const key = it.data?.key || (it.data?.title || it.title || '').toLowerCase().replace(/\s+/g, '_');
+            const kw = it.data?.categoryKeyword;
+            if (key && kw) TYPE_SEARCH_TERMS[key] = kw;
+        }
+    } catch (e) {
+        console.error('Failed to fetch participant types during registration:', e);
+    }
+
     // 3. ASIGNACIÃ“N AUTOMÃTICA DE CATEGORÃA POR EDAD Y GÃ‰NERO
     // Calculamos edad al dÃ­a de la carrera
     let assignedCategoryId = body.categoryId;
     let resolvedCategoryName = 'General';
 
     // Helper for category resolution
-    const TYPE_SEARCH_TERMS: Record<string, string> = {
-      'estudiante': 'estudiante',
-      'docente': 'docente',
-      'administrativo': 'administrativo',
-    };
-
     const resolveCategoryForPerson = (personBirthDate: string, personGender: string, personType: string) => {
         let catId = '';
         let catName = 'General';

@@ -18,10 +18,11 @@ export const GET: APIRoute = async ({ request }) => {
       api.getRace(env, raceId),
       api.getCategories(env, raceId),
       api.getDistances(env, raceId),
-      api.getParticipants(env, raceId)
+      api.getParticipants(env, raceId),
+      api.getParticipantTypes(env, raceId)
     ]);
 
-    const [raceRes, categoriesRes, distancesRes, participantsRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
+    const [raceRes, categoriesRes, distancesRes, participantsRes, participantTypesRes] = results.map(r => r.status === 'fulfilled' ? r.value : null);
 
     if (!raceRes) {
       const errorDetail = (results[0] as PromiseRejectedResult)?.reason?.message || 'Carrera no encontrada';
@@ -61,7 +62,20 @@ export const GET: APIRoute = async ({ request }) => {
         kilometers: item.data?.kilometers ?? null,
       }));
 
-    return new Response(JSON.stringify({ race, categories, distances, registeredRunnersCount }), {
+    // Tipos de participante configurados para esta carrera (SonicJS no filtra por campos custom)
+    const participantTypes = (participantTypesRes?.data || [])
+      .filter((item: any) => item.status === 'published' && item.data?.race === raceId)
+      .map((item: any) => ({
+        key: item.data?.key || (item.data?.title || item.title || '').toLowerCase().replace(/\s+/g, '_'),
+        title: item.data?.title || item.title || 'Sin nombre',
+        order: Number(item.data?.order) || 0,
+        enabled: item.data?.enabled !== false,
+        categoryKeyword: item.data?.categoryKeyword || '',
+        distanceKeyword: item.data?.distanceKeyword || '',
+      }))
+      .sort((a: any, b: any) => a.order - b.order);
+
+    return new Response(JSON.stringify({ race, categories, distances, participantTypes, registeredRunnersCount }), {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
