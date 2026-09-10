@@ -6,7 +6,7 @@ import {
   Grid, Container, Chip, CircularProgress, Alert,
   TextField, List, ListItem, ListItemText,
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel,
-  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment, useMediaQuery, useTheme
+  Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment, useMediaQuery, useTheme, Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import TimerIcon from '@mui/icons-material/Timer';
@@ -17,6 +17,8 @@ import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import CheckIcon from '@mui/icons-material/Check';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
@@ -997,6 +999,17 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   };
 
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const copyToClipboard = async (id: string) => {
+    try {
+      await navigator.clipboard.writeText(id);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(prev => (prev === id ? null : prev)), 2000);
+    } catch (e) {
+      setError('No se pudo copiar el ID. Cópialo manualmente.');
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -1248,7 +1261,24 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     <Typography variant="h5" sx={{ fontWeight: 'bold' }}>
                       {race.data?.title || race.title}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">ID: {race.id}</Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                      <Typography variant="body2" color="text.secondary" sx={{ fontFamily: 'monospace', fontSize: '0.72rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: { xs: 190, md: 240 } }}>
+                        {race.id}
+                      </Typography>
+                      <Tooltip title={copiedId === race.id ? '¡Copiado!' : 'Copiar ID'} arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => copyToClipboard(race.id)}
+                          sx={{
+                            p: 0.4,
+                            color: copiedId === race.id ? 'success.main' : 'text.secondary',
+                            '&:hover': { color: ACCENT }
+                          }}
+                        >
+                          {copiedId === race.id ? <CheckIcon fontSize="small" /> : <ContentCopyIcon fontSize="small" />}
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
                   <Chip
                     label={race.data?.timerStop ? 'FINALIZADA' : race.data?.timerStart ? 'EN VIVO 🔴' : (race.data?.status === 'accepting' ? 'INSCRIPCIONES' : race.data?.status?.toUpperCase() || 'INACTIVA')}
