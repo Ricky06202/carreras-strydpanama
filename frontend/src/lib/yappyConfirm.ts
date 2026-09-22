@@ -1,5 +1,5 @@
 import { apiFetch } from './api';
-import { processRegistration } from './registerLogic';
+import { processRegistration, upgradePreinscrito } from './registerLogic';
 
 /**
  * Busca una transacción Yappy pendiente por orderId (tolerando guiones o no),
@@ -69,12 +69,22 @@ export async function confirmYappyOrder(env: any, orderId: string, transactionId
   }
 
   try {
-    await processRegistration(env, {
-      ...transactionPayload,
-      isWebhookConfirmed: true,
-      paymentStatus: 'Pagado'
-    });
-    console.log(`[confirmYappyOrder] Registro procesado exitosamente para ${orderId}`);
+    if (transactionPayload.upgradeExistingId) {
+      // Pago Yappy de una preinscripción: convertir al preinscrito en inscrito oficial (con dorsal)
+      await upgradePreinscrito(env, {
+        ...transactionPayload,
+        isWebhookConfirmed: true,
+        paymentStatus: 'Pagado'
+      });
+      console.log(`[confirmYappyOrder] Preinscrito actualizado a inscrito para ${orderId}`);
+    } else {
+      await processRegistration(env, {
+        ...transactionPayload,
+        isWebhookConfirmed: true,
+        paymentStatus: 'Pagado'
+      });
+      console.log(`[confirmYappyOrder] Registro procesado exitosamente para ${orderId}`);
+    }
   } catch (regError) {
     console.error('[confirmYappyOrder] Error ejecutando processRegistration:', regError);
     // Revertir a pending para permitir reintentos

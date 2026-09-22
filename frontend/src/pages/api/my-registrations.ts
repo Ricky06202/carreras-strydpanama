@@ -84,6 +84,8 @@ export const GET: APIRoute = async ({ request }) => {
         distance: distanceName,
         categoryName,
         paymentStatus: p.data?.paymentStatus || 'pending',
+        paymentMethod: p.data?.paymentMethod || '',
+        registrationStatus: p.data?.registrationStatus || 'inscrito',
         photoUrl: p.data?.photoUrl || '',
         studentIdUrl: p.data?.studentIdUrl || '',
         matriculaUrl: p.data?.matriculaUrl || '',
