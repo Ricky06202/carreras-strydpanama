@@ -2496,9 +2496,15 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           (p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')
         );
 
-        const latestPreinscritos = preinscritos
+        const searchQuery = participantSearch.toLowerCase();
+        const filteredPreinscritos = preinscritos
+          .filter(p => ((p.title + (p.cedula || '') + (p.confirmationCode || '') + (p.teamName || '')).toLowerCase().includes(searchQuery)))
           .slice()
-          .sort((a, b) => new Date(b.created_at || b.createdOn || 0).getTime() - new Date(a.created_at || a.createdOn || 0).getTime());
+          .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+        const totalPages = Math.ceil(filteredPreinscritos.length / PARTICIPANTS_PER_PAGE);
+        const safePage = Math.min(participantPage, Math.max(0, totalPages - 1));
+        const paginated = filteredPreinscritos.slice(safePage * PARTICIPANTS_PER_PAGE, (safePage + 1) * PARTICIPANTS_PER_PAGE);
 
         const officializePreinscrito = async (id: string) => {
           if (!confirm('¿Estás seguro que deseas oficializar esta preinscripción?\n\nSe le asignará un dorsal de inmediato y pasará al Directorio de Inscritos.')) return;
@@ -2525,87 +2531,181 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
         return (
           <Box sx={{ mt: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-              <Box>
-                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Lista de Preinscritos</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {latestPreinscritos.length} preinscrito{latestPreinscritos.length !== 1 ? 's' : ''} sin dorsal · reservaron cupo pero aún no han completado su método de pago.
-                </Typography>
+            {/* Mismos filtros que el Directorio de Inscritos */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 4, flexWrap: 'wrap', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: 2, flex: 1, minWidth: 300 }}>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="Buscar por nombre, cédula, código o equipo..."
+                  value={participantSearch}
+                  onChange={e => { setParticipantSearch(e.target.value); setParticipantPage(0); }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      color: 'white',
+                      '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                      '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                      '&.Mui-focused fieldset': { borderColor: ACCENT },
+                    },
+                    '& .MuiInputBase-input::placeholder': { color: 'rgba(255, 255, 255, 0.5)', opacity: 1 },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ color: 'rgba(255, 255, 255, 0.7)' }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-focused': { color: ACCENT } }}>
+                    Filtrar por Carrera
+                  </InputLabel>
+                  <Select
+                    value={participantRaceFilter}
+                    label="Filtrar por Carrera"
+                    onChange={e => { setParticipantRaceFilter(e.target.value); setParticipantPage(0); }}
+                    sx={{
+                      color: 'white',
+                      '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                      '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: ACCENT },
+                      '.MuiSvgIcon-root': { color: 'white' },
+                    }}
+                    MenuProps={{
+                      PaperProps: {
+                        sx: {
+                          bgcolor: '#1a1a1a',
+                          color: 'white',
+                          '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255, 107, 0, 0.1)' },
+                        }
+                      }
+                    }}
+                  >
+                    <MenuItem value="">Todas las carreras</MenuItem>
+                    {races.map(r => (
+                      <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Box>
+
+              <Box sx={{ display: 'flex', gap: 1 }}>
+                <IconButton onClick={() => fetchParticipants(participantRaceFilter)} disabled={participantsLoading || !participantRaceFilter} color="inherit">
+                  {participantsLoading ? <CircularProgress size={24} color="inherit" /> : <RestartAltIcon />}
+                </IconButton>
+              </Box>
+            </Box>
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Lista de Preinscritos</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {filteredPreinscritos.length} preinscrito{filteredPreinscritos.length !== 1 ? 's' : ''} sin dorsal · reservaron cupo pero aún no han completado su método de pago.
+              </Typography>
             </Box>
 
             {!participantRaceFilter ? (
               <Alert severity="info">
-                Selecciona una carrera en el filtro para ver sus preinscritos.
+                Por favor selecciona una carrera en el filtro de arriba para ver la lista de sus preinscritos.
               </Alert>
             ) : participantsLoading ? (
               <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress sx={{ color: ACCENT }} /></Box>
-            ) : latestPreinscritos.length === 0 ? (
-              <Alert severity="success" icon={<HourglassEmptyIcon />}>No hay preinscritos pendientes para esta carrera. ¡Todo al día!</Alert>
+            ) : filteredPreinscritos.length === 0 ? (
+              searchQuery ? (
+                <Alert severity="info">No hay preinscritos que coincidan con la búsqueda.</Alert>
+              ) : (
+                <Alert severity="success" icon={<HourglassEmptyIcon />}>No hay preinscritos pendientes para esta carrera. ¡Todo al día!</Alert>
+              )
             ) : (
-              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
-                <Table stickyHeader>
-                  <TableHead>
-                    <TableRow sx={{ bgcolor: 'black' }}>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Distancia / Categoría</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Código</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Fecha</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Estado</TableCell>
-                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {latestPreinscritos.map((p, i) => (
-                      <TableRow key={p.id} sx={{ bgcolor: i % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || '-'}</Typography>
-                          <Typography variant="caption" color="text.secondary">{p.email || ''}</Typography>
-                        </TableCell>
-                        <TableCell>{p.cedula || '-'}</TableCell>
-                        <TableCell>
-                          {allDistances.find(d => d.id === (p.distance || p.distanceId))?.name || p.distanceName || p.distance || 'General'}
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-                            {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
-                          </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>{p.confirmationCode || '-'}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          {p.created_at ? new Date(p.created_at).toLocaleDateString('es-PA') : (p.createdOn ? new Date(p.createdOn).toLocaleDateString('es-PA') : 'N/A')}
-                        </TableCell>
-                        <TableCell>
-                          <Chip icon={<HourglassEmptyIcon sx={{ fontSize: 14 }} />} label="Preinscrito" size="small" sx={{ bgcolor: 'rgba(255,107,0,0.15)', color: ACCENT, fontWeight: 'bold' }} />
-                        </TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                            <Button
-                              size="small"
-                              variant="contained"
-                              startIcon={<CheckCircleOutlineIcon />}
-                              onClick={() => officializePreinscrito(p.id)}
-                              sx={{ bgcolor: ACCENT, color: 'white', fontSize: 11, fontWeight: 'bold', '&:hover': { bgcolor: '#E55A00' } }}
-                            >
-                              Oficializar
-                            </Button>
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              color="error"
-                              onClick={() => deleteParticipant(p.id, `${p.firstName || ''} ${p.lastName || ''}`.trim())}
-                              sx={{ fontSize: 11 }}
-                            >
-                              Eliminar
-                            </Button>
-                          </Box>
-                        </TableCell>
+              <>
+                <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+                  <Table stickyHeader>
+                    <TableHead>
+                      <TableRow sx={{ bgcolor: 'black' }}>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Distancia / Categoría</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Código</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Fecha</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Estado</TableCell>
+                        <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
                       </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {paginated.map((p, i) => (
+                        <TableRow key={p.id} sx={{ bgcolor: i % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || '-'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{p.email || ''}</Typography>
+                          </TableCell>
+                          <TableCell>{p.cedula || '-'}</TableCell>
+                          <TableCell>
+                            {allDistances.find(d => d.id === (p.distance || p.distanceId))?.name || p.distanceName || p.distance || 'General'}
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                              {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>{p.confirmationCode || '-'}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            {p.createdAt ? new Date(p.createdAt).toLocaleDateString('es-PA') : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <Chip icon={<HourglassEmptyIcon sx={{ fontSize: 14 }} />} label="Preinscrito" size="small" sx={{ bgcolor: 'rgba(255,107,0,0.15)', color: ACCENT, fontWeight: 'bold' }} />
+                          </TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                              <Button
+                                size="small"
+                                variant="contained"
+                                startIcon={<CheckCircleOutlineIcon />}
+                                onClick={() => officializePreinscrito(p.id)}
+                                sx={{ bgcolor: ACCENT, color: 'white', fontSize: 11, fontWeight: 'bold', '&:hover': { bgcolor: '#E55A00' } }}
+                              >
+                                Oficializar
+                              </Button>
+                              <Button
+                                size="small"
+                                variant="outlined"
+                                color="error"
+                                onClick={() => deleteParticipant(p.id, `${p.firstName || ''} ${p.lastName || ''}`.trim())}
+                                sx={{ fontSize: 11 }}
+                              >
+                                Eliminar
+                              </Button>
+                            </Box>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+
+                {/* Paginación */}
+                {totalPages > 1 && (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1, mt: 2, flexWrap: 'wrap' }}>
+                    <Button size="small" variant="outlined" onClick={() => setParticipantPage(0)} disabled={safePage === 0} sx={{ minWidth: 36, px: 1 }}>«</Button>
+                    <Button size="small" variant="outlined" onClick={() => setParticipantPage(p => Math.max(0, p - 1))} disabled={safePage === 0} sx={{ minWidth: 36, px: 1 }}>‹</Button>
+                    {Array.from({ length: totalPages }, (_, i) => (
+                      <Button
+                        key={i}
+                        size="small"
+                        variant={i === safePage ? 'contained' : 'outlined'}
+                        onClick={() => setParticipantPage(i)}
+                        sx={{ minWidth: 36, px: 1, ...(i === safePage ? { bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } } : {}) }}
+                      >
+                        {i + 1}
+                      </Button>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
+                    <Button size="small" variant="outlined" onClick={() => setParticipantPage(p => Math.min(totalPages - 1, p + 1))} disabled={safePage === totalPages - 1} sx={{ minWidth: 36, px: 1 }}>›</Button>
+                    <Button size="small" variant="outlined" onClick={() => setParticipantPage(totalPages - 1)} disabled={safePage === totalPages - 1} sx={{ minWidth: 36, px: 1 }}>»</Button>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      {safePage * PARTICIPANTS_PER_PAGE + 1}–{Math.min((safePage + 1) * PARTICIPANTS_PER_PAGE, filteredPreinscritos.length)} de {filteredPreinscritos.length}
+                    </Typography>
+                  </Box>
+                )}
+              </>
             )}
           </Box>
         );
