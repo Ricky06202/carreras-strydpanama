@@ -35,6 +35,7 @@ export default {
       studentIdUrl: { type: 'string', title: 'URL Foto Cédula Estudiantil' },
       matriculaUrl: { type: 'string', title: 'URL Foto Matrícula' },
       confirmationCode: { type: 'string', title: 'Código de Confirmación (STRYD-XXXX)' },
+      registrationStatus: { type: 'string', title: 'Estado de Registro (preinscrito/inscrito)' },
       participantType: { type: 'string', title: 'Tipo de Participante (general/estudiante/docente/administrativo)' },
       categoryName: { type: 'string', title: 'Nombre de Categoría' },
       distanceName: { type: 'string', title: 'Nombre de Distancia' },

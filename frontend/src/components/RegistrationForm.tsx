@@ -111,6 +111,7 @@ const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const paymentMethods = [
   { value: 'yappy', label: 'Yappy' },
   { value: 'transfer', label: 'Transferencia Bancaria' },
+  { value: 'preinscripcion', label: 'Preinscribirme (sin pago ahora)' },
 ];
 
 interface ParticipantType {
@@ -704,6 +705,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   photoUrl?: string;
   shippingAddress?: string;
   participantType?: string;
+  isPreinscription?: boolean;
   teamMembers?: Array<{
     firstName: string;
     lastName: string;
@@ -721,6 +723,7 @@ const handleSubmit = async () => {
     setLoading(true);
     try {
       // Prepare data for SonicJS participants collection
+      const isPreinscribing = formData.paymentMethod === 'preinscripcion';
       const participantData: ParticipantData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -736,7 +739,7 @@ const handleSubmit = async () => {
         distanceId: formData.distance || null,
         paymentMethod: (isRaceFull || isRaceClosed) 
           ? 'Lista de Espera' 
-          : ((codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod),
+          : (isPreinscribing ? 'Preinscripción' : ((codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod)),
         termsAccepted: termsAccepted,
         discountCode: code,
         registrationType: registrationType,
@@ -744,7 +747,8 @@ const handleSubmit = async () => {
         studentIdUrl: formData.studentIdUrl,
         matriculaUrl: formData.matriculaUrl,
         photoUrl: formData.photoUrl,
-        participantType: formData.participantType,
+        participantType: isPreinscribing ? 'preinscripcion' : formData.participantType,
+        isPreinscription: isPreinscribing,
         isPadrino: formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual'),
         donatedTickets: (formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual')) ? donatedTickets : 0,
         shippingAddress: formData.participantType === 'virtual' ? formData.shippingAddress : ''
@@ -1721,7 +1725,9 @@ const handleSubmit = async () => {
               <FormControl fullWidth>
                 <InputLabel>Método de Pago *</InputLabel>
                 <Select value={formData.paymentMethod} label="Método de Pago *" onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
-                  {paymentMethods.map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
+                  {paymentMethods
+                    .filter(pm => !(registrationType === 'team' && pm.value === 'preinscripcion'))
+                    .map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
                 </Select>
               </FormControl>
             )}
@@ -1759,7 +1765,24 @@ const handleSubmit = async () => {
                   {formData.paymentMethod === 'yappy' && 'Recibirás un enlace de pago por Yappy al confirmar.'}
                   {formData.paymentMethod === 'card' && 'Serás redirigido a la pasarela de pago segura.'}
                   {formData.paymentMethod === 'cash' && 'Deberás acercarte a nuestras oficinas para completar el pago.'}
+                  {formData.paymentMethod === 'preinscripcion' && 'Reservarás tu cupo sin pagar ahora. Tu dorsal se asignará cuando completes tu método de pago.'}
                   {!formData.paymentMethod && 'Selecciona un método de pago para continuar.'}
+                </Typography>
+              </Box>
+            )}
+
+            {formData.paymentMethod === 'preinscripcion' && (
+              <Box sx={{ bgcolor: 'rgba(255,107,0,0.08)', border: `1.5px solid ${ACCENT}`, p: 2.5, borderRadius: 2, mt: 2 }}>
+                <Typography variant="subtitle2" sx={{ color: ACCENT, fontWeight: 'bold', mb: 1 }}>
+                  🕓 ¿Qué significa preinscribirme?
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                  Reservas tu cupo en la carrera sin pagar nada en este momento.
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  <b>Importante:</b> mientras estés preinscrito <b>no recibirás dorsal</b>. Para obtenerlo,
+                  completa tu método de pago (Yappy o Transferencia) desde <b>"Mis Inscripciones"</b> cuando estés listo.
+                  Una vez actualizado tu método de pago, tu inscripción se oficializa y se te asigna tu dorsal.
                 </Typography>
               </Box>
             )}
@@ -1845,7 +1868,7 @@ const handleSubmit = async () => {
                     disabled={loading || !formData.paymentMethod} 
                     sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
                   >
-                    {loading ? 'Procesando...' : (formData.paymentMethod === 'transfer') ? 'Subir Comprobante' : 'Confirmar Inscripción'}
+                    {loading ? 'Procesando...' : (formData.paymentMethod === 'transfer') ? 'Subir Comprobante' : (formData.paymentMethod === 'preinscripcion') ? 'Preinscribirme' : 'Confirmar Inscripción'}
                   </Button>
                 )}
               </Box>
@@ -1924,7 +1947,7 @@ const handleSubmit = async () => {
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                {recoveredPayment ? 'Estado de tu Registro' : ((isRaceFull || isRaceClosed) ? '¡Registro en Lista de Espera Completado!' : '¡Registro Completado!')} 
+                {recoveredPayment ? 'Estado de tu Registro' : ((isRaceFull || isRaceClosed) ? '¡Registro en Lista de Espera Completado!' : (formData.paymentMethod === 'preinscripcion' ? '¡Preinscripción Completada!' : '¡Registro Completado!'))} 
               </Typography>
 
               {recoveredPayment && (
@@ -1949,6 +1972,12 @@ const handleSubmit = async () => {
               {(isRaceFull || isRaceClosed) ? (
                 <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
                   Has quedado registrado en la <b>Lista de Espera</b>. Te contactaremos por correo electrónico o celular si decidimos habilitar cupos para la carrera. ¡Muchas gracias por tu interés!
+                </Alert>
+              ) : formData.paymentMethod === 'preinscripcion' ? (
+                <Alert severity="warning" sx={{ mb: 3, textAlign: 'left' }}>
+                  Tu cupo ha sido <b>preinscrito</b> correctamente. Aún no tienes dorsal asignado. Para oficializar tu inscripción,
+                  completa tu método de pago desde <b>"Mis Inscripciones"</b> (busca tu cédula o código STRYD). En cuanto lo actualices,
+                  se te asignará tu dorsal y recibirás tu confirmación oficial.
                 </Alert>
               ) : (
                 <>

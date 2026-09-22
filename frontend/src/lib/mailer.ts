@@ -16,6 +16,7 @@ export const sendRegistrationEmail = async (env: any, data: {
   registrationType?: string;
   isPadrino?: boolean;
   donatedTickets?: number;
+  isPreinscription?: boolean;
 }) => {
   const resendApiKey = env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -28,14 +29,73 @@ export const sendRegistrationEmail = async (env: any, data: {
   const { email, firstName, lastName, raceName, bibNumber, distance, paymentMethod, category, cedula, size, confirmationCode, teamName, registrationType, isPadrino, donatedTickets } = data;
 
   const isWaitingList = paymentMethod === 'Lista de Espera';
+  const isPreinscription = data.isPreinscription === true;
 
   try {
     const response = await resend.emails.send({
       from: 'Carreras Stryd Panama <carreras@strydpanama.com>',
       to: [email],
       bcc: ['carreras@strydpanama.com'],
-      subject: isWaitingList ? `Lista de Espera: ${raceName}` : `Confirmación de Registro: ${raceName}`,
-      html: isWaitingList ? `
+      subject: isWaitingList ? `Lista de Espera: ${raceName}` : (isPreinscription ? `Preinscripción: ${raceName}` : `Confirmación de Registro: ${raceName}`),
+      html: isPreinscription ? `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden;">
+          <div style="background-color: #000000; padding: 30px; text-align: center;">
+            <h1 style="color: #FF6B00; margin: 0; font-size: 24px;">STRYD PANAMA</h1>
+            <p style="color: #ffffff; margin: 5px 0 0 0; font-size: 14px;">PREINSCRIPCIÓN EXITOSA</p>
+          </div>
+
+          <div style="padding: 30px;">
+            <h2 style="color: #333333; margin-top: 0;">¡Hola ${firstName}!</h2>
+            <p style="color: #555555; line-height: 1.6;">
+              Has quedado <strong>preinscrito(a)</strong> para la carrera <strong>${raceName}</strong>. Tu cupo está reservado, pero aún no tienes dorsal asignado.
+            </p>
+            <p style="color: #555555; line-height: 1.6;">
+              Para <strong>oficializar tu inscripción</strong> necesitas completar tu método de pago. En cuanto lo completes, te asignaremos tu número de dorsal y recibirás tu confirmación oficial.
+            </p>
+
+            <div style="background-color: #f9f9f9; padding: 20px; border-radius: 8px; margin: 25px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Nombre:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${firstName} ${lastName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Cédula:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${cedula || '-'}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Distancia:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${distance}</td>
+                </tr>
+                ${category ? `
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Categoría:</td>
+                  <td style="padding: 8px 0; color: #333333; font-weight: bold;">${category}</td>
+                </tr>
+                ` : ''}
+                <tr>
+                  <td style="padding: 8px 0; color: #777777;">Código de Confirmación:</td>
+                  <td style="padding: 8px 0; color: #FF6B00; font-weight: bold;">${confirmationCode || '-'}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="https://carreras.strydpanama.com/mis-inscripciones" style="background-color: #FF6B00; color: #ffffff; padding: 15px 30px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
+                COMPLETAR MI INSCRIPCIÓN
+              </a>
+            </div>
+            <p style="color: #999999; font-size: 12px; text-align: center; margin-top: 15px;">
+              En "Mis Inscripciones" podrás actualizar tu método de pago (Yappy o Transferencia) y se te asignará tu dorsal.
+            </p>
+          </div>
+
+          <div style="background-color: #f5f5f5; padding: 20px; text-align: center; color: #999999; font-size: 12px;">
+            <p>&copy; ${new Date().getFullYear()} STRYD Panama. Todos los derechos reservados.</p>
+            <p>Este es un correo automático, por favor no respondas a este mensaje.</p>
+          </div>
+        </div>
+      ` : isWaitingList ? `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border: 1px solid #eeeeee; border-radius: 12px; overflow: hidden;">
           <div style="background-color: #000000; padding: 30px; text-align: center;">
             <h1 style="color: #FF6B00; margin: 0; font-size: 24px;">STRYD PANAMA</h1>

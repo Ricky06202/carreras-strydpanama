@@ -1,0 +1,125 @@
+---
+import AstroLayout from '../layouts/Layout.astro';
+import Layout from '../components/Layout';
+import CompleteRegistration from '../components/CompleteRegistration';
+import { apiFetch } from '../lib/api';
+import { env } from 'cloudflare:workers';
+
+const code = (Astro.url.searchParams.get('code') || '').trim();
+const cedula = (Astro.url.searchParams.get('cedula') || '').trim();
+
+let lookup: any = null;
+let lookupError = '';
+
+if (!code && !cedula) {
+  lookupError = 'Falta el código de confirmación o la cédula. Ingresa desde "Mis Inscripciones".';
+} else {
+  try {
+    const partsRes = await apiFetch('/api/collections/participants/content?limit=5000', env, { method: 'GET' });
+    const all = partsRes?.data || [];
+
+    const queryCode = code.toUpperCase().trim();
+    const queryCedula = cedula.toLowerCase().trim();
+
+    const match = all.find((p: any) =>
+      p.status === 'published' &&
+      (p.data?.registrationStatus === 'preinscrito' || p.data?.paymentStatus === 'Preinscrito') &&
+      ((queryCode && (p.data?.confirmationCode || '').toUpperCase().trim() === queryCode) ||
+        (queryCedula && (p.data?.cedula || '').toLowerCase().trim() === queryCedula))
+    );
+
+    if (!match) {
+      lookupError = 'No encontramos una preinscripción pendiente con esos datos. Asegúrate de usar el mismo código y cédula con los que te preinscribiste.';
+    } else {
+      const pd = match.data || {};
+      const raceId = pd.race || pd.raceId || '';
+
+      let raceName = 'Carrera';
+      let raceDate = '';
+      let platformFee = 0.45;
+      let racePrice = 0;
+      if (raceId) {
+        try {
+          const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
+          const rd = raceRes?.data?.data || {};
+          raceName = rd.title || raceRes?.data?.title || raceName;
+          raceDate = rd.date || '';
+          if (rd.platformFee !== undefined && rd.platformFee !== '') platformFee = Number(rd.platformFee);
+          racePrice = rd.price ? Number(rd.price) : 0;
+        } catch (e) {
+          console.error('Error fetching race for preinscripcion:', e);
+        }
+      }
+
+      let distanceName = '';
+      let distancePrice = 0;
+      const distId = pd.distanceId || pd.distance || '';
+      if (distId) {
+        try {
+          const distRes = await apiFetch('/api/collections/distances/content?limit=500', env, { method: 'GET' });
+          const dObj = (distRes?.data || []).find((d: any) => d.id === distId);
+          distanceName = dObj?.data?.name || dObj?.name || dObj?.data?.title || dObj?.title || '';
+          distancePrice = dObj?.data?.price ? Number(dObj.data.price) : 0;
+        } catch (e) {
+          console.error('Error fetching distance for preinscripcion:', e);
+        }
+      }
+
+      let categoryName = pd.categoryName || '';
+      const catId = pd.categoryId || pd.category || '';
+      if (!categoryName && catId) {
+        try {
+          const catRes = await apiFetch('/api/collections/categories/content?limit=500', env, { method: 'GET' });
+          const cObj = (catRes?.data || []).find((c: any) => c.id === catId);
+          categoryName = cObj?.data?.title || cObj?.title || '';
+        } catch (e) {
+          console.error('Error fetching category for preinscripcion:', e);
+        }
+      }
+
+      lookup = {
+        participant: {
+          id: match.id,
+          firstName: pd.firstName || '',
+          lastName: pd.lastName || '',
+          email: pd.email || '',
+          cedula: pd.cedula || '',
+          phone: pd.phone || '',
+          birthDate: pd.birthDate || '',
+          size: pd.size || '',
+          confirmationCode: pd.confirmationCode || code || '',
+        },
+        race: { id: raceId, title: raceName, date: raceDate, platformFee, price: racePrice },
+        distance: { name: distanceName, price: distancePrice },
+        category: { name: categoryName },
+      };
+    }
+  } catch (e: any) {
+    console.error('Error looking up preinscripcion:', e);
+    lookupError = 'Error de conexión al buscar tu preinscripción. Intenta de nuevo.';
+  }
+}
+---
+
+<AstroLayout title="Completar Inscripción - Carreras by StrydPanama">
+  <Layout client:only="react" maxWidth="sm">
+    {lookupError ? (
+      <div class="dark:bg-slate-800 bg-white rounded-2xl shadow-md border dark:border-slate-700 border-gray-100 p-8 text-center">
+        <div class="text-5xl mb-4">🕓</div>
+        <h1 class="text-xl font-bold dark:text-white text-gray-900 mb-3">No pudimos cargar tu preinscripción</h1>
+        <p class="dark:text-gray-400 text-gray-600 mb-6">{lookupError}</p>
+        <a href="/mis-inscripciones" class="inline-block bg-accent hover:bg-orange-600 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+          Volver a Mis Inscripciones
+        </a>
+      </div>
+    ) : (
+      <CompleteRegistration client:only="react" participant={lookup.participant} race={lookup.race} distance={lookup.distance} category={lookup.category} />
+    )}
+  </Layout>
+</AstroLayout>
+
+<style>
+  .bg-accent { background-color: #FF6B00; }
+  .hover\:bg-orange-600:hover { background-color: #E55A00; }
+  .text-accent { color: #FF6B00; }
+</style>

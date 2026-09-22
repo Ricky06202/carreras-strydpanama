@@ -134,7 +134,7 @@ export const api = {
       categoryName: data.categoryName,
       distance: data.distanceId || data.distance,
       distanceName: data.distanceName,
-      paymentStatus: data.paymentMethod,
+      paymentStatus: data.paymentMethod === 'Preinscripción' ? 'Preinscrito' : data.paymentMethod,
     };
     return api.createContent(env, 'col-participants-93d1ac21', data.title || `${data.firstName} ${data.lastName}`, mappedData);
   },

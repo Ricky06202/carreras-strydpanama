@@ -62,7 +62,12 @@ export const processRegistration = async (env: any, body: any) => {
 
     // Validar límite de inscritos
     const isWaitingList = body.participantType === 'waiting_list';
-    if (!isWaitingList) {
+    // Preinscripción: quien reserva cupo sin pagar no consume dorsal hasta que complete su método de pago
+    const isPreinscription = body.participantType === 'preinscripcion' ||
+      body.isPreinscription === true ||
+      body.registrationStatus === 'preinscrito' ||
+      body.paymentMethod === 'Preinscripción';
+    if (!isWaitingList && !isPreinscription) {
       let runnersToBeAdded = 0;
       if (body.registrationType === 'team' && Array.isArray(body.teamMembers)) {
         runnersToBeAdded = body.teamMembers.filter((m: any) => m.firstName && m.lastName).length;
@@ -191,10 +196,21 @@ export const processRegistration = async (env: any, body: any) => {
     const isPadrinoOnly = body.participantType === 'padrino';
 
     // Asignar el dorsal y la categoría calculada
-    body.bibNumber = (isPadrinoOnly || isWaitingList) ? null : nextBib;
+    // Preinscritos aún NO tienen dorsal: se asigna al oficializar el pago / actualizar método de pago
+    body.bibNumber = (isPadrinoOnly || isWaitingList || isPreinscription) ? null : nextBib;
     body.categoryId = (isPadrinoOnly || isWaitingList) ? null : assignedCategoryId;
     body.category = (isPadrinoOnly || isWaitingList) ? null : assignedCategoryId;
     body.categoryName = isWaitingList ? 'Lista de Espera' : (isPadrinoOnly ? 'Padrino UTP' : resolvedCategoryName);
+
+    // Estado de registo: preinscrito NO paga aún y no tiene dorsal.
+    // Solo se vuelve 'inscrito' cuando actualiza su método de pago / oficializa el pago.
+    if (isPreinscription) {
+      body.paymentStatus = 'Preinscrito';
+      body.paymentMethod = 'Preinscripción';
+      body.registrationStatus = 'preinscrito';
+    } else {
+      body.registrationStatus = 'inscrito';
+    }
 
     // Calcular el monto pagado aproximado para los reportes
     let basePrice = 0;
@@ -209,7 +225,7 @@ export const processRegistration = async (env: any, body: any) => {
     if (usedCodeData || isWaitingList) {
         finalAmount = 0;
     }
-    body.amountPaid = isWaitingList ? 0 : finalAmount;
+    body.amountPaid = (isWaitingList || isPreinscription) ? 0 : finalAmount;
 
     // Generar cÃ³digo de confirmaciÃ³n Ãºnico: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
@@ -313,13 +329,19 @@ export const processRegistration = async (env: any, body: any) => {
             if (!member.firstName || !member.lastName) continue; // Ignorar slots vacÃ­os
 
             memberBib++;
-            teamMemberBibs.push(memberBib);
+            if (!isPreinscription) teamMemberBibs.push(memberBib);
             const isCapitan = isFirstMember;
             isFirstMember = false;
             const memberConfCode = confCode; // Todos comparten el cÃ³digo del capitÃ¡n
             const uniqueSuffix = crypto.randomUUID().split('-')[0]; // 8 caracteres Ãºnicos
             const memberCat = resolveCategoryForPerson(member.birthDate, member.gender, body.participantType);
-            const memberTitle = `${member.firstName} ${member.lastName} - ${memberCat.catName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
+            const memberTitle = isWaitingList
+              ? `${member.firstName} ${member.lastName} - Lista de Espera [${uniqueSuffix}]`
+              : isPadrinoOnly
+                ? `${member.firstName} ${member.lastName} - Padrino UTP [${uniqueSuffix}]`
+                : isPreinscription
+                  ? `${member.firstName} ${member.lastName} - PreinscripciÃ³n [${uniqueSuffix}]`
+                  : `${member.firstName} ${member.lastName} - ${memberCat.catName} - Dorsal ${memberBib} [${uniqueSuffix}]`;
             const memberData = {
                 firstName: member.firstName,
                 lastName: member.lastName,
@@ -342,8 +364,9 @@ export const processRegistration = async (env: any, body: any) => {
                 receiptUrl: body.receiptUrl || '',
                 studentIdUrl: body.studentIdUrl || '',
                 matriculaUrl: body.matriculaUrl || '',
-                bibNumber: memberBib,
-                paymentStatus: body.paymentMethod,
+                bibNumber: (isPadrinoOnly || isWaitingList || isPreinscription) ? null : memberBib,
+                paymentStatus: isPreinscription ? 'Preinscrito' : body.paymentMethod,
+                registrationStatus: isPreinscription ? 'preinscrito' : 'inscrito',
                 amountPaid: finalAmount,
                 discountCode: body.discountCode || '',
                 confirmationCode: memberConfCode,
@@ -372,7 +395,7 @@ export const processRegistration = async (env: any, body: any) => {
                         firstName: member.firstName,
                         lastName: member.lastName,
                         raceName: raceName,
-                        bibNumber: memberBib,
+                        bibNumber: isPreinscription ? null : memberBib,
                         distance: memberCat.catName,
                         category: memberCat.catName,
                         cedula: member.cedula || '',
@@ -381,6 +404,7 @@ export const processRegistration = async (env: any, body: any) => {
                         confirmationCode: memberConfCode,
                         teamName: body.teamName,
                         registrationType: 'team',
+                        isPreinscription,
                     });
                     console.log(`Email sent to ${emailAddr}`);
                 } catch (e) {
@@ -395,13 +419,15 @@ export const processRegistration = async (env: any, body: any) => {
             ? `${body.firstName} ${body.lastName} - Lista de Espera [${uniqueSuffix}]`
             : isPadrinoOnly
                 ? `${body.firstName} ${body.lastName} - Padrino UTP [${uniqueSuffix}]`
-                : `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
+                : isPreinscription
+                    ? `${body.firstName} ${body.lastName} - Preinscripción [${uniqueSuffix}]`
+                    : `${body.firstName} ${body.lastName} - ${resolvedCategoryName} - Dorsal ${nextBib} [${uniqueSuffix}]`;
         const registrationData = { ...body, title: participantTitle, confirmationCode: confCode };
         result = await api.registerParticipant(env, registrationData);
-        if (!isPadrinoOnly && !isWaitingList) teamMemberBibs.push(nextBib);
+        if (!isPadrinoOnly && !isWaitingList && !isPreinscription) teamMemberBibs.push(nextBib);
 
-        // Guardar en Perfiles Permanentes de Corredores (solo corredores, no padrinos ni lista de espera)
-        if (!isPadrinoOnly && !isWaitingList) await upsertRunnerProfile(body, resolvedCategoryName);
+        // Guardar en Perfiles Permanentes de Corredores (solo corredores oficiales, no padrinos, lista de espera ni preinscritos)
+        if (!isPadrinoOnly && !isWaitingList && !isPreinscription) await upsertRunnerProfile(body, resolvedCategoryName);
 
         // Auto-generar códigos de padrino cuando se inscribe un padrino
         if (isPadrinoOnly && body.donatedTickets && Number(body.donatedTickets) > 0) {
@@ -544,7 +570,8 @@ export const processRegistration = async (env: any, body: any) => {
         paymentMethod: body.paymentStatus || body.paymentMethod || 'Yappy',
         confirmationCode: confCode,
         isPadrino: body.isPadrino,
-        donatedTickets: body.donatedTickets
+        donatedTickets: body.donatedTickets,
+        isPreinscription,
       });
       console.log(`Email sent successfully to ${body.email}`);
     } catch (mailError) {
@@ -554,7 +581,8 @@ export const processRegistration = async (env: any, body: any) => {
     // Retornamos el objeto con el código en la raíz para facilitar la lectura del frontend
     return { 
       success: true,
-      assignedBib: (isPadrinoOnly || isWaitingList) ? null : nextBib,
+      assignedBib: (isPadrinoOnly || isWaitingList || isPreinscription) ? null : nextBib,
+      isPreinscription,
       confirmationCode: confCode,
       orderId: result?.data?.id || result?.id,
       data: result?.data || result
@@ -563,4 +591,190 @@ export const processRegistration = async (env: any, body: any) => {
     console.error('Error in processRegistration:', error);
     throw error;
   }
+};
+
+/**
+ * Convierte un participante preinscrito (registrationStatus === 'preinscrito')
+ * en un inscrito oficial: le asigna dorsal y actualiza su método/pago.
+ *
+ * Usado por:
+ *  - /api/complete-registration-payment (corredor actualiza su método de pago)
+ *  - /api/admin/officialize-preinscrito (admin oficializa el pago)
+ *  - confirmYappyOrder (pago Yappy de un preinscrito confirmado por webhook)
+ */
+export const upgradePreinscrito = async (env: any, body: any) => {
+  const { participantId } = body;
+  if (!participantId) throw new Error('ID del preinscrito requerido');
+
+  const partRes = await apiFetch(`/api/content/${participantId}`, env, { method: 'GET' });
+  const participant = partRes?.data;
+  if (!participant) throw new Error('Preinscrito no encontrado');
+
+  const pd = participant.data || {};
+  const colId = participant.collectionId || participant.collection_id || 'col-participants-93d1ac21';
+
+  // Idempotencia: si ya es inscrito con dorsal, solo devolvemos su dorsal
+  if (pd.registrationStatus === 'inscrito' && pd.bibNumber) {
+    return {
+      success: true,
+      alreadyUpgraded: true,
+      assignedBib: Number(pd.bibNumber) || null,
+      confirmationCode: pd.confirmationCode || body.confirmationCode || '',
+    };
+  }
+
+  const raceId = pd.race || pd.raceId || body.raceId;
+  if (!raceId) throw new Error('La preinscripción no tiene una carrera asociada');
+
+  const raceRes = await api.getRace(env, raceId);
+  const raceFields = raceRes?.data?.data || {};
+  const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
+  const raceName = raceFields.title || raceRes?.data?.title || 'Carrera';
+
+  const hasRaceDayArrivedUpgrade = (dateStr?: string) => {
+    if (!dateStr) return false;
+    const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Panama' });
+    return todayStr >= dateStr;
+  };
+  if (hasRaceDayArrivedUpgrade(raceFields.date)) {
+    throw new Error('La carrera ya se encuentra en curso o finalizó; no es posible asignar dorsales.');
+  }
+  if (raceFields.status === 'finished') {
+    throw new Error('La carrera ya finalizó.');
+  }
+
+  const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
+  const raceParticipants = (participantsRes?.data || []).filter((p: any) => p.data?.race === raceId || p.data?.raceId === raceId);
+
+  // Los cupos reales los ocupan sólo los que ya tienen dorsal (inscritos oficiales)
+  const currentRunnersCount = raceParticipants.filter((p: any) =>
+    p.data?.participantType !== 'padrino' && p.data?.bibNumber
+  ).length;
+
+  const maxParticipants = raceFields.maxParticipants ? Number(raceFields.maxParticipants) : null;
+  if (maxParticipants !== null && (currentRunnersCount + 1) > maxParticipants) {
+    throw new Error(`Esta carrera ha alcanzado su límite de inscritos. Cupos disponibles: ${maxParticipants - currentRunnersCount}.`);
+  }
+
+  const existingBibs = new Set<number>();
+  for (const p of raceParticipants) {
+    const bib = p.data?.bibNumber ? Number(p.data.bibNumber) : 0;
+    if (bib > 0) existingBibs.add(bib);
+  }
+  let nextBib = startingBib;
+  while (existingBibs.has(nextBib)) nextBib++;
+
+  // Calcular el monto de la inscripción (distancia o precio base de la carrera)
+  let basePrice = 0;
+  const distId = pd.distanceId || pd.distance;
+  if (distId) {
+    try {
+      const distsRes = await apiFetch('/api/collections/distances/content?limit=500', env, { method: 'GET' });
+      const dObj = (distsRes?.data || []).find((d: any) => d.id === distId);
+      basePrice = dObj?.data?.price ? Number(dObj.data.price) : 0;
+    } catch (e) {
+      console.error('Failed to resolve distance price on upgrade:', e);
+    }
+  }
+  if (!basePrice) basePrice = raceFields.price ? Number(raceFields.price) : 0;
+
+  const finalPaymentStatus = body.paymentStatus || body.paymentMethod || 'Pendiente';
+  const finalPaymentMethod = body.paymentMethod || pd.paymentMethod || '';
+  const titleBase = `${pd.firstName || ''} ${pd.lastName || ''}`.trim() || 'Participante';
+  const newTitle = `${titleBase} - ${pd.categoryName || 'General'} - Dorsal ${nextBib}`;
+
+  const updatedData = {
+    ...pd,
+    bibNumber: nextBib,
+    registrationStatus: 'inscrito',
+    paymentStatus: finalPaymentStatus,
+    paymentMethod: finalPaymentMethod,
+    ...(body.receiptUrl ? { receiptUrl: body.receiptUrl } : {}),
+    amountPaid: typeof body.amountPaid === 'number' ? Number(body.amountPaid) : basePrice,
+    title: newTitle,
+  };
+
+  await apiFetch(`/api/content/${participantId}`, env, {
+    method: 'PUT',
+    body: JSON.stringify({ id: participantId, collectionId: colId, collection_id: colId, title: newTitle, status: 'published', data: updatedData })
+  });
+
+  // Enviar correo con el dorsal asignado
+  let resolvedDistance = 'General';
+  if (distId) {
+    try {
+      const distancesRes = await api.getDistances(env);
+      const distObj = (distancesRes?.data || []).find((d: any) => d.id === distId);
+      resolvedDistance = distObj?.data?.name || distObj?.name || 'General';
+    } catch (e) {
+      console.error('Failed to resolve distance name for upgrade email:', e);
+    }
+  }
+
+  try {
+    await sendRegistrationEmail(env, {
+      email: pd.email,
+      firstName: pd.firstName,
+      lastName: pd.lastName,
+      raceName,
+      bibNumber: nextBib,
+      distance: resolvedDistance,
+      category: pd.categoryName || '',
+      cedula: pd.cedula,
+      size: pd.size,
+      paymentMethod: finalPaymentStatus,
+      confirmationCode: pd.confirmationCode || body.confirmationCode || '',
+      isPreinscription: false,
+    });
+  } catch (mailError) {
+    console.error('Failed to send upgrade confirmation email:', mailError);
+  }
+
+  return {
+    success: true,
+    assignedBib: nextBib,
+    confirmationCode: pd.confirmationCode || body.confirmationCode || '',
+    orderId: participantId,
+    data: updatedData,
+  };
+};
+
+/**
+ * Inicia el pago Yappy de un preinscrito (flujo diferido).
+ * No crea participante: guarda una transacción pendiente que será convertida
+ * cuando el webhook/confirm de Yappy dispare upgradePreinscrito.
+ */
+export const beginYappyUpgrade = async (env: any, body: any) => {
+  if (!body.participantId) throw new Error('ID del preinscrito requerido');
+
+  const rawId = crypto.randomUUID().replace(/-/g, '');
+  const confCode = 'STRYD-' + rawId.slice(0, 8).toUpperCase();
+  const payload = { ...body, upgradeExistingId: true, confirmationCode: confCode };
+
+  const colIdTx = 'col-transactions-e06da228';
+  await apiFetch('/api/content', env, {
+    method: 'POST',
+    body: JSON.stringify({
+      collectionId: colIdTx,
+      collection_id: colIdTx,
+      title: `[PENDIENTE YAPPY] ${confCode}`,
+      status: 'published',
+      data: {
+        title: `[PENDIENTE YAPPY] ${confCode}`,
+        participant: body.email || 'Preinscripción',
+        amount: body.totalAmount ? Number(body.totalAmount) : 0,
+        status: 'pending',
+        orderId: confCode,
+        payload: JSON.stringify(payload)
+      }
+    })
+  });
+
+  return {
+    success: true,
+    assignedBib: null,
+    confirmationCode: confCode,
+    orderId: confCode,
+    paymentMethod: 'Yappy (Pendiente)',
+  };
 };

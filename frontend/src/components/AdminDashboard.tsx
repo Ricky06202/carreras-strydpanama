@@ -17,6 +17,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import DownloadIcon from '@mui/icons-material/Download';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckIcon from '@mui/icons-material/Check';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -25,6 +26,7 @@ import EditLocationAltIcon from '@mui/icons-material/EditLocationAlt';
 import GroupsIcon from '@mui/icons-material/Groups';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import DashboardView from './DashboardView';
 import MUIThemeProvider from './MUIThemeProvider';
 
@@ -111,6 +113,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     { label: 'Gestión de Categorías', value: 4, icon: <GroupsIcon sx={{ mr: 2 }} /> },
     { label: 'Directorio de Inscritos', value: 5, icon: <ReceiptLongIcon sx={{ mr: 2 }} /> },
     { label: 'Lista de Padrinos', value: 6, icon: <FavoriteIcon sx={{ mr: 2 }} /> },
+    { label: 'Lista de Preinscritos', value: 7, icon: <HourglassEmptyIcon sx={{ mr: 2 }} /> },
   ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
@@ -599,7 +602,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   };
 
   useEffect(() => {
-    if (tabIndex === 0 || tabIndex === 5 || tabIndex === 6) {
+    if (tabIndex === 0 || tabIndex === 5 || tabIndex === 6 || tabIndex === 7) {
       if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
@@ -722,6 +725,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const exportParticipantsCSV = () => {
     const filtered = participants.filter(p => {
       if (p.participantType === 'padrino') return false;
+      if (p.registrationStatus === 'preinscrito') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
       return matchesSearch && matchesRace;
@@ -748,6 +752,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const exportParticipantsPDF = async () => {
     const filtered = participants.filter(p => {
       if (p.participantType === 'padrino') return false;
+      if (p.registrationStatus === 'preinscrito') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
       return matchesSearch && matchesRace;
@@ -2060,6 +2065,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                      </TableCell>
                   </TableRow>
                 ) : participants.filter(p => {
+                  if ((p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')) return false;
                   const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                   return matchesSearch;
                 }).length === 0 ? (
@@ -2071,6 +2077,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 ) : (() => {
                   const filtered = participants
                     .filter(p => {
+                      if ((p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')) return false;
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
@@ -2150,9 +2157,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
           {/* Paginación */}
           {(() => {
-            const filtered = participants.filter(p =>
-              (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase())
-            );
+            const filtered = participants.filter(p => {
+              if ((p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')) return false;
+              return (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
+            });
             const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
             if (totalPages <= 1) return null;
             return (
@@ -2472,6 +2480,126 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                             size="small"
                             sx={{ fontWeight: 'bold' }}
                           />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        );
+      })()}
+
+      {tabIndex === 7 && (() => {
+        const preinscritos = participants.filter(p =>
+          (p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')
+        );
+
+        const latestPreinscritos = preinscritos
+          .slice()
+          .sort((a, b) => new Date(b.created_at || b.createdOn || 0).getTime() - new Date(a.created_at || a.createdOn || 0).getTime());
+
+        const officializePreinscrito = async (id: string) => {
+          if (!confirm('¿Estás seguro que deseas oficializar esta preinscripción?\n\nSe le asignará un dorsal de inmediato y pasará al Directorio de Inscritos.')) return;
+          try {
+            setParticipantsLoading(true);
+            const res = await fetch('/api/admin/officialize-preinscrito', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+              alert(`✅ Preinscripción oficializada. Dorsal asignado: #${data.assignedBib ?? '—'}`);
+              fetchParticipants(participantRaceFilter);
+            } else {
+              alert(data.error || 'Error al oficializar la preinscripción');
+            }
+          } catch (e) {
+            alert('Error de conexión al oficializar la preinscripción.');
+          } finally {
+            setParticipantsLoading(false);
+          }
+        };
+
+        return (
+          <Box sx={{ mt: 3 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+              <Box>
+                <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Lista de Preinscritos</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {latestPreinscritos.length} preinscrito{latestPreinscritos.length !== 1 ? 's' : ''} sin dorsal · reservaron cupo pero aún no han completado su método de pago.
+                </Typography>
+              </Box>
+            </Box>
+
+            {!participantRaceFilter ? (
+              <Alert severity="info">
+                Selecciona una carrera en el filtro para ver sus preinscritos.
+              </Alert>
+            ) : participantsLoading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress sx={{ color: ACCENT }} /></Box>
+            ) : latestPreinscritos.length === 0 ? (
+              <Alert severity="success" icon={<HourglassEmptyIcon />}>No hay preinscritos pendientes para esta carrera. ¡Todo al día!</Alert>
+            ) : (
+              <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}>
+                <Table stickyHeader>
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: 'black' }}>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Nombre</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Distancia / Categoría</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Código</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Fecha</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Estado</TableCell>
+                      <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Acción</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {latestPreinscritos.map((p, i) => (
+                      <TableRow key={p.id} sx={{ bgcolor: i % 2 === 0 ? 'background.paper' : 'action.hover', '&:hover': { bgcolor: 'action.selected' } }}>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || '-'}</Typography>
+                          <Typography variant="caption" color="text.secondary">{p.email || ''}</Typography>
+                        </TableCell>
+                        <TableCell>{p.cedula || '-'}</TableCell>
+                        <TableCell>
+                          {allDistances.find(d => d.id === (p.distance || p.distanceId))?.name || p.distanceName || p.distance || 'General'}
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                            {p.categoryName || allCategories.find(c => c.id === (p.category || p.categoryId))?.name || allCategories.find(c => c.id === (p.category || p.categoryId))?.title || 'General'}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" sx={{ fontFamily: 'monospace', fontSize: 12 }}>{p.confirmationCode || '-'}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          {p.created_at ? new Date(p.created_at).toLocaleDateString('es-PA') : (p.createdOn ? new Date(p.createdOn).toLocaleDateString('es-PA') : 'N/A')}
+                        </TableCell>
+                        <TableCell>
+                          <Chip icon={<HourglassEmptyIcon sx={{ fontSize: 14 }} />} label="Preinscrito" size="small" sx={{ bgcolor: 'rgba(255,107,0,0.15)', color: ACCENT, fontWeight: 'bold' }} />
+                        </TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              startIcon={<CheckCircleOutlineIcon />}
+                              onClick={() => officializePreinscrito(p.id)}
+                              sx={{ bgcolor: ACCENT, color: 'white', fontSize: 11, fontWeight: 'bold', '&:hover': { bgcolor: '#E55A00' } }}
+                            >
+                              Oficializar
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              color="error"
+                              onClick={() => deleteParticipant(p.id, `${p.firstName || ''} ${p.lastName || ''}`.trim())}
+                              sx={{ fontSize: 11 }}
+                            >
+                              Eliminar
+                            </Button>
+                          </Box>
                         </TableCell>
                       </TableRow>
                     ))}
