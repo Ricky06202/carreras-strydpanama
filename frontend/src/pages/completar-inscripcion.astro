@@ -18,14 +18,15 @@ if (!code && !cedula) {
     const partsRes = await apiFetch('/api/collections/participants/content?limit=5000', env, { method: 'GET' });
     const all = partsRes?.data || [];
 
-    const queryCode = code.toUpperCase().trim();
-    const queryCedula = cedula.toLowerCase().trim();
+    const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const queryCode = normalize(code);
+    const queryCedula = normalize(cedula);
 
     const match = all.find((p: any) =>
       p.status === 'published' &&
       (p.data?.registrationStatus === 'preinscrito' || p.data?.paymentStatus === 'Preinscrito') &&
-      ((queryCode && (p.data?.confirmationCode || '').toUpperCase().trim() === queryCode) ||
-        (queryCedula && (p.data?.cedula || '').toLowerCase().trim() === queryCedula))
+      ((queryCode && normalize(p.data?.confirmationCode) === queryCode) ||
+        (queryCedula && normalize(p.data?.cedula) === queryCedula))
     );
 
     if (!match) {
