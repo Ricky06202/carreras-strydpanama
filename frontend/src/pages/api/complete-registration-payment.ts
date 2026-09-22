@@ -27,12 +27,14 @@ export const POST: APIRoute = async ({ request }) => {
     const pd = participant.data || {};
 
     // Autorización: la persona debe coincidir con la preinscripción
-    const targetCedula = (cedula || '').toLowerCase().trim();
-    const storedCedula = (pd.cedula || '').toLowerCase().trim();
+    // (normalizada: "4-717-1802" = "47171802")
+    const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const targetCedula = normalize(cedula);
+    const storedCedula = normalize(pd.cedula);
     if (targetCedula && storedCedula && targetCedula !== storedCedula) {
       throw new Error('La cédula no coincide con la preinscripción');
     }
-    if (confirmationCode && pd.confirmationCode && confirmationCode.toUpperCase().trim() !== (pd.confirmationCode || '').toUpperCase().trim()) {
+    if (confirmationCode && pd.confirmationCode && normalize(confirmationCode) !== normalize(pd.confirmationCode)) {
       throw new Error('El código de confirmación no coincide con la preinscripción');
     }
 

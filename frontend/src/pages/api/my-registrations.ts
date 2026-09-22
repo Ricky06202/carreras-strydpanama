@@ -13,18 +13,20 @@ export const GET: APIRoute = async ({ request }) => {
   try {
     // Fetch all participants and filter by cedula
     const partsRes = await apiFetch(
-      `/api/collections/participants/content?limit=500&_t=${Date.now()}`, env,
+      `/api/collections/participants/content?limit=5000&_t=${Date.now()}`, env,
       { method: 'GET', headers: { 'Cache-Control': 'no-cache, no-store', 'Pragma': 'no-cache' } }
     );
 
     const all = partsRes?.data || [];
-    const query = cedula.toLowerCase().trim();
+    // Normalizamos: "4-717-1802" = "47171802" = " 4-717-1802 "
+    const normalize = (s: any) => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const query = normalize(cedula);
 
     const mine = all.filter((p: any) =>
       p.status === 'published' &&
       (
-        (p.data?.cedula || '').toLowerCase().trim() === query ||
-        (p.data?.confirmationCode || '').toLowerCase().trim() === query
+        normalize(p.data?.cedula) === query ||
+        normalize(p.data?.confirmationCode) === query
       )
     );
 
