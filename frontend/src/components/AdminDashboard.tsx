@@ -807,6 +807,90 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     doc.save(`Informe_Inscritos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  // Exportaciones de PREINSCRITOS (mismos filtros activos de búsqueda y carrera)
+  const getFilteredPreinscritos = () => participants.filter(p => {
+    if (p.registrationStatus !== 'preinscrito' && p.paymentStatus !== 'Preinscrito') return false;
+    const q = participantSearch.toLowerCase();
+    const hay = ((p.title || '') + (p.cedula || '') + (p.confirmationCode || '') + (p.teamName || '')).toLowerCase();
+    return hay.includes(q);
+  });
+
+  const exportPreinscritosCSV = () => {
+    const list = getFilteredPreinscritos();
+    if (list.length === 0) return alert("No hay preinscritos para exportar");
+
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Código,Nombre,Apellido,Email,Cédula,Teléfono,Distancia,Categoría,Estado,Fecha Preinscripción\r\n";
+    list.forEach(p => {
+      const distName = allDistances.find(d => d.id === (p.distance || (p as any).distanceId))?.name || p.distanceName || p.distance || '-';
+      const catName = p.categoryName || allCategories.find(c => c.id === (p.category || (p as any).categoryId))?.name || 'General';
+      const fecha = p.createdAt ? new Date(p.createdAt).toLocaleDateString('es-PA') : '-';
+      csvContent += `${p.confirmationCode || '-'},"${p.firstName || ''}","${p.lastName || ''}",${p.email || ''},${p.cedula || ''},${p.phone || ''},"${distName}","${catName}",Preinscrito,${fecha}\r\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Preinscritos_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const exportPreinscritosPDF = async () => {
+    const list = getFilteredPreinscritos();
+    if (list.length === 0) return alert("No hay preinscritos para exportar");
+
+    const { jsPDF } = await import('jspdf');
+    let autoTable;
+    try {
+      autoTable = (await import('jspdf-autotable')).default;
+    } catch (e) {
+      alert("El módulo jspdf-autotable no está disponible. Ejecuta npm install en el servidor.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' });
+
+    doc.setFontSize(18);
+    doc.text('Informe de Preinscritos (sin dorsal) — STRYD Panama', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Generado el: ${new Date().toLocaleString()}`, 14, 28);
+    doc.text(`Total de preinscritos: ${list.length}`, 14, 33);
+
+    const tableData = list.map((p, index) => {
+      let fechaStr = '-';
+      if (p.createdAt) {
+        const d = new Date(p.createdAt);
+        fechaStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth() + 1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+      }
+      const distName = allDistances.find(d => d.id === (p.distance || (p as any).distanceId))?.name || p.distanceName || p.distance || '-';
+      const catName = p.categoryName || allCategories.find(c => c.id === (p.category || (p as any).categoryId))?.name || 'General';
+      return [
+        index + 1,
+        p.confirmationCode || '-',
+        p.firstName || '',
+        p.lastName || '',
+        p.cedula || '-',
+        p.email || '-',
+        distName,
+        catName,
+        'Preinscrito',
+        fechaStr,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['#', 'Código', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Distancia', 'Categoría', 'Estado', 'Fecha Preinsc.']],
+      body: tableData,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
+    });
+
+    doc.save(`Preinscritos_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
   // Estados para Meta de Llegada y Retorno
   const [bibInput, setBibInput] = useState<Record<string, string>>({});
   const [recentFinishes, setRecentFinishes] = useState<Record<string, any[]>>({});
@@ -2591,6 +2675,22 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
               </Box>
 
               <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="outlined"
+                  startIcon={<DownloadIcon />}
+                  onClick={exportPreinscritosCSV}
+                  sx={{ borderColor: '#333', color: '#333', '&:hover': { bgcolor: 'rgba(0,0,0,0.05)', borderColor: '#000' } }}
+                >
+                  CSV
+                </Button>
+                <Button
+                  variant="outlined"
+                  startIcon={<PictureAsPdfIcon />}
+                  onClick={exportPreinscritosPDF}
+                  sx={{ borderColor: '#ff4444', color: '#ff4444', '&:hover': { bgcolor: 'rgba(255,0,0,0.05)', borderColor: '#cc0000' } }}
+                >
+                  PDF
+                </Button>
                 <IconButton onClick={() => fetchParticipants(participantRaceFilter)} disabled={participantsLoading || !participantRaceFilter} color="inherit">
                   {participantsLoading ? <CircularProgress size={24} color="inherit" /> : <RestartAltIcon />}
                 </IconButton>
