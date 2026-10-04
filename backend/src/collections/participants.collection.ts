@@ -41,6 +41,8 @@ export default {
       distanceName: { type: 'string', title: 'Nombre de Distancia' },
       registrationType: { type: 'string', title: 'Tipo de Registro (individual/team)' },
       checkpointTime: { type: 'number', title: 'Tiempo en Retorno (s)' },
+      timingSource: { type: 'string', title: 'Fuente del Cronometraje (manual/camera)' },
+      timingConfidence: { type: 'number', title: 'Confianza OCR Cámara (0-1)' },
       isPadrino: { type: 'boolean', title: 'Es Padrino UTP' },
       donatedTickets: { type: 'number', title: 'Cupos Donados' },
       shippingAddress: { type: 'textarea', title: 'Dirección de Envío Kit (Virtual)' },

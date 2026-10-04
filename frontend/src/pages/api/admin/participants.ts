@@ -71,6 +71,8 @@ export const GET: APIRoute = async ({ request }) => {
       finishTime: item.data?.finishTime !== undefined && item.data?.finishTime !== null && item.data?.finishTime !== '' ? Number(item.data.finishTime) : undefined,
       checkpointTime: item.data?.checkpointTime !== undefined && item.data?.checkpointTime !== null && item.data?.checkpointTime !== '' ? Number(item.data.checkpointTime) : undefined,
       timerUsed: item.data?.timerUsed !== undefined && item.data?.timerUsed !== null && item.data?.timerUsed !== '' ? Number(item.data.timerUsed) : undefined,
+      timingSource: item.data?.timingSource || '',
+      timingConfidence: item.data?.timingConfidence !== undefined && item.data?.timingConfidence !== null && item.data?.timingConfidence !== '' ? Number(item.data.timingConfidence) : undefined,
     }));
 
     return new Response(JSON.stringify({ success: true, participants }), {

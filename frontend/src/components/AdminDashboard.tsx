@@ -27,7 +27,9 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import LocalActivityIcon from '@mui/icons-material/LocalActivity';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import VideocamIcon from '@mui/icons-material/Videocam';
 import DashboardView from './DashboardView';
+import CameraTimingView from './CameraTimingView';
 import MUIThemeProvider from './MUIThemeProvider';
 
 const ACCENT = '#FF6B00';
@@ -108,6 +110,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const TABS = [
     { label: 'Visión General (Dashboard)', value: 0, icon: <DashboardIcon sx={{ mr: 2 }} /> },
     { label: 'Cronometraje en Vivo', value: 1, icon: <TimerIcon sx={{ mr: 2 }} /> },
+    { label: 'Cronometraje con Cámara', value: 8, icon: <VideocamIcon sx={{ mr: 2 }} /> },
     { label: 'Gestión de Códigos', value: 2, icon: <LocalActivityIcon sx={{ mr: 2 }} /> },
     { label: 'Mapeo de Modalidades', value: 3, icon: <EditLocationAltIcon sx={{ mr: 2 }} /> },
     { label: 'Gestión de Categorías', value: 4, icon: <GroupsIcon sx={{ mr: 2 }} /> },
@@ -1696,6 +1699,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           </Grid>
         ))}
       </Grid>
+      )}
+
+      {tabIndex === 8 && (
+        <CameraTimingView races={races} />
       )}
 
       {tabIndex === 2 && (
