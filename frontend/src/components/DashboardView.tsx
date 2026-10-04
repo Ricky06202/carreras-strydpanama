@@ -4,6 +4,16 @@ import TombolaModal from './TombolaModal';
 
 const ACCENT = '#FF6B00';
 
+const AGE_RANGES = [
+  { label: 'Menores de 13', min: 0, max: 12 },
+  { label: '13 - 17 años', min: 13, max: 17 },
+  { label: '18 - 29 años', min: 18, max: 29 },
+  { label: '30 - 39 años', min: 30, max: 39 },
+  { label: '40 - 49 años', min: 40, max: 49 },
+  { label: '50 - 59 años', min: 50, max: 59 },
+  { label: '60+ años', min: 60, max: 200 },
+];
+
 interface DashboardViewProps {
   races: any[];
   allDistances: any[];
@@ -98,6 +108,12 @@ export default function DashboardView({ races, allDistances, participants, onFet
      let modalities = { presencial: 0, virtual: 0 }; // Ej. Mock basado en distancia
      let sizes: Record<string, number> = {};
      let cats: Record<string, number> = {};
+     let ageGroups: Record<string, number> = {};
+
+     // Año de referencia: usa la fecha de la carrera si existe, si no, el año actual
+     const refRace = races.find(r => r.id === selectedRace);
+     const rawDate = refRace?.data?.date || refRace?.date;
+     const refYear = rawDate ? new Date(rawDate).getFullYear() : new Date().getFullYear();
 
      participants.forEach(p => {
         if (p.participantType === 'padrino') return; // Excluir padrinos de stats logisticas
@@ -112,13 +128,24 @@ export default function DashboardView({ races, allDistances, participants, onFet
            cats[p.categoryName] = (cats[p.categoryName] || 0) + 1;
         }
 
+        // Rangos de edad (derivada de birthDate)
+        if (p.birthDate && typeof p.birthDate === 'string') {
+           const birthYear = parseInt(p.birthDate.split('-')[0], 10);
+           if (!isNaN(birthYear)) {
+              const age = refYear - birthYear;
+              const bucket = AGE_RANGES.find(r => age >= r.min && age <= r.max);
+              const label = bucket ? bucket.label : 'Sin rango';
+              ageGroups[label] = (ageGroups[label] || 0) + 1;
+           }
+        }
+
         // Tallas
         const size = p.size || 'N/A';
         sizes[size] = (sizes[size] || 0) + 1;
      });
 
-     return { genders, modalities, sizes, cats };
-  }, [participants]);
+     return { genders, modalities, sizes, cats, ageGroups };
+  }, [participants, races, selectedRace]);
 
   const birthdays = useMemo(() => {
     return participants.filter((p: any) => {
@@ -326,6 +353,33 @@ export default function DashboardView({ races, allDistances, participants, onFet
                   <Typography variant="subtitle1" sx={{ color: ACCENT, fontWeight: 900 }}>{count}</Typography>
                 </ListItem>
               ))}
+           </List>
+        </Paper>
+      </Box>
+
+      {/* Analytics Row 3: Rangos de Edad */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr' }, gap: 3, mb: 4 }}>
+        <Paper sx={{ p: 3, borderRadius: 3, bgcolor: 'background.paper', border: 1, borderColor: 'divider' }}>
+           <Typography variant="subtitle1" sx={{ fontWeight: 'bold', mb: 3, color: 'text.primary' }}>Corredores por Rango de Edad</Typography>
+           <List disablePadding sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {[...AGE_RANGES.map(r => r.label), ...(stats.ageGroups['Sin rango'] ? ['Sin rango'] : [])].map(label => {
+                 const count = stats.ageGroups[label] || 0;
+                 const pct = kpis.totalInscritos > 0 ? (count / kpis.totalInscritos) * 100 : 0;
+                 return (
+                   <ListItem key={label} sx={{ bgcolor: 'action.hover', borderRadius: 2, px: 2, py: 1.5, display: 'block' }}>
+                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                       <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'text.primary' }}>{label}</Typography>
+                       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+                         <Typography variant="caption" sx={{ color: 'text.secondary' }}>{pct.toFixed(1)}%</Typography>
+                         <Typography variant="subtitle1" sx={{ color: ACCENT, fontWeight: 900 }}>{count}</Typography>
+                       </Box>
+                     </Box>
+                     <Box sx={{ height: 6, borderRadius: 3, bgcolor: 'background.default', overflow: 'hidden' }}>
+                        <Box sx={{ height: '100%', width: `${pct}%`, minWidth: count > 0 ? 6 : 0, bgcolor: ACCENT, borderRadius: 3, transition: 'width 0.5s ease' }} />
+                     </Box>
+                   </ListItem>
+                 );
+              })}
            </List>
         </Paper>
       </Box>
