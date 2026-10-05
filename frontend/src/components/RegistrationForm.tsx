@@ -671,8 +671,9 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     setLoading(false);
   };
 
-  // Re-validar el código cuando el usuario cambia su tipo de participante o tipo de inscripción
-  // en el paso 1, ya que la validación inicial en paso 0 usa el tipo por defecto ('general').
+  // Re-validar el código cuando el usuario cambia su tipo de participante o tipo
+  // de inscripción, ya que el código ahora se valida en el paso 2 (Método de Pago)
+  // y el tipo de participante se eligió en el paso 1.
   useEffect(() => {
     if (code.trim() && selectedRace && codeValid !== null) {
       validateCode();
@@ -1018,20 +1019,8 @@ const handleSubmit = async () => {
               </Select>
             </FormControl>
 
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
-              <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={isRaceUpcoming || isRaceClosed || isRaceFinished} />
-              <Button variant="outlined" onClick={validateCode} disabled={loading || isRaceUpcoming || isRaceClosed || isRaceFinished} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
-                Validar
-              </Button>
-            </Box>
-            
-            {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2">{codeValid.message}</Typography>}
-
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button variant="contained" onClick={async () => {
-                if (code.trim() && codeValid === null) await validateCode();
-                setStep(1);
-              }} disabled={!selectedRace || isRaceUpcoming || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace || isRaceUpcoming || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
@@ -1697,7 +1686,7 @@ const handleSubmit = async () => {
                   const distOk = distances.length === 0 || !!formData.distance;
                   const termsOk = !raceInfo?.data?.termsAndConditions || termsAccepted;
                   if (!valid || !distOk || !termsOk) return;
-                  if ((codeValid && codeValid.valid) || isRaceFull || isRaceClosed) {
+                  if (isRaceFull || isRaceClosed) {
                     handleSubmit();
                   } else {
                     setStep(2);
@@ -1707,7 +1696,7 @@ const handleSubmit = async () => {
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
-                {(isRaceFull || isRaceClosed) ? 'Unirse a Lista de Espera' : (codeValid && codeValid.valid ? 'Completar Registro' : 'Continuar')}
+                {(isRaceFull || isRaceClosed) ? 'Unirse a Lista de Espera' : 'Continuar'}
               </Button>
             </Box>
           </Box>
@@ -1716,6 +1705,18 @@ const handleSubmit = async () => {
         {step === 2 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Typography variant="h6" sx={{ mb: 2 }}>Selecciona tu método de pago</Typography>
+
+            {/* Código de cupón / boleto físico (movido desde el paso de Carrera) */}
+            <Box>
+              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
+                <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={loading} />
+                <Button variant="outlined" onClick={validateCode} disabled={loading} sx={{ borderColor: ACCENT, color: ACCENT, '&:hover': { backgroundColor: 'rgba(255,107,0,0.08)' }, minWidth: { xs: '100%', sm: 'auto' }, py: { xs: 1.5, sm: 'auto' } }}>
+                  Validar
+                </Button>
+              </Box>
+              {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2" sx={{ mt: 0.5 }}>{codeValid.message}</Typography>}
+              {!codeValid && <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>¿Tienes un cupón o boleto físico de un vendedor? Escríbelo y pulsa Validar para aplicar el descuento.</Typography>}
+            </Box>
             
             {(codeValid && codeValid.valid) ? (
               <Box sx={{ bgcolor: 'rgba(46,125,50,0.10)', border: '1.5px solid #2e7d32', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
