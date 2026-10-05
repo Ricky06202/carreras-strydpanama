@@ -737,10 +737,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Dorsal,Nombre,Email,Cedula,Equipo,Carrera,Distancia,Pago\r\n";
+    csvContent += "Dorsal,Nombre,Email,Cedula,Equipo,Carrera,Distancia,Talla,Pago\r\n";
     
     filtered.forEach(p => {
-        csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},${p.paymentStatus}\r\n`;
+        csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},"${p.size || '-'}",${p.paymentStatus}\r\n`;
     });
     
     const encodedUri = encodeURI(csvContent);
@@ -793,6 +793,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           p.lastName || p.title?.split(' ').slice(1).join(' ') || '-',
           `$${p.amountPaid || 0}`,
           p.categoryName || '-',
+          p.size || '-',
           p.paymentStatus || '-',
           p.discountCode || '-',
           fechaStr
@@ -801,7 +802,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
     autoTable(doc, {
       startY: 35,
-      head: [['#', 'Dorsal', 'Nombre', 'Apellido', 'Pago ($)', 'Categoría', 'Método Pago', 'Cupón', 'Fecha Inscripción']],
+      head: [['#', 'Dorsal', 'Nombre', 'Apellido', 'Pago ($)', 'Categoría', 'Talla', 'Método Pago', 'Cupón', 'Fecha Inscripción']],
       body: tableData,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
