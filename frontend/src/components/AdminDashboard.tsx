@@ -1319,7 +1319,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             }}
           >
             {TABS.map((t) => (
-              <Tab key={t.value} label={t.label} />
+              <Tab key={t.value} value={t.value} label={t.label} />
             ))}
           </Tabs>
         )}
