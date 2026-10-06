@@ -2173,7 +2173,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
-                    .sort((a,b) => (Number(a.bibNumber) || 0) - (Number(b.bibNumber) || 0));
+                    .sort((a,b) => (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0));
                   const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
                   const paginated = filtered.slice(participantPage * PARTICIPANTS_PER_PAGE, (participantPage + 1) * PARTICIPANTS_PER_PAGE);
                   return paginated.map((p) => {
