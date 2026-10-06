@@ -174,6 +174,32 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const createFreeCode = async () => {
+    if (!codeRaceId) {
+      alert("Seleccione primero la carrera para el código gratuito");
+      return;
+    }
+    try {
+      setCodesLoading(true);
+      const res = await fetch('/api/admin/bulk-codes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ vendor: 'Promocion', raceId: codeRaceId, quantity: 1, allowedType: 'all', freeCode: true })
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchCodeStats();
+        alert(`🎟️ Código gratuito creado: ${data.codeStrings?.[0] || '??'}\n\nEntrégaselo a la persona ganadora: vale por una inscripción de B/. 0.00 en esta carrera.`);
+      } else {
+        alert(data.error);
+      }
+    } catch (e) {
+      alert("Error al crear el código gratuito");
+    } finally {
+      setCodesLoading(false);
+    }
+  };
+
   const [openBatchModal, setOpenBatchModal] = useState<string | null>(null);
   const [selectedForSale, setSelectedForSale] = useState<Record<string, boolean>>({});
 
@@ -891,6 +917,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         p.lastName || '',
         p.cedula || '-',
         p.email || '-',
+        p.phone || '-',
         distName,
         catName,
         'Preinscrito',
@@ -900,7 +927,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
     autoTable(doc, {
       startY: 40,
-      head: [['#', 'Código', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Distancia', 'Categoría', 'Estado', 'Fecha Preinsc.']],
+      head: [['#', 'Código', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Teléfono', 'Distancia', 'Categoría', 'Estado', 'Fecha Preinsc.']],
       body: tableData,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
@@ -1750,6 +1777,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <Button variant="contained" onClick={generateCodes} disabled={codesLoading} sx={{ py: 1, px: 3, bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                   {codesLoading ? 'PROCESANDO...' : 'GENERAR CÓDIGOS'}
                 </Button>
+
+                <Button variant="outlined" onClick={createFreeCode} disabled={codesLoading} sx={{ py: 1, px: 2, borderColor: '#2e7d32', color: '#2e7d32', '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46,125,50,0.08)' } }}>
+                  🎟️ CÓDIGO GRATUITO
+                </Button>
               </Box>
             </CardContent>
           </Card>
@@ -1766,7 +1797,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   <TableCell align="center"><strong>Faltan x Vender</strong></TableCell>
                   <TableCell align="center"><strong>Faltan x Canjear</strong></TableCell>
                   <TableCell align="center"><strong>Canjes Exitosos</strong></TableCell>
-                  <TableCell align="center"><strong>🎓 Cupos Padrino</strong></TableCell>
+                  <TableCell align="center"><strong>🎓 Padrino / 🎟️ Gratuitos</strong></TableCell>
                   <TableCell align="center"><strong>Acciones</strong></TableCell>
                 </TableRow>
               </TableHead>
@@ -1783,13 +1814,22 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     <TableCell align="center">{stat.sold}</TableCell>
                     <TableCell align="center"><Typography color="info.main">{stat.redeemed}</Typography></TableCell>
                     <TableCell align="center">
-                      {stat.padrinoTotal > 0 ? (
-                        <Chip icon={<FavoriteIcon sx={{ fontSize: 14 }} />} label={`${stat.padrinoRedeemed}/${stat.padrinoTotal}`} color="success" size="small" sx={{ fontWeight: 'bold' }} />
-                      ) : <Typography variant="body2" color="text.disabled">—</Typography>}
+                      {stat.padrinoTotal === 0 && stat.freeTotal === 0 ? (
+                        <Typography variant="body2" color="text.disabled">—</Typography>
+                      ) : (
+                        <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', flexWrap: 'wrap' }}>
+                          {stat.padrinoTotal > 0 && (
+                            <Chip icon={<FavoriteIcon sx={{ fontSize: 14 }} />} label={`${stat.padrinoRedeemed}/${stat.padrinoTotal}`} color="success" size="small" sx={{ fontWeight: 'bold' }} />
+                          )}
+                          {stat.freeTotal > 0 && (
+                            <Chip label={`🎟️ ${stat.freeRedeemed}/${stat.freeTotal}`} size="small" sx={{ fontWeight: 'bold', bgcolor: 'rgba(46,125,50,0.12)', color: '#2e7d32' }} />
+                          )}
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell align="center">
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', justifyContent: 'center' }}>
-                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={(stat.total === 0 && stat.padrinoTotal === 0) || codesLoading}>
+                         <Button size="small" variant="outlined" onClick={() => handleOpenBatchModal(stat.batchId)} disabled={(stat.total === 0 && stat.padrinoTotal === 0 && stat.freeTotal === 0) || codesLoading}>
                            Administrar Lote
                          </Button>
                          <Button size="small" variant="contained" sx={{ bgcolor: ACCENT, color: 'white', '&:hover': { bgcolor: '#E55A00' } }} onClick={() => printLibreta(stat.batchId)} disabled={codesLoading}>
@@ -1823,23 +1863,25 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                        <TableCell>Código Exacto</TableCell>
                        <TableCell>Estado</TableCell>
                        <TableCell align="center">🎓 Cupo de Padrino</TableCell>
+                       <TableCell align="center">🎟️ Gratuito</TableCell>
                      </TableRow>
                    </TableHead>
                    <TableBody>
                      {allCodes.filter(c => c.batchId === openBatchModal).map(code => (
-                       <TableRow key={code.id} sx={{ opacity: code.status === 'generated' && !code.isPadrinoCode ? 1 : 0.7, bgcolor: code.isPadrinoCode ? 'rgba(255,107,0,0.05)' : 'inherit' }}>
+                       <TableRow key={code.id} sx={{ opacity: code.status === 'generated' && !code.isPadrinoCode && !code.isFreeCode ? 1 : 0.7, bgcolor: code.isPadrinoCode ? 'rgba(255,107,0,0.05)' : (code.isFreeCode ? 'rgba(46,125,50,0.05)' : 'inherit') }}>
                          <TableCell padding="checkbox">
                            <Checkbox
                               checked={!!selectedForSale[code.id]}
                               onChange={() => handleToggleCode(code.id)}
-                              disabled={code.status !== 'generated' || code.isPadrinoCode}
+                              disabled={code.status !== 'generated' || code.isPadrinoCode || code.isFreeCode}
                            />
                          </TableCell>
                          <TableCell sx={{ fontFamily: 'monospace', fontWeight: 'bold', fontSize: '1.1rem' }}>{code.code}</TableCell>
                          <TableCell>
                             {code.isPadrinoCode && <Chip size="small" icon={<FavoriteIcon sx={{ fontSize: 12 }} />} label="Cupo Padrino" color="success" sx={{ mr: 1 }} />}
-                            {!code.isPadrinoCode && code.status === 'generated' && <Chip size="small" label="Falta x Vender" color="success" />}
-                            {!code.isPadrinoCode && code.status === 'sold' && <Chip size="small" label="Vendido (Falta x Canjear)" color="warning" />}
+                            {code.isFreeCode && <Chip size="small" label="Cupón Gratuito" sx={{ mr: 1, bgcolor: 'rgba(46,125,50,0.12)', color: '#2e7d32', fontWeight: 'bold' }} />}
+                            {!code.isPadrinoCode && !code.isFreeCode && code.status === 'generated' && <Chip size="small" label="Falta x Vender" color="success" />}
+                            {!code.isPadrinoCode && !code.isFreeCode && code.status === 'sold' && <Chip size="small" label="Vendido (Falta x Canjear)" color="warning" />}
                             {code.status === 'redeemed' && <Chip size="small" label="Canjeado Exitoso" color="info" />}
                          </TableCell>
                          <TableCell align="center">
@@ -1854,6 +1896,24 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                    method: 'POST',
                                    headers: { 'Content-Type': 'application/json' },
                                    body: JSON.stringify({ codeId: code.id, isPadrinoCode: !code.isPadrinoCode })
+                                 });
+                                 await fetchCodeStats();
+                               } finally { setCodesLoading(false); }
+                             }}
+                           />
+                         </TableCell>
+                         <TableCell align="center">
+                           <Checkbox
+                             checked={!!code.isFreeCode}
+                             disabled={code.status === 'redeemed' || codesLoading}
+                             sx={{ '&.Mui-checked': { color: '#2e7d32' } }}
+                             onChange={async () => {
+                               setCodesLoading(true);
+                               try {
+                                 await fetch('/api/admin/mark-free-code', {
+                                   method: 'POST',
+                                   headers: { 'Content-Type': 'application/json' },
+                                   body: JSON.stringify({ codeId: code.id, isFreeCode: !code.isFreeCode })
                                  });
                                  await fetchCodeStats();
                                } finally { setCodesLoading(false); }

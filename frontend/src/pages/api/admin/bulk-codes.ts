@@ -5,7 +5,7 @@ import { env } from 'cloudflare:workers';
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { vendor, raceId, quantity, allowedType } = body;
+    const { vendor, raceId, quantity, allowedType, freeCode } = body;
     
     if (!vendor || !raceId || !quantity || quantity < 1 || quantity > 100) {
       return new Response(JSON.stringify({ error: 'Parámetros inválidos' }), { status: 400 });
@@ -16,6 +16,7 @@ export const POST: APIRoute = async ({ request }) => {
     const batchId = `${shortVendor}-${todayDate}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
     const codes = [];
+    const codeStrings: string[] = [];
     // Omitimos letras que se pueden confundir con números: O, I, 0, 1
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; 
 
@@ -25,19 +26,21 @@ export const POST: APIRoute = async ({ request }) => {
             codeStr += characters.charAt(Math.floor(Math.random() * characters.length));
         }
 
+        const codeTitle = freeCode ? `PRM-${codeStr}` : `TKT-${codeStr}`;
         const payload = {
           collectionId: 'col-registration_codes-469bc379',
           collection_id: 'col-registration_codes-469bc379',
-          title: `TKT-${codeStr}`,
+          title: codeTitle,
           status: 'published',
           data: {
-              title: `TKT-${codeStr}`,
+              title: codeTitle,
               code: codeStr,
               race: raceId,
               vendor: vendor,
               batchId: batchId,
               status: 'generated',
-              allowedType: allowedType || 'all'
+              allowedType: allowedType || 'all',
+              ...(freeCode ? { isFreeCode: true } : {})
           }
         };
 
@@ -46,9 +49,10 @@ export const POST: APIRoute = async ({ request }) => {
           body: JSON.stringify(payload)
         });
         codes.push(result);
+        codeStrings.push(codeStr);
     }
 
-    return new Response(JSON.stringify({ success: true, batchId, codesGenerated: codes.length }), {
+    return new Response(JSON.stringify({ success: true, batchId, codesGenerated: codes.length, codeStrings }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });

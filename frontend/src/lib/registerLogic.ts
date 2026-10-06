@@ -25,6 +25,12 @@ export const processRegistration = async (env: any, body: any) => {
             body.paymentMethod = 'Cupon Padrino';
             body.paymentStatus = 'Cupon Padrino';
         }
+
+        if (match.data?.isFreeCode === true) {
+            body.totalAmount = 0;
+            body.paymentMethod = 'Cupon Gratuito';
+            body.paymentStatus = 'Cupon Gratuito';
+        }
     }
     
     // 1. Obtener la carrera para conocer su startingBib

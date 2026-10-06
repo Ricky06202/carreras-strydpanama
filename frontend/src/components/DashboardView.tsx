@@ -65,7 +65,8 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
        // Participantes con cupo de padrino (su cupo fue pagado por el donante)
        const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
-        const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
+       const isFreeCodePay = p.paymentMethod === 'Cupon Gratuito' || p.paymentStatus === 'Cupon Gratuito';
+        const isConfirmed = isPadrinoSponsored || isFreeCodePay || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
        
         if (isConfirmed) {
             if (!isPadrinoSolo) pagosConfirmados++;
@@ -77,6 +78,9 @@ export default function DashboardView({ races, allDistances, participants, onFet
        if (isConfirmed) {
            // Si es cupo de padrino no suma dinero (ya lo pagó el donante previamente)
            if (isPadrinoSponsored) return; 
+
+           // Cupón gratuito de promoción: inscripción confirmada pero vale B/. 0
+           if (isFreeCodePay) return;
 
            // Validamos si usó Yappy para la comisión
            const isYappy = (p.paymentMethod || '').toLowerCase().includes('yappy') || (p.paymentStatus || '').toLowerCase().includes('yappy');

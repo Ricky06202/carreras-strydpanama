@@ -161,7 +161,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const [registeredRunnersCount, setRegisteredRunnersCount] = useState(0);
   const [code, setCode] = useState('');
   const [codeValid, setCodeValid] = useState<{ valid: boolean; message: string } | null>(null);
-  const [codeValidData, setCodeValidData] = useState<{ allowedType?: string; isPadrinoCode?: boolean } | null>(null);
+  const [codeValidData, setCodeValidData] = useState<{ allowedType?: string; isPadrinoCode?: boolean; isFreeCode?: boolean } | null>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<'light' | 'dark'>(getInitialTheme);
   const [registrationType, setRegistrationType] = useState<'individual' | 'team'>('individual');
@@ -659,7 +659,7 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
       const data = await res.json();
       setCodeValid({ valid: data.valid, message: data.message });
       if (data.valid && data.codeData) {
-        setCodeValidData({ allowedType: data.codeData.allowedType, isPadrinoCode: data.codeData.isPadrinoCode });
+        setCodeValidData({ allowedType: data.codeData.allowedType, isPadrinoCode: data.codeData.isPadrinoCode, isFreeCode: data.codeData.isFreeCode === true && data.codeData.isPadrinoCode !== true });
         // Si el código es válido, forzar método de pago a código
         setFormData(prev => ({ ...prev, paymentMethod: 'codigo' }));
       } else if (!data.valid) {
@@ -740,7 +740,7 @@ const handleSubmit = async () => {
         distanceId: formData.distance || null,
         paymentMethod: (isRaceFull || isRaceClosed) 
           ? 'Lista de Espera' 
-          : (isPreinscribing ? 'Preinscripción' : ((codeValid && codeValid.valid) ? 'Boleto Físico (100% Dscto)' : formData.paymentMethod)),
+          : (isPreinscribing ? 'Preinscripción' : ((codeValid && codeValid.valid) ? (codeValidData?.isFreeCode ? 'Cupon Gratuito' : 'Boleto Físico (100% Dscto)') : formData.paymentMethod)),
         termsAccepted: termsAccepted,
         discountCode: code,
         registrationType: registrationType,
@@ -1720,7 +1720,9 @@ const handleSubmit = async () => {
             
             {(codeValid && codeValid.valid) ? (
               <Box sx={{ bgcolor: 'rgba(46,125,50,0.10)', border: '1.5px solid #2e7d32', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Typography variant="body1" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>🎓 Cupo patrocinado — Sin costo de inscripción</Typography>
+                <Typography variant="body1" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>
+                  {codeValidData?.isFreeCode ? '🎟️ Cupón Gratuito — Tu inscripción no tiene costo (B/. 0.00)' : codeValidData?.isPadrinoCode ? '🎓 Cupo patrocinado — Sin costo de inscripción' : '🎫 Boleto físico validado — Sin costo en línea'}
+                </Typography>
               </Box>
             ) : (
               <FormControl fullWidth>
@@ -2076,7 +2078,7 @@ const handleSubmit = async () => {
                     {(isRaceFull || isRaceClosed)
                       ? 'Sin costo (Lista de Espera)'
                       : ((codeValid && codeValid.valid)
-                        ? 'Boleto Físico (Cupón)'
+                        ? (codeValidData?.isFreeCode ? 'Cupón Gratuito (B/. 0.00)' : 'Boleto Físico (Cupón)')
                         : (paymentMethods.find(p => p.value === formData.paymentMethod)?.label || formData.paymentMethod || 'No especificado'))}
                   </Typography>
                 </Box>
