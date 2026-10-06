@@ -37,8 +37,9 @@ interface Props {
     birthDate: string;
     size: string;
     confirmationCode: string;
+    createdAt?: number;
   };
-  race: { id: string; title: string; date?: string; platformFee?: number; price?: number };
+  race: { id: string; title: string; date?: string; platformFee?: number; price?: number; legacyPrice?: number; legacyCutoff?: number };
   distance: { name?: string; price?: number };
   category: { name?: string };
 }
@@ -54,7 +55,8 @@ export default function CompleteRegistration({ participant, race, distance, cate
   const [assignedBib, setAssignedBib] = useState<number | null>(null);
   const yappyBtnRef = useRef<any>(null);
 
-  const basePrice = distance?.price ?? race?.price ?? 0;
+  const isLegacy = !!(race?.legacyPrice && race?.legacyCutoff && participant.createdAt && participant.createdAt < race.legacyCutoff);
+  const basePrice = isLegacy ? Number(race.legacyPrice) : (distance?.price ?? race?.price ?? 0);
   const platformFee = paymentMethod === 'yappy' ? (race?.platformFee ?? 0.45) : 0;
   const total = basePrice + platformFee;
 
@@ -283,6 +285,12 @@ export default function CompleteRegistration({ participant, race, distance, cate
           <Typography variant="body2" sx={{ mt: 1, color: ACCENT, fontWeight: 'bold' }}>Total a pagar: ${total.toFixed(2)}</Typography>
           {paymentMethod === 'yappy' && (
             <Typography variant="caption" color="text.secondary">Incluye cargo de plataforma Yappy: +${(race?.platformFee ?? 0.45).toFixed(2)}</Typography>
+          )}
+          {isLegacy && (
+            <Alert severity="success" sx={{ mt: 1.5, py: 0.5 }}>
+              🎁 Tu preinscripción conserva el <b>precio anterior de B/. {Number(race.legacyPrice).toFixed(2)}</b> e incluye T-shirt
+              {participant.size ? <> — talla registrada: <b>{participant.size}</b></> : ' (sin talla registrada: aplica sin camisa)'}.
+            </Alert>
           )}
         </Box>
 

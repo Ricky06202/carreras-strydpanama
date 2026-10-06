@@ -42,6 +42,18 @@ export default function DashboardView({ races, allDistances, participants, onFet
     const currentRaceObj = races.find(r => r.id === selectedRace);
     const feeConfigRaw = currentRaceObj?.data?.platformFee;
     const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.45;
+    const racePrice = Number(currentRaceObj?.data?.price) || 15;
+    const legacyPrice = Number(currentRaceObj?.data?.legacyPrice) || 0;
+    const legacyCutoff = Number(currentRaceObj?.data?.legacyCutoff) || 0;
+
+    const priceFor = (p: any) => {
+      const createdMs = Number(p.createdAt) || 0;
+      const isLegacy = legacyPrice > 0 && legacyCutoff > 0 && createdMs > 0 && createdMs < legacyCutoff;
+      if (!isLegacy && (p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
+      return isLegacy ? legacyPrice : racePrice;
+    };
+
+    let adeudado = 0;
 
     participants.forEach(p => {
        const isPadrinoSolo = p.participantType === 'padrino';
@@ -55,11 +67,11 @@ export default function DashboardView({ races, allDistances, participants, onFet
        const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
        const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
        
-       if (isConfirmed) {
-           if (!isPadrinoSolo) pagosConfirmados++;
-       } else {
-           if (!isPadrinoSolo) pagosPendientes++;
-       }
+        if (isConfirmed) {
+            if (!isPadrinoSolo) pagosConfirmados++;
+        } else {
+            if (!isPadrinoSolo) { pagosPendientes++; adeudado += priceFor(p); }
+        }
 
        // --- Cálculo de Finanzas ---
        if (isConfirmed) {
@@ -80,14 +92,9 @@ export default function DashboardView({ races, allDistances, participants, onFet
                return; 
            }
 
-           // Corredor normal (online o cupón físico)
-           let basePrice = 15; // General
-           if ((p.categoryName || '').toLowerCase().includes('estudiante')) {
-               basePrice = 10;
-           }
-
-           baseRevenue += basePrice;
-           if (isYappy) platformFeeRevenue += feeConfig;
+            // Corredor normal (online o cupón físico): precio según corte legacy / carrera
+            baseRevenue += priceFor(p);
+            if (isYappy) platformFeeRevenue += feeConfig;
        }
     });
 
@@ -98,7 +105,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
       pagosPendientes, 
       baseRevenue: baseRevenue || 0, 
       platformFeeRevenue: platformFeeRevenue || 0,
-      totalAdeudado: pagosPendientes * 15 // Mock standard para deuda estimada, o recalcular si quisieramos
+      totalAdeudado: adeudado // Suma del precio esperado (legacy o actual) por cada pago pendiente
     };
   }, [participants, allDistances, races, selectedRace]);
 
@@ -174,7 +181,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
   );
 
   const currentRaceObj = races.find(r => r.id === selectedRace);
-  const showSizes = currentRaceObj?.data?.showShirtSize;
+  const showSizes = currentRaceObj?.data?.showShirtSize || Object.entries(stats.sizes).some(([t, c]) => t !== 'N/A' && Number(c) > 0);
 
   return (
     <Box>

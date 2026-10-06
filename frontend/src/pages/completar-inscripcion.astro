@@ -39,6 +39,8 @@ if (!code && !cedula) {
       let raceDate = '';
       let platformFee = 0.45;
       let racePrice = 0;
+      let legacyPrice = 0;
+      let legacyCutoff = 0;
       if (raceId) {
         try {
           const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
@@ -47,6 +49,8 @@ if (!code && !cedula) {
           raceDate = rd.date || '';
           if (rd.platformFee !== undefined && rd.platformFee !== '') platformFee = Number(rd.platformFee);
           racePrice = rd.price ? Number(rd.price) : 0;
+          legacyPrice = rd.legacyPrice ? Number(rd.legacyPrice) : 0;
+          legacyCutoff = rd.legacyCutoff ? Number(rd.legacyCutoff) : 0;
         } catch (e) {
           console.error('Error fetching race for preinscripcion:', e);
         }
@@ -89,8 +93,9 @@ if (!code && !cedula) {
           birthDate: pd.birthDate || '',
           size: pd.size || '',
           confirmationCode: pd.confirmationCode || code || '',
+          createdAt: match.created_at || 0,
         },
-        race: { id: raceId, title: raceName, date: raceDate, platformFee, price: racePrice },
+        race: { id: raceId, title: raceName, date: raceDate, platformFee, price: racePrice, legacyPrice, legacyCutoff },
         distance: { name: distanceName, price: distancePrice },
         category: { name: categoryName },
       };

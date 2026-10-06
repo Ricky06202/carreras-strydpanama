@@ -80,6 +80,14 @@ export default {
         type: 'boolean',
         title: 'Mostrar Talla de Camiseta',
       },
+      legacyPrice: {
+        type: 'number',
+        title: 'Precio Anterior (para inscripciones creadas antes del corte)',
+      },
+      legacyCutoff: {
+        type: 'number',
+        title: 'Corte de Precio (Unix ms; creados antes de esta fecha pagan el Precio Anterior)',
+      },
       timerStart: {
         type: 'number',
         title: 'Inicio Cronómetro (Timestamp)',
