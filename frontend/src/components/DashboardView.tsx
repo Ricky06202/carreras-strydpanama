@@ -41,15 +41,15 @@ export default function DashboardView({ races, allDistances, participants, onFet
     // Obtener configuración de plataforma de la carrera actual
     const currentRaceObj = races.find(r => r.id === selectedRace);
     const feeConfigRaw = currentRaceObj?.data?.platformFee;
-    const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.45;
+    const feeConfig = (feeConfigRaw !== undefined && feeConfigRaw !== '' && !isNaN(Number(feeConfigRaw))) ? Number(feeConfigRaw) : 0.5;
     const racePrice = Number(currentRaceObj?.data?.price) || 15;
     const legacyPrice = Number(currentRaceObj?.data?.legacyPrice) || 0;
     const legacyCutoff = Number(currentRaceObj?.data?.legacyCutoff) || 0;
 
     const priceFor = (p: any) => {
-      const createdMs = Number(p.createdAt) || 0;
+      const createdMs = Number(p.createdAt || p.created_at || p.createdOn) || 0;
       const isLegacy = legacyPrice > 0 && legacyCutoff > 0 && createdMs > 0 && createdMs < legacyCutoff;
-      if (!isLegacy && (p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
+      if ((p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
       return isLegacy ? legacyPrice : racePrice;
     };
 
@@ -65,7 +65,7 @@ export default function DashboardView({ races, allDistances, participants, onFet
 
        // Participantes con cupo de padrino (su cupo fue pagado por el donante)
        const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
-       const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy';
+        const isConfirmed = isPadrinoSponsored || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
        
         if (isConfirmed) {
             if (!isPadrinoSolo) pagosConfirmados++;
@@ -92,9 +92,10 @@ export default function DashboardView({ races, allDistances, participants, onFet
                return; 
            }
 
-            // Corredor normal (online o cupón físico): precio según corte legacy / carrera
-            baseRevenue += priceFor(p);
-            if (isYappy) platformFeeRevenue += feeConfig;
+             // Corredor normal (online o cupón físico): lo realmente pagado; si no hay monto registrado, el precio esperado
+             const paidAmount = Number(p.amountPaid) || 0;
+             baseRevenue += paidAmount > 0 ? paidAmount : priceFor(p);
+             if (isYappy) platformFeeRevenue += feeConfig;
        }
     });
 
