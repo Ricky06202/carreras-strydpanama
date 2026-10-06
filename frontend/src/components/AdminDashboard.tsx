@@ -751,6 +751,28 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const summarizePayments = (list: any[]) => {
+    const byAmount: Record<string, number> = {};
+    const byMethod: Record<string, number> = {};
+    list.forEach(p => {
+      const amt = Number(p.amountPaid) || 0;
+      const ak = `B/. ${amt % 1 ? amt.toFixed(2) : amt}`;
+      byAmount[ak] = (byAmount[ak] || 0) + 1;
+      const m = String(p.paymentMethod || p.paymentStatus || '').toLowerCase();
+      let label = 'Otro';
+      if (m.includes('yappy')) label = 'Yappy';
+      else if (m.includes('gratuito')) label = 'Cupón Gratuito';
+      else if (m.includes('padrino')) label = 'Cupo Padrino';
+      else if (m.includes('boleto')) label = 'Boleto Físico';
+      else if (m.includes('transfer')) label = 'Transferencia';
+      else if (m.includes('cash') || m.includes('efectivo')) label = 'Efectivo';
+      else if (m.includes('preinscri')) label = 'Preinscrito';
+      else if (m) label = p.paymentMethod || p.paymentStatus;
+      byMethod[label] = (byMethod[label] || 0) + 1;
+    });
+    return { byAmount, byMethod };
+  };
+
   const exportParticipantsCSV = () => {
     const filtered = participants.filter(p => {
       if (p.participantType === 'padrino') return false;
@@ -771,6 +793,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},"${p.size || '-'}",${p.paymentStatus},${amount}\r\n`;
     });
     csvContent += `,,,,,,,,"TOTAL",$${totalPaid.toFixed(2)}\r\n`;
+    const sum = summarizePayments(filtered);
+    csvContent += `\r\nRESUMEN,CONTEO\r\n`;
+    Object.entries(sum.byAmount).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => { csvContent += `Pagos de ${k},${v}\r\n`; });
+    Object.entries(sum.byMethod).sort((a, b) => b[1] - a[1]).forEach(([k, v]) => { csvContent += `Pagos por ${k},${v}\r\n`; });
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -847,6 +873,15 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.text(`Inscritos en el reporte: ${filtered.length}`, 14, finalY + 17);
+    const sum = summarizePayments(filtered);
+    const chunk = (parts: string[]) => { const out: string[][] = []; for (let i = 0; i < parts.length; i += 4) out.push(parts.slice(i, i + 4)); return out.length ? out : [['—']]; };
+    const amtParts = Object.entries(sum.byAmount).sort((a, b) => (Number(b[0].replace(/[^\d.]/g, '')) || 0) - (Number(a[0].replace(/[^\d.]/g, '')) || 0)).map(([k, v]) => `${k} × ${v}`);
+    const methParts = Object.entries(sum.byMethod).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k}: ${v}`);
+    let yLine = finalY + 24;
+    doc.text('Por monto:', 14, yLine);
+    chunk(amtParts).forEach(line => { yLine += 6; doc.text(line.join('   ·   '), 16, yLine); });
+    yLine += 8; doc.text('Por método de pago:', 14, yLine);
+    chunk(methParts).forEach(line => { yLine += 6; doc.text(line.join('   ·   '), 16, yLine); });
 
     doc.save(`Informe_Inscritos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
