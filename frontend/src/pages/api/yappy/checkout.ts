@@ -1,20 +1,20 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { YappyAPI } from '../../../lib/yappy';
+import { normalizePanamaPhone } from '../../../lib/phone';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
     const { orderId, total, telefono } = body;
 
-    // 1. Sanitizar el número de Yappy (sólo números, máximo/mínimo 8 dígitos en Panamá)
-    const telefonoSanitizado = (telefono || '').replace(/\D/g, '');
-    const telefonoYappy = telefonoSanitizado.slice(-8);
-
-    if (telefonoYappy.length !== 8) {
+    // 1. Validar celular panameño para Yappy: 8 dígitos empezando con 6
+    // (acepta guiones/espacios/+507 al pegar, pero guarda solo los dígitos)
+    const telefonoYappy = normalizePanamaPhone(telefono || '');
+    if (!telefonoYappy || !telefonoYappy.startsWith('6')) {
       return new Response(JSON.stringify({ 
         success: false, 
-        error: 'El teléfono de Yappy debe tener exactamente 8 dígitos numéricos válidos en Panamá.' 
+        error: 'Ese no es un celular panameño válido para Yappy. Debe tener 8 dígitos y empezar con 6 (ej. 6123-4567).' 
       }), { status: 400 });
     }
 

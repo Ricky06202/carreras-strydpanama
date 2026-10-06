@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { apiFetch } from '../../lib/api';
 import { upgradePreinscrito, beginYappyUpgrade } from '../../lib/registerLogic';
+import { normalizePanamaPhone } from '../../lib/phone';
 
 /**
  * Permite a un corredor preinscrito actualizar su método de pago y convertirse
@@ -59,8 +60,20 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     if (String(paymentMethod).toLowerCase() === 'yappy') {
+      const yappyPhone = normalizePanamaPhone(body.phone || pd.phone || '');
+      if (!yappyPhone || !yappyPhone.startsWith('6')) {
+        return new Response(JSON.stringify({ error: 'Para pagar con Yappy se requiere un celular panameño válido (8 dígitos que empiezan con 6). Actualízalo e intenta de nuevo.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (yappyPhone !== normalizePanamaPhone(pd.phone || '')) {
+        const colId = participant.collectionId || 'col-participants-93d1ac21';
+        await apiFetch(`/api/content/${participantId}`, env, {
+          method: 'PUT',
+          body: JSON.stringify({ id: participantId, collectionId: colId, collection_id: colId, title: participant.title, status: 'published', data: { ...pd, phone: yappyPhone } })
+        });
+      }
       const result = await beginYappyUpgrade(env, {
         ...body,
+        phone: yappyPhone,
         participantId,
         email: pd.email,
         upgradeExistingId: true,

@@ -12,9 +12,10 @@ declare global {
 
 import {
   Box, Typography, Button, Paper, Alert, Snackbar, Select, MenuItem,
-  FormControl, InputLabel, CircularProgress, ThemeProvider, createTheme, CssBaseline
+  FormControl, InputLabel, CircularProgress, ThemeProvider, createTheme, CssBaseline, TextField
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { normalizePanamaPhone, isYappyMobilePhone } from '../lib/phone';
 
 const ACCENT = '#FF6B00';
 
@@ -53,6 +54,7 @@ export default function CompleteRegistration({ participant, race, distance, cate
   const [info, setInfo] = useState('');
   const [done, setDone] = useState(false);
   const [assignedBib, setAssignedBib] = useState<number | null>(null);
+  const [payPhone, setPayPhone] = useState(participant?.phone || '');
   const yappyBtnRef = useRef<any>(null);
 
   const isLegacy = !!(race?.legacyPrice && race?.legacyCutoff && participant.createdAt && participant.createdAt < race.legacyCutoff);
@@ -153,10 +155,14 @@ export default function CompleteRegistration({ participant, race, distance, cate
       setError('');
       setInfo('');
       try {
+        const telYappy = normalizePanamaPhone(payPhone || '');
+        if (!telYappy || !telYappy.startsWith('6')) {
+          throw new Error('Ingresa un celular panameño válido para Yappy: 8 dígitos y debe empezar con 6 (ej. 6123-4567).');
+        }
         const resInit = await fetch('/api/complete-registration-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...payUrl('yappy'), totalAmount: total })
+          body: JSON.stringify({ ...payUrl('yappy'), totalAmount: total, phone: telYappy })
         });
         const dataInit = await resInit.json();
         if (!dataInit.success) throw new Error(dataInit.error || 'Error iniciando la orden de pago');
@@ -164,7 +170,6 @@ export default function CompleteRegistration({ participant, race, distance, cate
         const orderId = dataInit.orderId || dataInit.confirmationCode;
         localStorage.setItem('stryd_pending_yappy', JSON.stringify({ code: orderId, timestamp: Date.now() }));
 
-        const telYappy = (participant.phone || '').replace(/\D/g, '');
         const resCheck = await fetch('/api/yappy/checkout', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -360,6 +365,15 @@ export default function CompleteRegistration({ participant, race, distance, cate
 
         {paymentMethod === 'yappy' && (
           <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth size="small" sx={{ mb: 2 }}
+              label="Celular para el cobro Yappy *"
+              value={payPhone}
+              onChange={(e) => setPayPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+              placeholder="Ej: 61234567"
+              error={!!payPhone && !isYappyMobilePhone(payPhone)}
+              helperText={isYappyMobilePhone(payPhone) ? '✅ Celular válido para Yappy' : 'Solo números. Debe ser un celular panameño: 8 dígitos empezando con 6.'}
+            />
             <Alert severity="info" sx={{ mb: 2, fontSize: '0.8rem' }}>
               Al pagar con Yappy tu inscripción se oficializa al instante y recibes tu dorsal.
             </Alert>

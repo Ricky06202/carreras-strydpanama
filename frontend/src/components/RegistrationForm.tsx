@@ -20,6 +20,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import ImageCropper from './ImageCropper';
+import { normalizePanamaPhone, isValidPanamaPhone, isYappyMobilePhone } from '../lib/phone';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD
 const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
@@ -426,6 +427,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
     if (!formData.country) errors.push('Nacionalidad');
     if (!formData.email) errors.push('Correo electrónico');
     if (!formData.phone) errors.push('Celular o teléfono');
+    else if (!isValidPanamaPhone(formData.phone)) errors.push('Teléfono inválido: debe tener 8 dígitos (ej. 6123-4567)');
+    else if (formData.paymentMethod === 'yappy' && !isYappyMobilePhone(formData.phone)) errors.push('Para pagar con Yappy necesitas un celular panameño (8 dígitos que empiezan con 6)');
     if (formData.participantType !== 'padrino' && (!formData.birthDay || !formData.birthMonth || !formData.birthYear)) errors.push('Fecha de nacimiento');
     if (formData.participantType !== 'padrino' && !formData.gender) errors.push('Género');
     if (formData.participantType !== 'padrino' && distances.length > 0 && !formData.distance) errors.push('Distancia');
@@ -729,7 +732,7 @@ const handleSubmit = async () => {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        phone: formData.phone,
+        phone: normalizePanamaPhone(formData.phone) || formData.phone,
         cedula: formData.cedula,
         country: formData.country,
         birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
@@ -814,7 +817,7 @@ const handleSubmit = async () => {
             firstName: formData.firstName,
             lastName: formData.lastName,
             email: formData.email,
-            phone: formData.phone,
+            phone: normalizePanamaPhone(formData.phone) || formData.phone,
             cedula: formData.cedula,
             country: formData.country,
             birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
@@ -1149,7 +1152,7 @@ const handleSubmit = async () => {
                   renderInput={(params) => <TextField {...params} label="Nacionalidad *" placeholder="Ej: Panamá" required error={showErrors && !formData.country} helperText={showErrors && !formData.country ? 'Campo requerido' : ''} />}
                 />
                 <TextField label="Email *" type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="Ej: juan@correo.com" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.email} helperText={showErrors && !formData.email ? 'Campo requerido' : ''} />
-                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value})} placeholder="Ej: 61234567" required sx={{ gridColumn: '1 / -1' }} error={showErrors && !formData.phone} helperText={showErrors && !formData.phone ? 'Campo requerido' : 'Preferiblemente sin guiones o espacios'} />
+                <TextField label="Celular o teléfono *" value={formData.phone} onChange={(e) => setFormData({...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 11)})} placeholder="Ej: 61234567" required sx={{ gridColumn: '1 / -1' }} error={(showErrors && !formData.phone) || (!!formData.phone && !isValidPanamaPhone(formData.phone))} helperText={formData.phone && !isValidPanamaPhone(formData.phone) ? 'Teléfono panameño inválido: 8 dígitos (celulares empiezan con 6). Puede pegar +507 y se ajusta solo.' : (showErrors && !formData.phone ? 'Campo requerido' : 'Solo números, 8 dígitos. Ej: 61234567')} />
                 
                 {formData.participantType !== 'padrino' && (<Box sx={{ gridColumn: '1 / -1' }}>
                   <Typography variant="body2" sx={{ mb: 1, color: showErrors && (!formData.birthDay || !formData.birthMonth || !formData.birthYear) ? 'error.main' : 'inherit' }}>
@@ -1518,7 +1521,7 @@ const handleSubmit = async () => {
                       />
                       
                       <TextField label="Email *" type="email" value={member.email} onChange={(e) => updateTeamMember(index, 'email', e.target.value)} placeholder="Ej: juan@correo.com" size="small" sx={{ gridColumn: '1 / -1' }}/>
-                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value)} placeholder="Ej: 61234567" size="small" helperText="Preferiblemente sin guiones o espacios" sx={{ gridColumn: '1 / -1' }}/>
+                      <TextField label="Celular *" value={member.phone} onChange={(e) => updateTeamMember(index, 'phone', e.target.value.replace(/\D/g, '').slice(0, 11))} placeholder="Ej: 61234567" size="small" error={!!member.phone && !isValidPanamaPhone(member.phone)} helperText={member.phone && !isValidPanamaPhone(member.phone) ? 'Teléfono panameño inválido: 8 dígitos (celulares empiezan con 6)' : 'Solo números, 8 dígitos. Ej: 61234567'} sx={{ gridColumn: '1 / -1' }}/>
 
                       <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
                         <FormControl fullWidth size="small">

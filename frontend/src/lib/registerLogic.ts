@@ -1,8 +1,26 @@
 import { api, apiFetch } from './api';
 import { sendRegistrationEmail } from './mailer';
+import { normalizePanamaPhone } from './phone';
 
 export const processRegistration = async (env: any, body: any) => {
   try {
+
+    // 0. Validar y normalizar teléfonos (formato Panamá: 8 dígitos)
+    if (body.phone) {
+      const np = normalizePanamaPhone(body.phone);
+      if (!np) throw new Error('El teléfono ingresado no es válido. Debe tener 8 dígitos (ej. 6123-4567).');
+      body.phone = np;
+    }
+    if (Array.isArray(body.teamMembers)) {
+      body.teamMembers = body.teamMembers.map((m: any, i: number) => {
+        if (m?.phone) {
+          const np = normalizePanamaPhone(m.phone);
+          if (!np) throw new Error(`El teléfono del miembro ${i + 1} (${m.firstName || 'sin nombre'}) no es válido. Debe tener 8 dígitos (ej. 6123-4567).`);
+          return { ...m, phone: np };
+        }
+        return m;
+      });
+    }
 
     let usedCodeId = null;
     let usedCodeData = null;
@@ -243,6 +261,10 @@ export const processRegistration = async (env: any, body: any) => {
 
     // DEFERIMIENTO DE YAPPY: Si es pago con Yappy y aÃºn no proviene del Webhook comprobado
     if (isYappy && !isWebhookConfirmed) {
+        const yappyPhone = normalizePanamaPhone(body.phone || '');
+        if (!yappyPhone || !yappyPhone.startsWith('6')) {
+            throw new Error('Para pagar con Yappy se requiere un celular panameño válido (8 dígitos que empiezan con 6). Revisa el número e intenta de nuevo.');
+        }
         const payloadString = JSON.stringify(body);
         const colIdTx = 'col-transactions-e06da228';
         await apiFetch('/api/content', env, {
@@ -293,7 +315,7 @@ export const processRegistration = async (env: any, body: any) => {
                 firstName: runnerInput.firstName,
                 lastName: runnerInput.lastName,
                 email: runnerInput.email || body.email,
-                phone: runnerInput.phone || body.phone,
+                phone: normalizePanamaPhone(runnerInput.phone || '') || body.phone,
                 cedula: runnerInput.cedula,
                 birthDate: runnerInput.birthDate || '',
                 gender: runnerInput.gender || '',
