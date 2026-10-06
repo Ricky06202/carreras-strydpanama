@@ -125,11 +125,13 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [codeStats, setCodeStats] = useState<any[]>([]);
   const [allCodes, setAllCodes] = useState<any[]>([]);
   const [codesLoading, setCodesLoading] = useState(false);
+  const [codeStatsRaceFilter, setCodeStatsRaceFilter] = useState('');
 
-  const fetchCodeStats = async () => {
+  const fetchCodeStats = async (raceId?: string) => {
     try {
       setCodesLoading(true);
-      const res = await fetch('/api/admin/codes-stats');
+      const rid = raceId !== undefined ? raceId : codeStatsRaceFilter;
+      const res = await fetch(`/api/admin/codes-stats${rid ? `?raceId=${encodeURIComponent(rid)}` : ''}`);
       const data = await res.json();
       if (data.success) {
          setCodeStats(data.stats);
@@ -144,7 +146,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   useEffect(() => {
     if (tabIndex === 2) fetchCodeStats();
-  }, [tabIndex]);
+  }, [tabIndex, codeStatsRaceFilter]);
 
   const generateCodes = async () => {
     if (!vendorInput || !codeRaceId || !codeQuantity) {
@@ -1820,7 +1822,21 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             </CardContent>
           </Card>
           
-          <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>Seguimiento por Vendedor y Lote</Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h5" sx={{ fontWeight: 'bold' }}>Seguimiento por Vendedor y Lote</Typography>
+            <FormControl size="small" sx={{ minWidth: 240 }}>
+              <InputLabel id="race-filter-codes-label">Filtrar por Carrera</InputLabel>
+              <Select
+                labelId="race-filter-codes-label"
+                label="Filtrar por Carrera"
+                value={codeStatsRaceFilter}
+                onChange={(e) => setCodeStatsRaceFilter(e.target.value)}
+              >
+                <MenuItem value="">Todas las carreras</MenuItem>
+                {races.map(r => <MenuItem key={r.id} value={r.id}>{r.data?.title || r.title || 'Carrera'}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Box>
           <TableContainer component={Paper} sx={{ borderRadius: 4, bgcolor: 'background.paper' }}>
             <Table>
               <TableHead>
