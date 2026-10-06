@@ -737,11 +737,14 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Dorsal,Nombre,Email,Cedula,Equipo,Carrera,Distancia,Talla,Pago\r\n";
-    
+    csvContent += "Dorsal,Nombre,Email,Cedula,Equipo,Carrera,Distancia,Talla,Pago,Monto\r\n";
+    let totalPaid = 0;
     filtered.forEach(p => {
-        csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},"${p.size || '-'}",${p.paymentStatus}\r\n`;
+        const amount = Number(p.amountPaid) || 0;
+        totalPaid += amount;
+        csvContent += `${p.bibNumber},"${p.title}",${p.email},${p.cedula},"${p.teamName}",${p.race},${p.distance},"${p.size || '-'}",${p.paymentStatus},${amount}\r\n`;
     });
+    csvContent += `,,,,,,,,"TOTAL",$${totalPaid.toFixed(2)}\r\n`;
     
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -807,7 +810,18 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
     });
-    
+
+    const totalPaid = filtered.reduce((s, p) => s + (Number(p.amountPaid) || 0), 0);
+    const finalY = (doc as any).lastAutoTable?.finalY || 200;
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 107, 0);
+    doc.text(`TOTAL RECAUDADO: $${totalPaid.toFixed(2)}`, 14, finalY + 10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(`Inscritos en el reporte: ${filtered.length}`, 14, finalY + 17);
+
     doc.save(`Informe_Inscritos_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
