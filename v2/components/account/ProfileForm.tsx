@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { phoneDigits } from "@/lib/cedula";
 
 const field =
   "h-13 w-full rounded-xl border border-hairline bg-carbon px-4 text-[16px] text-snow placeholder:text-mist/60 outline-none transition focus:border-stryd/70 focus:ring-2 focus:ring-stryd/25";
@@ -61,7 +62,7 @@ export function ProfileForm({ initial }: { initial: { firstName: string; lastNam
         </div>
         <div>
           <label className={label}>Teléfono</label>
-          <input className={field} inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value.replace(/[^\d+ ]/g, "") })} placeholder="6123-4567" />
+          <input className={field} inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: phoneDigits(e.target.value).slice(0, 10) })} placeholder="61234567" />
         </div>
         <div>
           <label className={label}>Instagram</label>

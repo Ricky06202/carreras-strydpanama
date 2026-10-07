@@ -1,15 +1,20 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, sql as dsql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
+import { cedulaKey, formatCedula, phoneDigits } from "@/lib/cedula";
 import { hashPassword, startSession } from "@/lib/auth/session";
 
 const signupSchema = z.object({
   firstName: z.string().trim().min(2, "Nombre requerido").max(60),
   lastName: z.string().trim().min(2, "Apellido requerido").max(60),
   email: z.string().trim().toLowerCase().email("Correo inválido"),
-  phone: z.string().trim().regex(/^\+?\d{7,15}$/, "Teléfono inválido").optional().or(z.literal("")),
-  cedula: z.string().trim().regex(/^\d{6,15}$/, "Cédula requerida (solo dígitos)"),
+  phone: z.string().optional().or(z.literal("")).transform((v) => (v ? phoneDigits(v) : "")).refine((v) => v === "" || /^\d{7,10}$/.test(v), "Teléfono: solo números"),
+  cedula: z.string().transform((v, ctx) => {
+    const f = formatCedula(v);
+    if (!f) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cédula inválida (ej. 8-1234-567)" });
+    return f ?? "";
+  }),
   password: z.string().min(8, "Mínimo 8 caracteres").max(128),
 });
 
@@ -25,6 +30,12 @@ export async function POST(req: Request) {
 
   const clash = await db.select({ id: schema.runners.id }).from(schema.runners).where(eq(schema.runners.email, d.email)).get();
   if (clash) return NextResponse.json({ error: "Ese correo ya tiene cuenta. Inicia sesión.", fields: { email: "Ya registrado" } }, { status: 409 });
+  const cEDup = await db
+    .select({ id: schema.runners.id })
+    .from(schema.runners)
+    .where(dsql`REPLACE(UPPER(${schema.runners.cedula}), '-', '') = ${cedulaKey(d.cedula)}`)
+    .get();
+  if (cEDup) return NextResponse.json({ error: "Esa cédula ya tiene cuenta. Inicia sesión.", fields: { cedula: "Ya registrada" } }, { status: 409 });
 
   const { hash, salt } = await hashPassword(d.password);
   const id = crypto.randomUUID();

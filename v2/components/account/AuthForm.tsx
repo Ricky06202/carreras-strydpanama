@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { formatCedula, phoneDigits } from "@/lib/cedula";
+
+function cedulaInput(v: string): string {
+  const f = formatCedula(v);
+  if (f) return f;
+  return v.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11);
+}
 
 const field =
   "h-13 w-full rounded-xl border border-hairline bg-carbon px-4 text-[16px] text-snow placeholder:text-mist/60 outline-none transition focus:border-stryd/70 focus:ring-2 focus:ring-stryd/25";
@@ -77,12 +84,12 @@ export function AuthForm() {
             </div>
             <div>
               <label className={label}>Cédula</label>
-              <input className={field} inputMode="numeric" value={f.cedula} onChange={(e) => setF({ ...f, cedula: e.target.value.replace(/\D/g, "").slice(0, 15) })} placeholder="81234567" autoComplete="off" />
+              <input className={field} inputMode="text" value={f.cedula} onChange={(e) => setF({ ...f, cedula: cedulaInput(e.target.value) })} placeholder="8-1234-567" autoCapitalize="characters" autoComplete="off" />
               {errors.cedula && <p className="mt-1.5 text-sm text-red-400">{errors.cedula}</p>}
             </div>
             <div>
               <label className={label}>Teléfono</label>
-              <input className={field} type="tel" inputMode="tel" value={f.phone} onChange={set("phone")} placeholder="6123-4567" autoComplete="tel" />
+              <input className={field} type="tel" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: phoneDigits(e.target.value).slice(0, 10) })} placeholder="61234567" autoComplete="tel" />
               {errors.phone && <p className="mt-1.5 text-sm text-red-400">{errors.phone}</p>}
             </div>
           </>

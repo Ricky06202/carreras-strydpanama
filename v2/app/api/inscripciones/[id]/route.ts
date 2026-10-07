@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
+import { phoneDigits } from "@/lib/cedula";
 import { getRunner } from "@/lib/auth/session";
 import { getRegistrationStatus } from "@/lib/registration/service";
 
@@ -13,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 }
 
 const editSchema = z.object({
-  phone: z.string().trim().regex(/^\+?\d{7,15}$/).optional(),
+  phone: z.string().optional().transform((v) => (v ? phoneDigits(v) : undefined)).refine((v) => v === undefined || /^\d{7,10}$/.test(v), "Teléfono: solo números"),
   shirtSize: z.enum(["S", "M", "L", "XL", "XXL"]).optional(),
   teamName: z.string().trim().max(80).optional(),
 });

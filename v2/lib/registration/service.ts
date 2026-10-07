@@ -106,7 +106,7 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     .where(
       and(
         eq(schema.registrations.raceId, race.id),
-        eq(schema.registrations.cedula, input.cedula),
+        dsql`REPLACE(UPPER(${schema.registrations.cedula}), '-', '') = REPLACE(UPPER(${input.cedula}), '-', '')`,
         ne(schema.registrations.status, "anulado"),
       ),
     )

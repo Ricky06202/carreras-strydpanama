@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Dialog } from "@/components/ui/Dialog";
+import { formatCedula, phoneDigits } from "@/lib/cedula";
 
 export type RegCardData = {
   id: string;
@@ -124,7 +125,7 @@ function EditDialog({ open, onClose, data }: { open: boolean; onClose: () => voi
       <div className="flex flex-col gap-4">
         <div>
           <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.25em] text-mist">Teléfono</p>
-          <input className={field} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, ""))} placeholder="6123-4567" />
+          <input className={field} inputMode="tel" value={phone} onChange={(e) => setPhone(phoneDigits(e.target.value).slice(0, 10))} placeholder="61234567" />
         </div>
         {canChangeSize && (
           <div>
@@ -193,7 +194,7 @@ export function PortalActions({ hasCedula }: { hasCedula: boolean }) {
         <div className="flex flex-col gap-3">
           <p className="font-mono text-[11px] uppercase tracking-widest text-mist">¿Te inscribiste antes de crear cuenta?</p>
           <div className="flex gap-2">
-            <input className={field} inputMode="numeric" value={cedula} onChange={(e) => setCedula(e.target.value.replace(/\D/g, "").slice(0, 15))} placeholder="Tu cédula" />
+            <input className={field} inputMode="numeric" value={cedula} onChange={(e) => { const f = formatCedula(e.target.value); setCedula(f ?? e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11)); }} placeholder="Ej. 8-1234-567" autoCapitalize="characters" />
             <Button variant="secondary" size="lg" disabled={!cedula || busy} onClick={() => void claim()}>
               {busy ? "…" : "Vincular"}
             </Button>

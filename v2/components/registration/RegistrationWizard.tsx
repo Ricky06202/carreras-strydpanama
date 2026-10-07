@@ -9,6 +9,14 @@ import {
   isPanamaMobile,
   SHIRT_SIZES,
 } from "@/lib/registration/schema";
+import { formatCedula, phoneDigits } from "@/lib/cedula";
+
+// formateo en vivo: muestra guiones solo cuando la cedula ya es valida
+function cedulaInput(v: string): string {
+  const f = formatCedula(v);
+  if (f) return f;
+  return v.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11);
+}
 
 type Distance = { id: string; title: string; kilometers: number; price: number | null; description: string | null };
 type Category = { id: string; title: string; minAge: number; maxAge: number; gender: string; description: string | null };
@@ -360,7 +368,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
             </Field>
           </div>
           <Field label="Cédula" error={errors.cedula}>
-            <input className={fieldCls} inputMode="numeric" value={data.cedula} onChange={(e) => setData({ ...data, cedula: e.target.value.replace(/\D/g, "").slice(0, 15) })} placeholder="81234567" autoComplete="off" />
+            <input className={fieldCls} inputMode="text" value={data.cedula} onChange={(e) => setData({ ...data, cedula: cedulaInput(e.target.value) })} placeholder="8-1234-567" autoCapitalize="characters" autoComplete="off" />
           </Field>
           <Field label="Fecha de nacimiento" error={errors.birthDate}>
             <input className={fieldCls} type="date" value={data.birthDate} onChange={(e) => setData({ ...data, birthDate: e.target.value })} />
@@ -386,7 +394,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
             <input className={fieldCls} type="email" inputMode="email" value={data.email} onChange={(e) => setData({ ...data, email: e.target.value })} placeholder="tu@correo.com" autoComplete="email" />
           </Field>
           <Field label="Teléfono" error={errors.phone} hint="Celular panameño, 8 dígitos. Empieza con 6 para pagar con Yappy.">
-            <input className={fieldCls} type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: e.target.value.replace(/[^\d+ ]/g, "") })} placeholder="6123-4567" autoComplete="tel" />
+            <input className={fieldCls} type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: phoneDigits(e.target.value).slice(0, 10) })} placeholder="6123-4567" autoComplete="tel" />
           </Field>
         </div>
       )}

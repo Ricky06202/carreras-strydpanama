@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { cedulaKey, formatCedula, phoneDigits } from "@/lib/cedula";
 
 export const registrationSchema = z.object({
   slug: z.string().min(1),
@@ -7,12 +8,16 @@ export const registrationSchema = z.object({
   email: z.string().trim().toLowerCase().email("Correo inválido"),
   phone: z
     .string()
-    .trim()
-    .regex(/^\+?\d{7,15}$/, "Teléfono inválido"),
+    .transform((v) => phoneDigits(v))
+    .refine((v) => /^\d{7,10}$/.test(v), "Teléfono: solo números (7–10 dígitos)"),
   cedula: z
     .string()
-    .trim()
-    .regex(/^\d{6,15}$/, "Cédula: solo dígitos (6–15)"),
+    .transform((v, ctx) => {
+      const f = formatCedula(v);
+      if (!f) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Cédula inválida (ej. 8-1234-567)" });
+      return f ?? "";
+    })
+    .refine((v) => v.length > 0 && cedulaKey(v).length >= 7, "Cédula incompleta"),
   birthDate: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
