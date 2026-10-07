@@ -17,6 +17,7 @@ import transactionsCollection from './collections/transactions.collection'
 import runningTeamsCollection from './collections/running-teams.collection'
 import runnersCollection from './collections/runners.collection'
 import participantTypesCollection from './collections/participant-types.collection'
+import financialExpensesCollection from './collections/financial-expenses.collection'
 
 // Register collections BEFORE creating the app
 registerCollections([
@@ -29,6 +30,7 @@ registerCollections([
   runningTeamsCollection,
   runnersCollection,
   participantTypesCollection,
+  financialExpensesCollection,
 ])
 
 // Application configuration

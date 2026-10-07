@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Box, Typography, Button, Card, CardContent, 
   Grid, Container, Chip, CircularProgress, Alert,
@@ -29,6 +29,8 @@ import LocalActivityIcon from '@mui/icons-material/LocalActivity';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import VideocamIcon from '@mui/icons-material/Videocam';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import DashboardView from './DashboardView';
 import CameraTimingView from './CameraTimingView';
 import MUIThemeProvider from './MUIThemeProvider';
@@ -92,6 +94,32 @@ const hhmmssToSeconds = (str?: string) => {
   return null;
 };
 
+function FragmentTableDay({ group, onEdit, onDelete }: { group: { day: string; items: any[]; total: number }; onEdit: (e: any) => void; onDelete: (id: string) => void }) {
+  return (
+    <>
+      {group.items.map((e: any, i: number) => (
+        <TableRow key={e.id} hover>
+          <TableCell sx={{ fontWeight: i === 0 ? 'bold' : 'normal', color: 'text.secondary' }}>{i === 0 ? group.day : ''}</TableCell>
+          <TableCell>{e.title}</TableCell>
+          <TableCell>{e.beneficiary || '—'}</TableCell>
+          <TableCell>{e.method}</TableCell>
+          <TableCell>{e.reference || '—'}</TableCell>
+          <TableCell align="right">B/. {(Number(e.amount) || 0).toFixed(2)}</TableCell>
+          <TableCell align="right" sx={{ whiteSpace: 'nowrap' }}>
+            <IconButton size="small" onClick={() => onEdit(e)}><EditLocationAltIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => onDelete(e.id)}><DeleteOutlineIcon fontSize="small" /></IconButton>
+          </TableCell>
+        </TableRow>
+      ))}
+      <TableRow sx={{ bgcolor: 'action.hover' }}>
+        <TableCell colSpan={5} sx={{ fontWeight: 'bold' }}>Subtotal {group.day}</TableCell>
+        <TableCell align="right" sx={{ fontWeight: 'bold' }}>${group.total.toFixed(2)}</TableCell>
+        <TableCell />
+      </TableRow>
+    </>
+  );
+}
+
 function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) {
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
@@ -118,6 +146,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     { label: 'Directorio de Inscritos', value: 5, icon: <ReceiptLongIcon sx={{ mr: 2 }} /> },
     { label: 'Lista de Padrinos', value: 6, icon: <FavoriteIcon sx={{ mr: 2 }} /> },
     { label: 'Lista de Preinscritos', value: 7, icon: <HourglassEmptyIcon sx={{ mr: 2 }} /> },
+    { label: 'Gestión Financiera', value: 9, icon: <AccountBalanceWalletIcon sx={{ mr: 2 }} /> },
   ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
@@ -148,6 +177,201 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   useEffect(() => {
     if (tabIndex === 2) fetchCodeStats();
   }, [tabIndex, codeStatsRaceFilter]);
+
+  // ===================== Gestión Financiera (tab 9) =====================
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [financeLoading, setFinanceLoading] = useState(false);
+  const [financeSaving, setFinanceSaving] = useState(false);
+  const [financeRaceId, setFinanceRaceId] = useState<string>('');
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
+  const [expenseEdit, setExpenseEdit] = useState<any>(null);
+  const [expenseForm, setExpenseForm] = useState({ title: '', beneficiary: '', amount: '', payDate: '', method: 'Yappy', reference: '', notes: '' });
+
+  const fetchExpenses = async (raceId: string) => {
+    if (!raceId) { setExpenses([]); return; }
+    setFinanceLoading(true);
+    try {
+      const res = await fetch(`/api/admin/expenses?raceId=${encodeURIComponent(raceId)}`);
+      const data = await res.json();
+      setExpenses(data.expenses || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setFinanceLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tabIndex === 9) {
+      if (!financeRaceId && races.length > 0) {
+        setFinanceRaceId(String((races[0] as any).id || ''));
+      } else if (financeRaceId) {
+        fetchExpenses(financeRaceId);
+      }
+    }
+  }, [tabIndex, financeRaceId]);
+
+  const financeStats = useMemo(() => {
+    const raceObj: any = races.find((r: any) => r.id === financeRaceId);
+    const rd = raceObj?.data || {};
+    const racePrice = Number(rd.price) || 15;
+    const legacyPrice = Number(rd.legacyPrice) || 0;
+    const legacyCutoff = Number(rd.legacyCutoff) || 0;
+    const priceFor = (p: any) => {
+      const createdMs = Number(p.createdAt || 0) || 0;
+      const isLegacy = legacyPrice > 0 && legacyCutoff > 0 && createdMs > 0 && createdMs < legacyCutoff;
+      if ((p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
+      return isLegacy ? legacyPrice : racePrice;
+    };
+    let recaudado = 0, confirmados = 0, pendientes = 0;
+    participants.filter((p: any) => p.race === financeRaceId).forEach((p: any) => {
+      const isPadrinoSolo = p.participantType === 'padrino';
+      const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
+      const isFreeCodePay = p.paymentMethod === 'Cupon Gratuito' || p.paymentStatus === 'Cupon Gratuito';
+      const isConfirmed = isPadrinoSponsored || isFreeCodePay || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
+      if (!isConfirmed) { pendientes++; return; }
+      if (isPadrinoSponsored || isFreeCodePay) { confirmados++; return; }
+      if (isPadrinoSolo) {
+        let amount = Number(p.amountPaid) || 0;
+        if (!amount) amount = Number(p.donatedTickets || 0) * 10;
+        recaudado += amount;
+      } else {
+        const paidAmount = Number(p.amountPaid) || 0;
+        recaudado += paidAmount > 0 ? paidAmount : priceFor(p);
+      }
+      confirmados++;
+    });
+    const salientes = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+    return { recaudado, salientes, saldo: recaudado - salientes, confirmados, pendientes };
+  }, [participants, expenses, financeRaceId, races]);
+
+  const groupedExpenses = useMemo(() => {
+    const sorted = [...expenses].sort((a, b) => String(a.payDate).localeCompare(String(b.payDate)) || a.amount - b.amount);
+    const byDay = new Map<string, { day: string; items: any[]; total: number }>();
+    sorted.forEach((e) => {
+      const day = String(e.payDate || '').slice(0, 10) || 'Sin fecha';
+      if (!byDay.has(day)) byDay.set(day, { day, items: [], total: 0 });
+      const g = byDay.get(day)!;
+      g.items.push(e);
+      g.total += Number(e.amount) || 0;
+    });
+    const byAmount = new Map<number, number>();
+    sorted.forEach((e) => byAmount.set(Number(e.amount), (byAmount.get(Number(e.amount)) || 0) + 1));
+    return { days: [...byDay.values()], byAmount: [...byAmount.entries()].sort((a, b) => b[0] - a[0]) };
+  }, [expenses]);
+
+  const openAddExpense = () => {
+    setExpenseEdit(null);
+    setExpenseForm({ title: '', beneficiary: '', amount: '', payDate: new Date().toISOString().slice(0, 10), method: 'Yappy', reference: '', notes: '' });
+    setExpenseDialogOpen(true);
+  };
+
+  const openEditExpense = (e: any) => {
+    setExpenseEdit(e);
+    setExpenseForm({ title: e.title || '', beneficiary: e.beneficiary || '', amount: String(e.amount ?? ''), payDate: String(e.payDate || '').slice(0, 10), method: e.method || 'Yappy', reference: e.reference || '', notes: e.notes || '' });
+    setExpenseDialogOpen(true);
+  };
+
+  const saveExpense = async () => {
+    const f = expenseForm;
+    if (!f.title || f.amount === '' || !f.payDate) return alert('Referencia, monto y fecha son obligatorios');
+    if (!financeRaceId) return alert('Selecciona una carrera');
+    setFinanceSaving(true);
+    try {
+      const url = expenseEdit ? '/api/admin/update-expense' : '/api/admin/create-expense';
+      const body = expenseEdit
+        ? { id: expenseEdit.id, updates: { title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes } }
+        : { raceId: financeRaceId, title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok || data.error) { alert(data.error || 'Error al guardar'); return; }
+      setExpenseDialogOpen(false);
+      setExpenseEdit(null);
+      fetchExpenses(financeRaceId);
+    } catch (e: any) {
+      alert(String(e?.message || e));
+    } finally {
+      setFinanceSaving(false);
+    }
+  };
+
+  const deleteExpense = async (id: string) => {
+    if (!confirm('¿Eliminar este pago saliente del registro financiero?')) return;
+    try {
+      const res = await fetch('/api/admin/delete-expense', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      const data = await res.json();
+      if (data.success) fetchExpenses(financeRaceId); else alert(data.error);
+    } catch (e) { console.error(e); }
+  };
+
+  const exportFinancePDF = async () => {
+    const raceObj: any = races.find((r: any) => r.id === financeRaceId);
+    const raceTitle = raceObj?.data?.title || raceObj?.title || 'Carrera';
+    if (expenses.length === 0 && financeStats.recaudado === 0) return alert('No hay datos financieros para esta carrera todavía');
+
+    const { jsPDF } = await import('jspdf');
+    let autoTable;
+    try {
+      autoTable = (await import('jspdf-autotable')).default;
+    } catch (e) {
+      alert("El módulo jspdf-autotable no está disponible. Ejecuta npm install en el servidor.");
+      return;
+    }
+
+    const doc = new jsPDF({ orientation: 'landscape' });
+    doc.setFontSize(18);
+    doc.setTextColor(255, 107, 0);
+    doc.text('STRYD PANAMA — Informe Financiero', 14, 18);
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(12);
+    doc.text(`Carrera: ${raceTitle}`, 14, 27);
+    doc.setFontSize(10);
+    doc.text(`Fecha de la carrera: ${raceObj?.data?.date || '—'}   ·   Generado: ${new Date().toLocaleString()}`, 14, 34);
+
+    const body: any[][] = [];
+    groupedExpenses.days.forEach((g) => {
+      g.items.forEach((e: any, i: number) => {
+        body.push([
+          i === 0 ? g.day : '',
+          e.title || '-',
+          e.beneficiary || '-',
+          e.method || '-',
+          e.reference || '-',
+          `$${(Number(e.amount) || 0).toFixed(2)}`,
+        ]);
+      });
+      body.push([{ content: `SUBTOTAL ${g.day}`, colSpan: 5, styles: { fontStyle: 'bold', fillColor: [245, 245, 245] } }, { content: `$${g.total.toFixed(2)}`, styles: { fontStyle: 'bold', fillColor: [245, 245, 245] } }]);
+    });
+    if (body.length === 0) body.push([{ content: 'Sin pagos salientes registrados', colSpan: 6, styles: { fontStyle: 'italic' } }]);
+
+    autoTable(doc, {
+      startY: 40,
+      head: [['Fecha Pago', 'Referencia', 'Beneficiario', 'Método', 'Comprobante', 'Monto']],
+      body,
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] },
+    });
+
+    const finalY = (doc as any).lastAutoTable?.finalY || 200;
+    let y = finalY + 12;
+    doc.setFontSize(13);
+    doc.text('RESUMEN POR CARRERA', 14, y); y += 8;
+    doc.setFontSize(11);
+    doc.text(`Recaudacion Neta (inscripciones confirmadas): $${financeStats.recaudado.toFixed(2)}`, 14, y); y += 6;
+    doc.text(`Pagos Salientes (enviados por el servicio de cronometraje): $${financeStats.salientes.toFixed(2)}`, 14, y); y += 6;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(financeStats.saldo >= 0 ? 0 : 200, financeStats.saldo >= 0 ? 120 : 0, 0);
+    doc.text(`SALDO: $${financeStats.saldo.toFixed(2)}`, 14, y);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    y += 6;
+    doc.setFontSize(9);
+    doc.text(`Inscritos confirmados: ${financeStats.confirmados}   ·   Pendientes de pago: ${financeStats.pendientes}   ·   Pagos salientes registrados: ${expenses.length}`, 14, y); y += 6;
+    const amtLine = groupedExpenses.byAmount.map(([amt, n]) => `$${Number(amt).toFixed(2)} × ${n}`).join('   ·   ') || '—';
+    doc.text(`Pagos salientes por monto: ${amtLine}`, 14, Math.min(y + 6, 190));
+
+    doc.save(`Informe_Financiero_${(raceTitle || 'carrera').toLowerCase().replace(/[^a-z0-9]+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
 
   const generateCodes = async () => {
     if (!vendorInput || !codeRaceId || !codeQuantity) {
@@ -634,7 +858,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   };
 
   useEffect(() => {
-    if (tabIndex === 0 || tabIndex === 5 || tabIndex === 6 || tabIndex === 7) {
+    if (tabIndex === 0 || tabIndex === 5 || tabIndex === 6 || tabIndex === 7 || tabIndex === 9) {
       if (allDistances.length === 0) loadAllDistances();
       fetchParticipants(participantRaceFilter);
     }
@@ -2962,6 +3186,111 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 )}
               </>
             )}
+          </Box>
+        );
+      })()}
+
+
+      {/* ===================== Gestión Financiera (tab 9) ===================== */}
+      {tabIndex === 9 && (() => {
+        const raceObj: any = races.find((r: any) => r.id === financeRaceId);
+        return (
+          <Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+              <FormControl size="small" sx={{ minWidth: 260 }}>
+                <InputLabel>Carrera</InputLabel>
+                <Select value={financeRaceId} label="Carrera" onChange={(e) => setFinanceRaceId(String(e.target.value))}>
+                  {races.map((r: any) => (
+                    <MenuItem key={r.id} value={r.id}>{r.data?.title || (r as any).title}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Button variant="contained" onClick={openAddExpense} disabled={!financeRaceId}>Registrar Pago Saliente</Button>
+              <Button variant="outlined" startIcon={<PictureAsPdfIcon />} onClick={exportFinancePDF} disabled={expenses.length === 0 && financeStats.recaudado === 0}>
+                Informe PDF por Carrera
+              </Button>
+              {financeLoading && <CircularProgress size={20} sx={{ color: ACCENT }} />}
+            </Box>
+
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+              <Grid item xs={12} sm={4}>
+                <Card sx={{ borderLeft: `4px solid #4CAF50` }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">Recaudación Neta</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#4CAF50' }}>${financeStats.recaudado.toFixed(2)}</Typography>
+                    <Typography variant="caption" color="text.secondary">{financeStats.confirmados} confirmados · {financeStats.pendientes} pendientes</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Card sx={{ borderLeft: `4px solid ${ACCENT}` }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">Pagos Salientes (enviados)</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>${financeStats.salientes.toFixed(2)}</Typography>
+                    <Typography variant="caption" color="text.secondary">{expenses.length} registros · {groupedExpenses.days.length} días</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <Card sx={{ borderLeft: '4px solid', borderColor: financeStats.saldo >= 0 ? '#4CAF50' : '#d32f2f' }}>
+                  <CardContent>
+                    <Typography variant="body2" color="text.secondary">Saldo del Servicio</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 'bold', color: financeStats.saldo >= 0 ? '#4CAF50' : '#d32f2f' }}>${financeStats.saldo.toFixed(2)}</Typography>
+                    <Typography variant="caption" color="text.secondary">{raceObj?.data?.title || '—'}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
+
+            <TableContainer component={Paper} variant="outlined" sx={{ mb: 3 }}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Día</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Referencia</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Beneficiario</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Método</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Comprobante</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Monto</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }} />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {groupedExpenses.days.length === 0 && (
+                    <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>No hay pagos salientes registrados para esta carrera</TableCell></TableRow>
+                  )}
+                  {groupedExpenses.days.map((g) => (
+                    <FragmentTableDay key={g.day} group={g} onEdit={openEditExpense} onDelete={deleteExpense} />
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <Dialog open={expenseDialogOpen} onClose={() => setExpenseDialogOpen(false)} maxWidth="sm" fullWidth>
+              <DialogTitle sx={{ fontWeight: 'bold' }}>{expenseEdit ? 'Editar Pago Saliente' : 'Registrar Pago Saliente'} — {raceObj?.data?.title || ''}</DialogTitle>
+              <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: '16px !important' }}>
+                <TextField label="Referencia (concepto)" size="small" fullWidth value={expenseForm.title} onChange={(e) => setExpenseForm({ ...expenseForm, title: e.target.value })} />
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <TextField label="Beneficiario" size="small" sx={{ flex: 1, minWidth: 180 }} value={expenseForm.beneficiary} onChange={(e) => setExpenseForm({ ...expenseForm, beneficiary: e.target.value })} />
+                  <TextField label="Monto (USD)" size="small" type="number" sx={{ width: 140 }} value={expenseForm.amount} onChange={(e) => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                  <TextField label="Fecha del pago" size="small" type="date" sx={{ width: 170 }} InputLabelProps={{ shrink: true }} value={expenseForm.payDate} onChange={(e) => setExpenseForm({ ...expenseForm, payDate: e.target.value })} />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                  <FormControl size="small" sx={{ minWidth: 160 }}>
+                    <InputLabel>Método</InputLabel>
+                    <Select value={expenseForm.method} label="Método" onChange={(e) => setExpenseForm({ ...expenseForm, method: String(e.target.value) })}>
+                      {['Yappy', 'Transferencia', 'Efectivo', 'Cheque', 'Otro'].map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                  <TextField label="Nº comprobante / orden" size="small" sx={{ flex: 1, minWidth: 180 }} value={expenseForm.reference} onChange={(e) => setExpenseForm({ ...expenseForm, reference: e.target.value })} />
+                </Box>
+                <TextField label="Notas" size="small" multiline minRows={2} value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setExpenseDialogOpen(false)}>Cancelar</Button>
+                <Button variant="contained" onClick={saveExpense} disabled={financeSaving}>{financeSaving ? 'Guardando…' : 'Guardar'}</Button>
+              </DialogActions>
+            </Dialog>
           </Box>
         );
       })()}
