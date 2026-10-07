@@ -1,0 +1,7 @@
+{
+  "name": "v2-dev",
+  "compatibility_date": "2026-10-07",
+  "d1_databases": [
+    { "binding": "DB", "database_name": "carreras-v2-db", "database_id": "2ed5a4d6-d368-4e50-8dbb-36fb7514d36f", "migrations_dir": "drizzle" }
+  ]
+}

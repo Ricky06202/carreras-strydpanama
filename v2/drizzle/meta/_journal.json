@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1791398931845,
+      "tag": "0000_parched_magik",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1791399234663,
+      "tag": "0001_rainy_groot",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791399328291,
+      "tag": "0002_cynical_madame_web",
+      "breakpoints": true
+    }
+  ]
+}
