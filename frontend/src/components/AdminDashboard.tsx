@@ -902,12 +902,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     if (list.length === 0) return alert("No hay preinscritos para exportar");
 
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Código,Nombre,Apellido,Email,Cédula,Teléfono,Distancia,Categoría,Estado,Fecha Preinscripción\r\n";
+    csvContent += "Código,Nombre,Apellido,Email,Cédula,Teléfono,Distancia,Categoría,Talla,Estado,Fecha Preinscripción\r\n";
     list.forEach(p => {
       const distName = allDistances.find(d => d.id === (p.distance || (p as any).distanceId))?.name || p.distanceName || p.distance || '-';
       const catName = p.categoryName || allCategories.find(c => c.id === (p.category || (p as any).categoryId))?.name || 'General';
       const fecha = p.createdAt ? new Date(p.createdAt).toLocaleDateString('es-PA') : '-';
-      csvContent += `${p.confirmationCode || '-'},"${p.firstName || ''}","${p.lastName || ''}",${p.email || ''},${p.cedula || ''},${p.phone || ''},"${distName}","${catName}",Preinscrito,${fecha}\r\n`;
+      csvContent += `${p.confirmationCode || '-'},"${p.firstName || ''}","${p.lastName || ''}",${p.email || ''},${p.cedula || ''},${p.phone || ''},"${distName}","${catName}","${p.size || '-'}",Preinscrito,${fecha}\r\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -958,6 +958,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         p.phone || '-',
         distName,
         catName,
+        p.size || '-',
         'Preinscrito',
         fechaStr,
       ];
@@ -965,7 +966,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
     autoTable(doc, {
       startY: 40,
-      head: [['#', 'Código', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Teléfono', 'Distancia', 'Categoría', 'Estado', 'Fecha Preinsc.']],
+      head: [['#', 'Código', 'Nombre', 'Apellido', 'Cédula', 'Email', 'Teléfono', 'Distancia', 'Categoría', 'Talla', 'Estado', 'Fecha Preinsc.']],
       body: tableData,
       styles: { fontSize: 8, cellPadding: 2 },
       headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] }
