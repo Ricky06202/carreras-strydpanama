@@ -107,9 +107,17 @@ const categoryRows = catsOk.map((c) => [
   q(c.id), q(c.race_id), q(c.name), q(c.description), "0", "99", "'ambos'",
 ]);
 
-const distanceRows = distOk.map((d) => [
-  q(d.id), q(d.race_id), q(d.name), "0", "NULL", "NULL", "0",
-]);
+function parseKm(name: string): number {
+  const m = String(name).match(/^(\d{1,3}(?:[.,]\d+)?)\s*k(?:m\b|m?\b)?/i);
+  if (m) return Number(m[1]!.replace(",", "."));
+  return 0;
+}
+
+const distanceRows = distOk.map((d) => {
+  const name = String(d.name ?? "");
+  const km = d.kilometers != null ? Number(d.kilometers) : parseKm(name);
+  return [q(d.id), q(d.race_id), q(name), String(km || 0), "NULL", "NULL", "0"];
+});
 
 const regRows = regsOk.map((p) => {
   const [status, payment] = payStatus[String(p.payment_status ?? "pending")] ?? payStatus.pending!;
