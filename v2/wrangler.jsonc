@@ -13,6 +13,8 @@
     { "binding": "MEDIA", "bucket_name": "carreras-v2-media" }
   ],
   "vars": {
+    "ADMIN_PASSWORD": "",
+    "ADMIN_SECRET": "",
     "RESEND_API_KEY": "",
     "YAPPY_MERCHANT_ID": "",
     "YAPPY_SECRET_KEY": "",
