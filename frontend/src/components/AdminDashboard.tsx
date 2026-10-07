@@ -9,6 +9,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment, useMediaQuery, useTheme, Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import EmailIcon from '@mui/icons-material/Email';
 import TimerIcon from '@mui/icons-material/Timer';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import StopIcon from '@mui/icons-material/Stop';
@@ -971,6 +972,27 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     });
 
     doc.save(`Preinscritos_${new Date().toISOString().split('T')[0]}.pdf`);
+  };
+
+  const [remindersBusy, setRemindersBusy] = useState(false);
+  const sendPaymentReminders = async (count: number) => {
+    if (count === 0) return alert('No hay preinscritos a los que recordar.');
+    if (!confirm(`¿Enviar recordatorio de pago por correo a ${count} preinscrito(s)?\n\nSe omite automáticamente a quien ya fue recordado en las últimas 24 horas.`)) return;
+    try {
+      setRemindersBusy(true);
+      const res = await fetch('/api/admin/notify-preinscritos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raceId: participantRaceFilter || undefined })
+      });
+      const data = await res.json();
+      if (data.error) alert('❌ ' + data.error);
+      else alert(`✅ Recordatorios enviados: ${data.sent}\nOmitidos sin correo: ${data.skippedNoEmail}\nYa recordados hoy (24h): ${data.skippedRecent}`);
+    } catch {
+      alert('Error de conexión al enviar los recordatorios');
+    } finally {
+      setRemindersBusy(false);
+    }
   };
 
   // Estados para Meta de Llegada y Retorno
@@ -2808,6 +2830,15 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
               </Box>
 
               <Box sx={{ display: 'flex', gap: 1 }}>
+                <Button
+                  variant="contained"
+                  startIcon={remindersBusy ? <CircularProgress size={16} color="inherit" /> : <EmailIcon />}
+                  onClick={() => sendPaymentReminders(preinscritos.length)}
+                  disabled={remindersBusy}
+                  sx={{ bgcolor: '#2e7d32', color: 'white', '&:hover': { bgcolor: '#1b5e20' } }}
+                >
+                  {remindersBusy ? 'ENVIANDO...' : `Recordar Pago (${preinscritos.length})`}
+                </Button>
                 <Button
                   variant="outlined"
                   startIcon={<DownloadIcon />}
