@@ -988,8 +988,22 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         body: JSON.stringify({ raceId: participantRaceFilter })
       });
       const data = await res.json();
-      if (data.error) alert('❌ ' + data.error);
-      else alert(`✅ Recordatorios enviados: ${data.sent}\nOmitidos sin correo: ${data.skippedNoEmail}${data.skippedBadEmail ? `\nOmitidos con correo inválido: ${data.skippedBadEmail}` : ''}\nYa recordados hoy (24h): ${data.skippedRecent}${data.failed ? `\n❌ Fallidos: ${data.failed}${data.errorSample ? ` — ${data.errorSample}` : ''}` : ''}\n\nResumen enviado a carreras@strydpanama.com.`);
+      if (data.error) { alert('❌ ' + data.error); return; }
+      // Marcar los enviados en chunks de 20 (limite de subrequests del worker)
+      const sentIds: string[] = data.sentIds || [];
+      let marked = 0;
+      for (let i = 0; i < sentIds.length; i += 20) {
+        try {
+          const mr = await fetch('/api/admin/mark-reminded', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids: sentIds.slice(i, i + 20) })
+          });
+          const mj = await mr.json();
+          marked += mj.marked || 0;
+        } catch { /* no romper el flujo si una marca falla */ }
+      }
+      alert(`✅ Recordatorios enviados: ${data.sent}\nOmitidos sin correo: ${data.skippedNoEmail}${data.skippedBadEmail ? `\nOmitidos con correo inválido: ${data.skippedBadEmail}` : ''}\nYa recordados hoy (24h): ${data.skippedRecent}${data.failed ? `\n❌ Fallidos: ${data.failed}${data.errorSample ? ` — ${data.errorSample}` : ''}` : ''}\nMarcados anti-reenvío: ${marked}/${sentIds.length}\n\nResumen enviado a carreras@strydpanama.com.`);
     } catch {
       alert('Error de conexión al enviar los recordatorios');
     } finally {

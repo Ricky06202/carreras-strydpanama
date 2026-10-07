@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { apiFetch } from '../../../lib/api';
+import { getAuthToken } from '../../../lib/api';
 import { env } from 'cloudflare:workers';
 
 const FROM = 'Carreras STRYD <carreras@strydpanama.com>';
@@ -64,12 +64,17 @@ export const POST: APIRoute = async ({ request }) => {
     const key = (env as any).RESEND_API_KEY;
     if (!key) return new Response(JSON.stringify({ error: 'Falta el secreto RESEND_API_KEY en el worker' }), { status: 500 });
 
+    const token = await getAuthToken(env);
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    };
+    const baseUrl = String(env.SONICJS_API_URL || '').replace(/\/$/, '');
     const [partRes, racesRes] = await Promise.all([
-      apiFetch(`/api/collections/participants/content?limit=5000&_t=${Date.now()}`, env, {
-        method: 'GET',
-        headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache' }
-      }),
-      apiFetch(`/api/collections/races/content?limit=200&_t=${Date.now()}`, env, { method: 'GET' })
+      fetch(`${baseUrl}/api/collections/participants/content?limit=5000&_t=${Date.now()}`, { method: 'GET', headers: authHeaders }).then(r => r.json()),
+      fetch(`${baseUrl}/api/collections/races/content?limit=200&_t=${Date.now()}`, { method: 'GET', headers: authHeaders }).then(r => r.json())
     ]);
 
     const racesById: Record<string, any> = {};
@@ -127,19 +132,8 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     const detail: { email: string; ok: boolean; error?: string }[] = [];
+    const sentIds: string[] = [];
     let sent = 0;
-
-    const markReminder = async (r: Reminder) => {
-      const item = (partRes.data || []).find((c: any) => c.id === r.id);
-      if (!item) return;
-      const colId = item.collectionId || 'col-participants-93d1ac21';
-      try {
-        await apiFetch(`/api/content/${r.id}`, env, {
-          method: 'PUT',
-          body: JSON.stringify({ id: r.id, collectionId: colId, collection_id: colId, title: item.title, status: 'published', data: { ...item.data, lastReminderAt: now } })
-        });
-      } catch { /* el envío ya fue hecho; la marca es secundaria */ }
-    };
 
     const sendOne = async (r: Reminder): Promise<string | null> => {
       try {
@@ -156,10 +150,12 @@ export const POST: APIRoute = async ({ request }) => {
       }
     };
 
-    for (let i = 0; i < list.length; i += 100) {
-      const chunk = list.slice(i, i + 100);
+    let subCount = 5; // login + 2 lecturas + lote + resumen
+    for (let i = 0; i < list.length; i += 40) {
+      const chunk = list.slice(i, i + 40);
       const msgs = chunk.map(r => ({ ...buildEmail(r), from: FROM, to: r.to }));
       let batchErr: string | null = null;
+      subCount++;
       try {
         const res = await fetch('https://api.resend.com/emails/batch', {
           method: 'POST',
@@ -174,14 +170,15 @@ export const POST: APIRoute = async ({ request }) => {
 
       if (!batchErr) {
         sent += chunk.length;
-        chunk.forEach(r => detail.push({ email: r.to, ok: true }));
-        for (const r of chunk) await markReminder(r);
+        chunk.forEach(r => { detail.push({ email: r.to, ok: true }); sentIds.push(r.id); });
       } else {
-        // El lote fue rechazado (ej. un correo malformado): reintentar uno por uno
+        // El lote fue rechazado: reintentar uno por uno hasta agotar presupuesto (límite Cloudflare: 50 subrequests)
         for (const r of chunk) {
+          if (subCount >= 46) { detail.push({ email: r.to, ok: false, error: 'Presupuesto de peticiones agotado, reintenta el botón en unos minutos' }); continue; }
+          subCount++;
           const err = await sendOne(r);
           if (err) detail.push({ email: r.to, ok: false, error: err });
-          else { sent++; detail.push({ email: r.to, ok: true }); await markReminder(r); }
+          else { sent++; detail.push({ email: r.to, ok: true }); sentIds.push(r.id); }
         }
       }
     }
@@ -214,7 +211,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     } catch { /* el resumen no debe romper la respuesta */ }
 
-    return new Response(JSON.stringify({ success: sent > 0, sent, failed, skippedNoEmail, skippedBadEmail, skippedRecent, errorSample, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: sent > 0, sent, failed, skippedNoEmail, skippedBadEmail, skippedRecent, errorSample, sentIds, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Error al enviar los recordatorios' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
