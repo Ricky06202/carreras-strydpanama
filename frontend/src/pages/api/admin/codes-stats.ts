@@ -7,9 +7,13 @@ export const GET: APIRoute = async ({ request }) => {
     const url = new URL(request.url);
     const raceId = url.searchParams.get('raceId');
 
-    const result = await apiFetch(`/api/collections/registration_codes/content?limit=1000${raceId ? `&filters[race]=${raceId}` : ''}`, env, { method: 'GET' });
-    
-    const codes = (result.data || []).filter((c: any) => c.status === 'published');
+    const result = await apiFetch(`/api/collections/registration_codes/content?limit=5000`, env, { method: 'GET' });
+
+    // SonicJS IGNORA los params filters[...] (devuelve todo) => filtrar aqui.
+    // Bug: "Filtrar por Carrera" del monitor de codigos no filtraba nada.
+    const codes = (result.data || []).filter((c: any) =>
+      c.status === 'published' && (!raceId || (c.data?.race || '') === raceId)
+    );
     const stats: any = {};
     const rawCodes: any = [];
     
