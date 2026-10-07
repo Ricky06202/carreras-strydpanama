@@ -1,0 +1,16 @@
+node_modules
+.env*
+.next
+next-env.d.ts
+/dist/
+.vinext/
+.cloudflare/
+
+# PII: dumps y seeds generados desde la BD real — nunca subir
+v2/scripts/migrate/export/
+v2/scripts/migrate/output/
+scripts/migrate/export/
+scripts/migrate/output/
+.wrangler/
+scripts/output/
+tsconfig.tsbuildinfo
