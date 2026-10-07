@@ -249,7 +249,17 @@ export const processRegistration = async (env: any, body: any) => {
     if (usedCodeData || isWaitingList) {
         finalAmount = 0;
     }
-    body.amountPaid = (isWaitingList || isPreinscription) ? 0 : finalAmount;
+    // BUG 25/20 (precio por fecha): si el pago YA fue ejecutado en Yappy
+    // (isWebhookConfirmed), el monto real es el que se cobro en checkout
+    // (payload.amountPaid/totalAmount, que /api/yappy/checkout sincroniza con
+    // el total enviado a Yappy). El precio CMS puede haber cambiado entre el
+    // pago y la confirmacion (ej. cambio 25->20 del 5/10) y NO debe reinar.
+    const charged = body.isWebhookConfirmed
+        ? Number(body.amountPaid ?? body.totalAmount ?? 0)
+        : 0;
+    body.amountPaid = (isWaitingList || isPreinscription)
+        ? 0
+        : (charged > 0 ? charged : finalAmount);
 
     // Generar cÃ³digo de confirmaciÃ³n Ãºnico: STRYD-8chars
     const rawId = crypto.randomUUID().replace(/-/g, '');
