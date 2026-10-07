@@ -78,6 +78,7 @@ export const POST: APIRoute = async ({ request }) => {
     const now = Date.now();
     const list: Reminder[] = [];
     let skippedNoEmail = 0;
+    let skippedBadEmail = 0;
     let skippedRecent = 0;
 
     (partRes?.data || []).forEach((c: any) => {
@@ -87,6 +88,8 @@ export const POST: APIRoute = async ({ request }) => {
       if (d.participantType === 'padrino') return;
       if (raceId && (d.race || d.raceId) !== raceId) return;
       if (!d.email) { skippedNoEmail++; return; }
+      const email = String(d.email).trim();
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { skippedBadEmail++; return; }
       if (!force && Number(d.lastReminderAt) && now - Number(d.lastReminderAt) < 24 * 60 * 60 * 1000) { skippedRecent++; return; }
 
       const race = racesById[d.race || d.raceId] || {};
@@ -103,7 +106,7 @@ export const POST: APIRoute = async ({ request }) => {
         raceDate = !isNaN(nd) && nd > 0 ? new Date(nd).toLocaleDateString('es-PA') : String(race.date);
       }
 
-      list.push({ id: c.id, to: d.email, firstName: d.firstName || (d.title || '').split(' ')[0] || 'corredor(a)', cedula: d.cedula || '', raceTitle: race.title || 'la carrera', raceDate, amount });
+      list.push({ id: c.id, to: email, firstName: d.firstName || (d.title || '').split(' ')[0] || 'corredor(a)', cedula: d.cedula || '', raceTitle: race.title || 'la carrera', raceDate, amount });
     });
 
     if (testEmail) {
@@ -120,39 +123,66 @@ export const POST: APIRoute = async ({ request }) => {
     }
 
     if (list.length === 0) {
-      return new Response(JSON.stringify({ success: true, sent: 0, skippedNoEmail, skippedRecent, detail: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, sent: 0, skippedNoEmail, skippedBadEmail, skippedRecent, detail: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     const detail: { email: string; ok: boolean; error?: string }[] = [];
     let sent = 0;
 
+    const markReminder = async (r: Reminder) => {
+      const item = (partRes.data || []).find((c: any) => c.id === r.id);
+      if (!item) return;
+      const colId = item.collectionId || 'col-participants-93d1ac21';
+      try {
+        await apiFetch(`/api/content/${r.id}`, env, {
+          method: 'PUT',
+          body: JSON.stringify({ id: r.id, collectionId: colId, collection_id: colId, title: item.title, status: 'published', data: { ...item.data, lastReminderAt: now } })
+        });
+      } catch { /* el envío ya fue hecho; la marca es secundaria */ }
+    };
+
+    const sendOne = async (r: Reminder): Promise<string | null> => {
+      try {
+        const res = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+          body: JSON.stringify({ from: FROM, to: r.to, ...buildEmail(r) })
+        });
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) return j?.message || `HTTP ${res.status}`;
+        return null;
+      } catch (e: any) {
+        return e?.message || 'Error de red';
+      }
+    };
+
     for (let i = 0; i < list.length; i += 100) {
       const chunk = list.slice(i, i + 100);
       const msgs = chunk.map(r => ({ ...buildEmail(r), from: FROM, to: r.to }));
+      let batchErr: string | null = null;
       try {
         const res = await fetch('https://api.resend.com/emails/batch', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
           body: JSON.stringify(msgs)
         });
-        const j = await res.json();
-        if (!res.ok) throw new Error(j?.message || `HTTP ${res.status}`);
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok) batchErr = j?.message || `HTTP ${res.status}`;
+      } catch (e: any) {
+        batchErr = e?.message || 'Error de red';
+      }
+
+      if (!batchErr) {
         sent += chunk.length;
         chunk.forEach(r => detail.push({ email: r.to, ok: true }));
-        // Marcar el recordatorio para no repetir envíos en 24h
+        for (const r of chunk) await markReminder(r);
+      } else {
+        // El lote fue rechazado (ej. un correo malformado): reintentar uno por uno
         for (const r of chunk) {
-          const item = (partRes.data || []).find((c: any) => c.id === r.id);
-          if (!item) continue;
-          const colId = item.collectionId || 'col-participants-93d1ac21';
-          try {
-            await apiFetch(`/api/content/${r.id}`, env, {
-              method: 'PUT',
-              body: JSON.stringify({ id: r.id, collectionId: colId, collection_id: colId, title: item.title, status: 'published', data: { ...item.data, lastReminderAt: now } })
-            });
-          } catch { /* el recordatorio ya fue enviado; la marca es secundaria */ }
+          const err = await sendOne(r);
+          if (err) detail.push({ email: r.to, ok: false, error: err });
+          else { sent++; detail.push({ email: r.to, ok: true }); await markReminder(r); }
         }
-      } catch (e: any) {
-        chunk.forEach(r => detail.push({ email: r.to, ok: false, error: e?.message }));
       }
     }
 
@@ -175,6 +205,7 @@ export const POST: APIRoute = async ({ request }) => {
             <p><b>Carrera:</b> ${raceTitle}</p>
             <p><b>Enviados:</b> ${sent}</p>
             <p><b>Omitidos sin correo:</b> ${skippedNoEmail}</p>
+            <p><b>Omitidos con correo inválido:</b> ${skippedBadEmail}</p>
             <p><b>Ya recordados (últimas 24h):</b> ${skippedRecent}</p>
             <p><b>Fallidos:</b> ${failed}${errorSample ? ` — ${errorSample}` : ''}</p>
             <p style="color:#666;font-size:12px">Disparado desde el panel admin · ${new Date().toLocaleString('es-PA')}</p>
@@ -183,7 +214,7 @@ export const POST: APIRoute = async ({ request }) => {
       });
     } catch { /* el resumen no debe romper la respuesta */ }
 
-    return new Response(JSON.stringify({ success: sent > 0, sent, failed, skippedNoEmail, skippedRecent, errorSample, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ success: sent > 0, sent, failed, skippedNoEmail, skippedBadEmail, skippedRecent, errorSample, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Error al enviar los recordatorios' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
