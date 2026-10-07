@@ -7,3 +7,5 @@ export function getDb(d1: typeof env.DB = env.DB) {
 }
 
 export { schema };
+
+export type Db = ReturnType<typeof getDb>;

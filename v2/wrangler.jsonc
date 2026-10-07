@@ -11,5 +11,10 @@
   ],
   "r2_buckets": [
     { "binding": "MEDIA", "bucket_name": "carreras-v2-media" }
-  ]
+  ],
+  "vars": {
+    "YAPPY_MERCHANT_ID": "",
+    "YAPPY_SECRET_KEY": "",
+    "YAPPY_URL_DOMAIN": ""
+  }
 }
