@@ -989,7 +989,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       });
       const data = await res.json();
       if (data.error) alert('❌ ' + data.error);
-      else alert(`✅ Recordatorios enviados: ${data.sent}\nOmitidos sin correo: ${data.skippedNoEmail}\nYa recordados hoy (24h): ${data.skippedRecent}`);
+      else alert(`✅ Recordatorios enviados: ${data.sent}\nOmitidos sin correo: ${data.skippedNoEmail}\nYa recordados hoy (24h): ${data.skippedRecent}${data.failed ? `\n❌ Fallidos: ${data.failed}${data.errorSample ? ` — ${data.errorSample}` : ''}` : ''}\n\nSe envió un resumen por correo al administrador.`);
     } catch {
       alert('Error de conexión al enviar los recordatorios');
     } finally {

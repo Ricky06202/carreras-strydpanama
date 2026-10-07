@@ -144,17 +144,46 @@ export const POST: APIRoute = async ({ request }) => {
           const item = (partRes.data || []).find((c: any) => c.id === r.id);
           if (!item) continue;
           const colId = item.collectionId || 'col-participants-93d1ac21';
-          await apiFetch(`/api/content/${r.id}`, env, {
-            method: 'PUT',
-            body: JSON.stringify({ id: r.id, collectionId: colId, collection_id: colId, title: item.title, status: 'published', data: { ...item.data, lastReminderAt: now } })
-          });
+          try {
+            await apiFetch(`/api/content/${r.id}`, env, {
+              method: 'PUT',
+              body: JSON.stringify({ id: r.id, collectionId: colId, collection_id: colId, title: item.title, status: 'published', data: { ...item.data, lastReminderAt: now } })
+            });
+          } catch { /* el recordatorio ya fue enviado; la marca es secundaria */ }
         }
       } catch (e: any) {
         chunk.forEach(r => detail.push({ email: r.to, ok: false, error: e?.message }));
       }
     }
 
-    return new Response(JSON.stringify({ success: sent > 0, sent, skippedNoEmail, skippedRecent, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const failed = detail.filter(d => !d.ok).length;
+    const errorSample = detail.find(d => !d.ok)?.error || '';
+
+    // Resumen para el administrador
+    try {
+      const adminEmail = (env as any).ADMIN_NOTIFY_EMAIL || 'ricardosanjurg@gmail.com';
+      const raceTitle = raceId ? (racesById[raceId]?.title || raceId) : 'todas';
+      await fetch('https://api.resend.com/emails/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+        body: JSON.stringify([{
+          from: FROM,
+          to: adminEmail,
+          subject: `📋 Recordatorios STRYD: ${sent} enviados (${raceTitle})`,
+          html: `<div style="font-family:Arial;padding:16px;color:#1a1a1a">
+            <h3 style="margin:0 0 12px">Resumen de envío de recordatorios de pago</h3>
+            <p><b>Carrera:</b> ${raceTitle}</p>
+            <p><b>Enviados:</b> ${sent}</p>
+            <p><b>Omitidos sin correo:</b> ${skippedNoEmail}</p>
+            <p><b>Ya recordados (últimas 24h):</b> ${skippedRecent}</p>
+            <p><b>Fallidos:</b> ${failed}${errorSample ? ` — ${errorSample}` : ''}</p>
+            <p style="color:#666;font-size:12px">Disparado desde el panel admin · ${new Date().toLocaleString('es-PA')}</p>
+          </div>`
+        }])
+      });
+    } catch { /* el resumen no debe romper la respuesta */ }
+
+    return new Response(JSON.stringify({ success: sent > 0, sent, failed, skippedNoEmail, skippedRecent, errorSample, detail }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (error: any) {
     return new Response(JSON.stringify({ error: error.message || 'Error al enviar los recordatorios' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
   }
