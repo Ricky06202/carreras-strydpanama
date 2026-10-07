@@ -2597,85 +2597,6 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
             )}
           </Dialog>
 
-          <Dialog open={!!editParticipantObj} onClose={() => setEditParticipantObj(null)} maxWidth="sm" fullWidth>
-            {editParticipantObj && (
-               <>
-                  <DialogTitle sx={{ fontWeight: 'bold' }}>Editar {editParticipantObj.bibNumber ? `Corredor #${editParticipantObj.bibNumber}` : 'Preinscrito'}</DialogTitle>
-                  <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                     <Typography variant="body2" color="text.secondary">Edita los datos del corredor en caso de errores tipográficos, cambios de talla, distancia, categoría o estado de pago.</Typography>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <TextField label="Nombre" size="small" value={editParticipantObj.firstName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, firstName: e.target.value})} fullWidth />
-                        <TextField label="Apellido" size="small" value={editParticipantObj.lastName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, lastName: e.target.value})} fullWidth />
-                    </Box>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <TextField label="Cédula" size="small" value={editParticipantObj.cedula || ''} onChange={e => setEditParticipantObj({...editParticipantObj, cedula: e.target.value})} fullWidth />
-                        <TextField label="Telf / Celular" size="small" value={editParticipantObj.phone || ''} onChange={e => setEditParticipantObj({...editParticipantObj, phone: e.target.value})} fullWidth />
-                    </Box>
-                     <Box sx={{ display: 'flex', gap: 2 }}>
-                         <TextField label="F. Nacimiento" type="date" InputLabelProps={{ shrink: true }} size="small" value={editParticipantObj.birthDate || ''} onChange={e => setEditParticipantObj({...editParticipantObj, birthDate: e.target.value})} fullWidth />
-                         <TextField label="Nombre de Equipo" size="small" value={editParticipantObj.teamName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, teamName: e.target.value})} fullWidth />
-                     </Box>
-                     <Box sx={{ display: 'flex', gap: 2 }}>
-                         <TextField label="Email" size="small" value={editParticipantObj.email || ''} onChange={e => setEditParticipantObj({...editParticipantObj, email: e.target.value})} fullWidth />
-                         <FormControl size="small" fullWidth>
-                           <InputLabel>Talla</InputLabel>
-                           <Select label="Talla" value={editParticipantObj.size || ''} onChange={e => setEditParticipantObj({...editParticipantObj, size: e.target.value})}>
-                             <MenuItem value="">Sin definir</MenuItem>
-                             {['XS','S','M','L','XL','XXL'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-                           </Select>
-                         </FormControl>
-                     </Box>
-                     <Box sx={{ display: 'flex', gap: 2 }}>
-                         <FormControl size="small" fullWidth>
-                           <InputLabel>Distancia</InputLabel>
-                           <Select label="Distancia" value={editParticipantObj.distance || ''} onChange={e => setEditParticipantObj({...editParticipantObj, distance: e.target.value})}>
-                             {allDistances.filter((d: any) => !editParticipantObj.race || !d.race || d.race === editParticipantObj.race).map((d: any) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-                           </Select>
-                         </FormControl>
-                         <FormControl size="small" fullWidth>
-                           <InputLabel>Categoría</InputLabel>
-                           <Select label="Categoría" value={editParticipantObj.category || ''} onChange={e => setEditParticipantObj({...editParticipantObj, category: e.target.value})}>
-                             {allCategories.map((ct: any) => <MenuItem key={ct.id} value={ct.id}>{ct.name}</MenuItem>)}
-                           </Select>
-                         </FormControl>
-                     </Box>
-                     <Box sx={{ display: 'flex', gap: 2 }}>
-                         <FormControl size="small" fullWidth>
-                           <InputLabel>Estado de Pago</InputLabel>
-                           <Select label="Estado de Pago" value={editParticipantObj.paymentStatus || ''} onChange={e => setEditParticipantObj({...editParticipantObj, paymentStatus: e.target.value})}>
-                             {['', 'Preinscrito', 'Pendiente', 'Transferencia', 'Yappy', 'Confirmado', 'Completado', 'Efectivo', 'Boleto Físico', 'Cupon Padrino', 'Cupon Gratuito'].map(s => <MenuItem key={s} value={s}>{s || 'Sin definir'}</MenuItem>)}
-                           </Select>
-                         </FormControl>
-                         <TextField label="Monto Pagado (B/.)" type="number" size="small" value={editParticipantObj.amountPaid ?? ''} onChange={e => setEditParticipantObj({...editParticipantObj, amountPaid: e.target.value === '' ? undefined : Number(e.target.value)})} fullWidth />
-                     </Box>
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                         <TextField 
-                           label="Tiempo de Llegada (HH:MM:SS)" 
-                           placeholder="Ej: 01:05:30" 
-                           size="small" 
-                           value={editParticipantObj.finishTimeFormatted || ''} 
-                           onChange={e => setEditParticipantObj({...editParticipantObj, finishTimeFormatted: e.target.value})} 
-                           fullWidth 
-                           helperText="Dejar vacío para limpiar"
-                         />
-                         <TextField 
-                           label="Tiempo de Retorno (HH:MM:SS)" 
-                           placeholder="Ej: 00:32:15" 
-                           size="small" 
-                           value={editParticipantObj.checkpointTimeFormatted || ''} 
-                           onChange={e => setEditParticipantObj({...editParticipantObj, checkpointTimeFormatted: e.target.value})} 
-                           fullWidth 
-                           helperText="Dejar vacío para limpiar"
-                         />
-                    </Box>
-                 </DialogContent>
-                 <DialogActions sx={{ p: 2 }}>
-                   <Button onClick={() => setEditParticipantObj(null)} color="inherit">Cancelar</Button>
-                   <Button variant="contained" onClick={handleSaveEdit} disabled={participantsLoading} sx={{ bgcolor: ACCENT, fontWeight: 'bold' }}>{participantsLoading ? 'Guardando...' : 'Guardar Cambios'}</Button>
-                 </DialogActions>
-               </>
-            )}
-          </Dialog>
         </Box>
       )}
       {tabIndex === 6 && (() => {
@@ -3045,6 +2966,87 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
         );
       })()}
 
+
+      {/* Dialog de edicion compartido: Inscritos y Preinscritos */}
+      <Dialog open={!!editParticipantObj} onClose={() => setEditParticipantObj(null)} maxWidth="sm" fullWidth>
+        {editParticipantObj && (
+           <>
+              <DialogTitle sx={{ fontWeight: 'bold' }}>Editar {editParticipantObj.bibNumber ? `Corredor #${editParticipantObj.bibNumber}` : 'Preinscrito'}</DialogTitle>
+              <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                 <Typography variant="body2" color="text.secondary">Edita los datos del corredor en caso de errores tipográficos, cambios de talla, distancia, categoría o estado de pago.</Typography>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField label="Nombre" size="small" value={editParticipantObj.firstName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, firstName: e.target.value})} fullWidth />
+                    <TextField label="Apellido" size="small" value={editParticipantObj.lastName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, lastName: e.target.value})} fullWidth />
+                </Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <TextField label="Cédula" size="small" value={editParticipantObj.cedula || ''} onChange={e => setEditParticipantObj({...editParticipantObj, cedula: e.target.value})} fullWidth />
+                    <TextField label="Telf / Celular" size="small" value={editParticipantObj.phone || ''} onChange={e => setEditParticipantObj({...editParticipantObj, phone: e.target.value})} fullWidth />
+                </Box>
+                 <Box sx={{ display: 'flex', gap: 2 }}>
+                     <TextField label="F. Nacimiento" type="date" InputLabelProps={{ shrink: true }} size="small" value={editParticipantObj.birthDate || ''} onChange={e => setEditParticipantObj({...editParticipantObj, birthDate: e.target.value})} fullWidth />
+                     <TextField label="Nombre de Equipo" size="small" value={editParticipantObj.teamName || ''} onChange={e => setEditParticipantObj({...editParticipantObj, teamName: e.target.value})} fullWidth />
+                 </Box>
+                 <Box sx={{ display: 'flex', gap: 2 }}>
+                     <TextField label="Email" size="small" value={editParticipantObj.email || ''} onChange={e => setEditParticipantObj({...editParticipantObj, email: e.target.value})} fullWidth />
+                     <FormControl size="small" fullWidth>
+                       <InputLabel>Talla</InputLabel>
+                       <Select label="Talla" value={editParticipantObj.size || ''} onChange={e => setEditParticipantObj({...editParticipantObj, size: e.target.value})}>
+                         <MenuItem value="">Sin definir</MenuItem>
+                         {['XS','S','M','L','XL','XXL'].map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                       </Select>
+                     </FormControl>
+                 </Box>
+                 <Box sx={{ display: 'flex', gap: 2 }}>
+                     <FormControl size="small" fullWidth>
+                       <InputLabel>Distancia</InputLabel>
+                       <Select label="Distancia" value={editParticipantObj.distance || ''} onChange={e => setEditParticipantObj({...editParticipantObj, distance: e.target.value})}>
+                         {allDistances.filter((d: any) => !editParticipantObj.race || !d.race || d.race === editParticipantObj.race).map((d: any) => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                       </Select>
+                     </FormControl>
+                     <FormControl size="small" fullWidth>
+                       <InputLabel>Categoría</InputLabel>
+                       <Select label="Categoría" value={editParticipantObj.category || ''} onChange={e => setEditParticipantObj({...editParticipantObj, category: e.target.value})}>
+                         {allCategories.map((ct: any) => <MenuItem key={ct.id} value={ct.id}>{ct.name}</MenuItem>)}
+                       </Select>
+                     </FormControl>
+                 </Box>
+                 <Box sx={{ display: 'flex', gap: 2 }}>
+                     <FormControl size="small" fullWidth>
+                       <InputLabel>Estado de Pago</InputLabel>
+                       <Select label="Estado de Pago" value={editParticipantObj.paymentStatus || ''} onChange={e => setEditParticipantObj({...editParticipantObj, paymentStatus: e.target.value})}>
+                         {['', 'Preinscrito', 'Pendiente', 'Transferencia', 'Yappy', 'Confirmado', 'Completado', 'Efectivo', 'Boleto Físico', 'Cupon Padrino', 'Cupon Gratuito'].map(s => <MenuItem key={s} value={s}>{s || 'Sin definir'}</MenuItem>)}
+                       </Select>
+                     </FormControl>
+                     <TextField label="Monto Pagado (B/.)" type="number" size="small" value={editParticipantObj.amountPaid ?? ''} onChange={e => setEditParticipantObj({...editParticipantObj, amountPaid: e.target.value === '' ? undefined : Number(e.target.value)})} fullWidth />
+                 </Box>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                     <TextField 
+                       label="Tiempo de Llegada (HH:MM:SS)" 
+                       placeholder="Ej: 01:05:30" 
+                       size="small" 
+                       value={editParticipantObj.finishTimeFormatted || ''} 
+                       onChange={e => setEditParticipantObj({...editParticipantObj, finishTimeFormatted: e.target.value})} 
+                       fullWidth 
+                       helperText="Dejar vacío para limpiar"
+                     />
+                     <TextField 
+                       label="Tiempo de Retorno (HH:MM:SS)" 
+                       placeholder="Ej: 00:32:15" 
+                       size="small" 
+                       value={editParticipantObj.checkpointTimeFormatted || ''} 
+                       onChange={e => setEditParticipantObj({...editParticipantObj, checkpointTimeFormatted: e.target.value})} 
+                       fullWidth 
+                       helperText="Dejar vacío para limpiar"
+                     />
+                </Box>
+             </DialogContent>
+             <DialogActions sx={{ p: 2 }}>
+               <Button onClick={() => setEditParticipantObj(null)} color="inherit">Cancelar</Button>
+               <Button variant="contained" onClick={handleSaveEdit} disabled={participantsLoading} sx={{ bgcolor: ACCENT, fontWeight: 'bold' }}>{participantsLoading ? 'Guardando...' : 'Guardar Cambios'}</Button>
+             </DialogActions>
+           </>
+        )}
+      </Dialog>
       </>
       )}
     </Container>
