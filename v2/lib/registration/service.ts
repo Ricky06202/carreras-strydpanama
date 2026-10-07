@@ -3,6 +3,7 @@ import type { Db } from "@/lib/db";
 import { schema } from "@/lib/db";
 import { createYappyPayment } from "@/lib/yappy";
 import { isPanamaMobile, registrationSchema, type RegistrationInput } from "./schema";
+import { sendRegistrationEmail } from "@/lib/email";
 
 export { registrationSchema, isPanamaMobile };
 export type { RegistrationInput };
@@ -220,6 +221,21 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     }
   }
 
+  void sendRegistrationEmail({
+    email: input.email,
+    firstName: input.firstName,
+    lastName: input.lastName,
+    raceTitle: race.title,
+    raceSlug: race.slug,
+    distanceTitle: distance.title,
+    categoryTitle: category?.title ?? null,
+    confirmationCode,
+    method: input.method,
+    amount,
+    confirmed: isFreeCode,
+    bibNumber: null,
+  }).catch(() => {});
+
   if (isFreeCode && codeRow) {
     const bib = await nextBib(db, race.id, race.startingBib);
     await db
@@ -301,6 +317,26 @@ export async function confirmRegistrationPayment(db: Db, orderIdRaw: string): Pr
     .set({ status: "approved", updatedAt: ts })
     .where(eq(schema.payments.id, payment.id))
     .run();
+
+  const [dist, cat] = await Promise.all([
+    reg.distanceId ? db.select({ title: schema.raceDistances.title }).from(schema.raceDistances).where(eq(schema.raceDistances.id, reg.distanceId)).get() : null,
+    reg.categoryId ? db.select({ title: schema.raceCategories.title }).from(schema.raceCategories).where(eq(schema.raceCategories.id, reg.categoryId)).get() : null,
+  ]);
+  void sendRegistrationEmail({
+    email: reg.email,
+    firstName: reg.firstName,
+    lastName: reg.lastName,
+    raceTitle: race?.title ?? "",
+    raceSlug: race?.slug ?? "",
+    distanceTitle: dist?.title ?? null,
+    categoryTitle: cat?.title ?? null,
+    confirmationCode: reg.confirmationCode,
+    method: "yappy",
+    amount: payment.amount,
+    confirmed: true,
+    bibNumber: bib,
+  }).catch(() => {});
+
   return { ok: true, status: "inscrito", bibNumber: bib, confirmationCode: reg.confirmationCode };
 }
 

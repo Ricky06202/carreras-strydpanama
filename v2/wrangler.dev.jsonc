@@ -8,6 +8,7 @@
     { "binding": "MEDIA", "bucket_name": "carreras-v2-media" }
   ],
   "vars": {
+    "RESEND_API_KEY": "",
     "YAPPY_MERCHANT_ID": "REEMPLAZAR_DEV",
     "YAPPY_SECRET_KEY": "REEMPLAZAR_DEV",
     "YAPPY_URL_DOMAIN": "REEMPLAZAR_DEV"

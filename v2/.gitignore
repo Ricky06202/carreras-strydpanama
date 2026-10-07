@@ -14,3 +14,5 @@ scripts/migrate/output/
 .wrangler/
 scripts/output/
 tsconfig.tsbuildinfo
+
+.dev.vars
