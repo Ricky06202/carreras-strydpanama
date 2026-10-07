@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { PosterViewer } from "@/components/site/PosterViewer";
 import { getRaceBySlug } from "@/lib/db/queries";
 import { formatDateEs, formatMoney, formatRaceTime, raceImageUrl, STATUS_META } from "@/lib/format";
 
@@ -34,30 +35,47 @@ export default async function RacePage({ params }: Props) {
 
   return (
     <>
-      <header className="relative min-h-[55vh] overflow-hidden border-b border-hairline bg-abyss">
-        {img && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={img} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" />
-        )}
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.55)_0%,var(--color-void)_92%)]" />
-        <div className="relative mx-auto flex min-h-[55vh] max-w-6xl flex-col justify-end px-5 pb-12 pt-28">
-          <Badge tone={open ? "stryd" : "neutral"} className="mb-5 w-fit">
-            <span className={`h-1.5 w-1.5 rounded-full ${status.dot === "live" ? "animate-glow-pulse bg-stryd" : "bg-mist"}`} />
-            {status.label}
-          </Badge>
-          <h1 className="font-display text-5xl font-bold leading-[0.95] tracking-tight sm:text-7xl">{race.title}</h1>
-          {race.description && <p className="mt-4 max-w-2xl text-lg text-fog">{race.description}</p>}
-          <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-sm text-mist">
-            <span className="text-stryd">{formatMoney(race.price)}</span>
-            <span>{formatDateEs(race.date)}</span>
-            {race.startTime && <span>{formatRaceTime(race.startTime)}</span>}
-            <span>{race.location}</span>
+      <header className="relative overflow-hidden border-b border-hairline bg-abyss">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,var(--color-stryd-glow),transparent_65%)] opacity-25" />
+        <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-24 sm:pt-28 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start lg:gap-14">
+          {img && (
+            <div className="mx-auto w-full max-w-[320px] sm:max-w-[380px] lg:max-w-none">
+              <PosterViewer src={img} alt={`Afiche oficial de ${race.title}`} />
+            </div>
+          )}
+          <div className="flex flex-col gap-5">
+            <Badge tone={open ? "stryd" : "neutral"} className="w-fit">
+              <span className={`h-1.5 w-1.5 rounded-full ${status.dot === "live" ? "animate-glow-pulse bg-stryd" : "bg-mist"}`} />
+              {status.label}
+            </Badge>
+            <h1 className="font-display text-4xl font-bold leading-[0.95] tracking-tight sm:text-5xl lg:text-6xl">{race.title}</h1>
+            {race.description && <p className="max-w-2xl text-lg text-fog">{race.description}</p>}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 font-mono text-sm text-mist">
+              <span className="text-stryd">{formatMoney(race.price)}</span>
+              <span>{formatDateEs(race.date)}</span>
+              {race.startTime && <span>{formatRaceTime(race.startTime)}</span>}
+              <span>{race.location}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {open ? (
+                <Button asChild size="lg">
+                  <Link href={inscripcionesUrl}>Inscribirme</Link>
+                </Button>
+              ) : (
+                <Button variant="secondary" size="lg" disabled>
+                  Inscripciones cerradas
+                </Button>
+              )}
+              <Button asChild variant="outline" size="lg">
+                <Link href="/">Volver a carreras</Link>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       <section className="mx-auto max-w-6xl px-5 py-14">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Card className="p-6">
             <p className="font-mono text-xs uppercase tracking-[0.25em] text-mist">Modalidades</p>
             <p className="mt-2 font-display text-3xl font-bold">{race.distances.length || "—"}</p>
@@ -79,20 +97,6 @@ export default async function RacePage({ params }: Props) {
                   : "Inscritos confirmados"}
               {race.preinscritoCount > 0 ? ` · ${race.preinscritoCount} preinscritos` : ""}
             </p>
-          </Card>
-          <Card className="flex flex-col justify-center gap-3 p-6">
-            {open ? (
-              <Button asChild size="lg">
-                <Link href={inscripcionesUrl}>Inscribirme</Link>
-              </Button>
-            ) : (
-              <Button variant="secondary" size="lg" disabled>
-                Inscripciones cerradas
-              </Button>
-            )}
-            <Button asChild variant="outline" size="sm">
-              <Link href="/">Volver a carreras</Link>
-            </Button>
           </Card>
         </div>
       </section>
