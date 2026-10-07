@@ -24,6 +24,7 @@ export type RaceDetail = PublicRace & {
   technicalInfo: string | null;
   termsAndConditions: string | null;
   showShirtSize: boolean;
+  platformFee: number;
   distances: { id: string; title: string; kilometers: number; price: number | null; description: string | null }[];
   categories: { id: string; title: string; minAge: number; maxAge: number; gender: string; description: string | null }[];
   preinscritoCount: number;
@@ -116,6 +117,7 @@ export async function getRaceBySlug(slug: string): Promise<RaceDetail | null> {
     technicalInfo: race.technicalInfo,
     termsAndConditions: race.termsAndConditions,
     showShirtSize: race.showShirtSize,
+    platformFee: race.platformFee,
     confirmedCount: c.confirmed,
     preinscritoCount: c.pre,
     distances: distances.map((d) => ({

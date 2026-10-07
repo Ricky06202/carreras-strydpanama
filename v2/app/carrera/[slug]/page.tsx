@@ -28,7 +28,7 @@ export default async function RacePage({ params }: Props) {
 
   const img = raceImageUrl(race.imageUrl);
   const status = STATUS_META[race.status];
-  const inscripcionesUrl = `https://carreras.strydpanama.com/race/${race.id}`;
+  const inscripcionesUrl = `/carrera/${race.slug}/inscribirse`;
   const open = race.status === "accepting";
   const cuposRestantes = race.maxParticipants ? Math.max(0, race.maxParticipants - race.confirmedCount) : null;
 
@@ -83,9 +83,7 @@ export default async function RacePage({ params }: Props) {
           <Card className="flex flex-col justify-center gap-3 p-6">
             {open ? (
               <Button asChild size="lg">
-                <a href={inscripcionesUrl} target="_blank" rel="noopener">
-                  Inscribirme
-                </a>
+                <Link href={inscripcionesUrl}>Inscribirme</Link>
               </Button>
             ) : (
               <Button variant="secondary" size="lg" disabled>
@@ -161,7 +159,7 @@ export default async function RacePage({ params }: Props) {
               </div>
             )}
             {race.termsAndConditions && (
-              <details className="group">
+              <details id="terminos" className="group scroll-mt-24">
                 <summary className="cursor-pointer list-none font-mono text-xs uppercase tracking-[0.3em] text-mist transition-colors hover:text-stryd">
                   Términos y condiciones <span className="ml-1 inline-block transition-transform group-open:rotate-90">→</span>
                 </summary>
