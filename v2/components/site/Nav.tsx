@@ -54,8 +54,8 @@ export function Nav() {
         </div>
 
         <div className="hidden md:block">
-          <Button size="sm" asChild>
-            <Link href="/register">Inscríbete</Link>
+          <Button size="sm" variant="outline" asChild>
+            <Link href="/mi-portal">Mi portal</Link>
           </Button>
         </div>
 
@@ -88,7 +88,7 @@ export function Nav() {
                 </motion.div>
               ))}
               <Button asChild variant="primary" size="lg" className="mt-3 w-full">
-                <Link href="/register">Inscríbete</Link>
+                <Link href="/mi-portal">Mi portal</Link>
               </Button>
             </div>
           </motion.div>
