@@ -976,14 +976,16 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const [remindersBusy, setRemindersBusy] = useState(false);
   const sendPaymentReminders = async (count: number) => {
-    if (count === 0) return alert('No hay preinscritos a los que recordar.');
-    if (!confirm(`¿Enviar recordatorio de pago por correo a ${count} preinscrito(s)?\n\nSe omite automáticamente a quien ya fue recordado en las últimas 24 horas.`)) return;
+    if (!participantRaceFilter) return alert('⚠️ Selecciona primero una carrera en el filtro "Carrera" de arriba.\n\nLos recordatorios solo se envían a la carrera elegida, nunca a todas.');
+    if (count === 0) return alert('No hay preinscritos en esta carrera a los que recordar.');
+    const raceName = races.find(r => r.id === participantRaceFilter)?.data?.title || participantRaceFilter;
+    if (!confirm(`Carrera seleccionada: ${raceName}\n\n¿Enviar recordatorio de pago por correo a ${count} preinscrito(s) de esta carrera?\n\nSe omite automáticamente a quien ya fue recordado en las últimas 24 horas.`)) return;
     try {
       setRemindersBusy(true);
       const res = await fetch('/api/admin/notify-preinscritos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raceId: participantRaceFilter || undefined })
+        body: JSON.stringify({ raceId: participantRaceFilter })
       });
       const data = await res.json();
       if (data.error) alert('❌ ' + data.error);

@@ -56,6 +56,9 @@ export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json().catch(() => ({})) as any;
     const raceId = body.raceId ? String(body.raceId) : '';
+    if (!raceId) {
+      return new Response(JSON.stringify({ error: 'Selecciona primero una carrera: los recordatorios solo se envían a la carrera elegida, nunca a todas.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
     const force = body.force === true;
     const testEmail = body.testEmail ? String(body.testEmail) : '';
     const key = (env as any).RESEND_API_KEY;
