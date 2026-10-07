@@ -184,17 +184,19 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       alert("Seleccione primero la carrera para el código gratuito");
       return;
     }
+    const qty = Number(codeQuantity) > 0 ? Math.min(Number(codeQuantity), 100) : 1;
     try {
       setCodesLoading(true);
       const res = await fetch('/api/admin/bulk-codes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vendor: 'Promocion', raceId: codeRaceId, quantity: 1, allowedType: 'all', freeCode: true })
+        body: JSON.stringify({ vendor: 'Promocion', raceId: codeRaceId, quantity: qty, allowedType: 'all', freeCode: true })
       });
       const data = await res.json();
       if (data.success) {
         fetchCodeStats();
-        alert(`🎟️ Código gratuito creado: ${data.codeStrings?.[0] || '??'}\n\nEntrégaselo a la persona ganadora: vale por una inscripción de B/. 0.00 en esta carrera.`);
+        const list = (data.codeStrings || []).join('\n');
+        alert(`🎟️ ${qty} código(s) gratuito(s) creado(s):\n\n${list}\n\nCada uno vale por una inscripción de B/. 0.00 en esta carrera. Entrégalos a las personas ganadoras.`);
       } else {
         alert(data.error);
       }
@@ -2058,7 +2060,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 </Button>
 
                 <Button variant="outlined" onClick={createFreeCode} disabled={codesLoading} sx={{ py: 1, px: 2, borderColor: '#2e7d32', color: '#2e7d32', '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46,125,50,0.08)' } }}>
-                  🎟️ CÓDIGO GRATUITO
+                  🎟️ CÓDIGO(S) GRATUITO(S) {Number(codeQuantity) > 1 ? `× ${Math.min(Number(codeQuantity), 100)}` : ''}
                 </Button>
               </Box>
             </CardContent>
