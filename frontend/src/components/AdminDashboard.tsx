@@ -2500,6 +2500,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   }}
                 >
                   <MenuItem value="bib">Dorsal (estable)</MenuItem>
+                  <MenuItem value="name">Apellidos (A-Z)</MenuItem>
                   <MenuItem value="updated">Última actualización</MenuItem>
                   <MenuItem value="newest">Más recientes (alta)</MenuItem>
                 </Select>
@@ -2579,6 +2580,10 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       }
                       if (participantsSort === 'newest') {
                         return (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0);
+                      }
+                      if (participantsSort === 'name') {
+                        const nameOf = (p: any) => (`${p.lastName || ''} ${p.firstName || String(p.title || '').split(' - ')[0] || ''}`).trim().toLowerCase();
+                        return nameOf(a).localeCompare(nameOf(b), 'es');
                       }
                       // 'bib': dorsal ascendente, sin dorsal (null/pendiente) al final
                       const ab = Number(a.bibNumber), bb = Number(b.bibNumber);
