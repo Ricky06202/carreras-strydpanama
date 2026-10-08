@@ -804,6 +804,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   };
   const [participantsLoading, setParticipantsLoading] = useState(false);
   const [participantSearch, setParticipantSearch] = useState('');
+  const [participantsSort, setParticipantsSort] = useState('bib');
   const [participantPage, setParticipantPage] = useState(0);
   const PARTICIPANTS_PER_PAGE = 15;
   const [participantRaceFilter, setParticipantRaceFilter] = useState('');
@@ -2473,6 +2474,36 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   ))}
                 </Select>
               </FormControl>
+              <FormControl size="small" sx={{ minWidth: 180 }}>
+                <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-focused': { color: ACCENT } }}>
+                  Ordenar por
+                </InputLabel>
+                <Select
+                  value={participantsSort}
+                  label="Ordenar por"
+                  onChange={e => { setParticipantsSort(e.target.value); setParticipantPage(0); }}
+                  sx={{
+                    color: 'white',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: ACCENT },
+                    '.MuiSvgIcon-root': { color: 'white' },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1a1a1a',
+                        color: 'white',
+                        '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255, 107, 0, 0.1)' },
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value="bib">Dorsal (estable)</MenuItem>
+                  <MenuItem value="updated">Última actualización</MenuItem>
+                  <MenuItem value="newest">Más recientes (alta)</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
             
             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -2542,7 +2573,17 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
-                    .sort((a,b) => (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0));
+                    .sort((a: any, b: any) => {
+                      if (participantsSort === 'updated') {
+                        return (Number(b.updatedAt || b.updated_at || b.updatedOn) || 0) - (Number(a.updatedAt || a.updated_at || a.updatedOn) || 0);
+                      }
+                      if (participantsSort === 'newest') {
+                        return (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0);
+                      }
+                      // 'bib': dorsal ascendente, sin dorsal (null/pendiente) al final
+                      const ab = Number(a.bibNumber), bb = Number(b.bibNumber);
+                      return (ab || Number.MAX_SAFE_INTEGER) - (bb || Number.MAX_SAFE_INTEGER);
+                    });
                   const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
                   const paginated = filtered.slice(participantPage * PARTICIPANTS_PER_PAGE, (participantPage + 1) * PARTICIPANTS_PER_PAGE);
                   return paginated.map((p) => {
