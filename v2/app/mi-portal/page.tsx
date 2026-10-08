@@ -11,7 +11,7 @@ import { PortalActions, RegistrationCard } from "@/components/account/PortalBits
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Mi portal" };
+export const metadata: Metadata = { title: "Mi portal", robots: { index: false, follow: false } };
 
 const STATUS_UI: Record<string, { label: string; tone: "success" | "stryd" | "danger" }> = {
   preinscrito: { label: "Preinscrito", tone: "stryd" },

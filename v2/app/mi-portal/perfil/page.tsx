@@ -6,7 +6,7 @@ import { ProfileForm } from "@/components/account/ProfileForm";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Mi perfil" };
+export const metadata: Metadata = { title: "Mi perfil", robots: { index: false, follow: false } };
 
 export default async function ProfilePage() {
   const runner = await getRunner();

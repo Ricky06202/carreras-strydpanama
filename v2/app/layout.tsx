@@ -18,11 +18,28 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://carreras.strydpanama.com"),
   title: {
-    default: "Stryd Panama",
-    template: "%s · Stryd Panama",
+    default: "Carreras Stryd Panamá — inscripciones y cronometraje",
+    template: "%s · Stryd Panamá",
   },
-  description: "Carreras, cronometraje y comunidad de corredores en Panamá. Stryd Panama.",
+  description:
+    "Carreras, cronometraje y comunidad de corredores en Panamá. Inscríbete, consulta podios y resultados oficiales de Stryd Panamá.",
+  keywords: ["carreras Panamá", "running Panamá", "cronometraje", "inscripciones carreras", "stryd panama", "10K", "media maratón"],
+  openGraph: {
+    type: "website",
+    siteName: "Stryd Panamá",
+    locale: "es_PA",
+    url: "/",
+    title: "Carreras Stryd Panamá",
+    description: "Inscripciones, cronometraje y resultados de carreras en Panamá.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Carreras Stryd Panamá",
+    description: "Inscripciones, cronometraje y resultados de carreras en Panamá.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
@@ -31,11 +48,17 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
+    <html lang="es-PA" className={`${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
       <body className="min-h-screen bg-void text-snow">
+        <a
+          href="#contenido"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-stryd focus:px-4 focus:py-2 focus:font-semibold focus:text-black"
+        >
+          Saltar al contenido
+        </a>
         <SmoothScroll />
         <Nav />
-        <main>{children}</main>
+        <main id="contenido">{children}</main>
         <Footer />
       </body>
     </html>

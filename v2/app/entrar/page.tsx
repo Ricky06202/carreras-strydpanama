@@ -5,7 +5,7 @@ import { AuthForm } from "@/components/account/AuthForm";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Entrar — Mi portal" };
+export const metadata: Metadata = { title: "Entrar", robots: { index: false, follow: false } };
 
 export default async function LoginPage() {
   if (await getRunner()) redirect("/mi-portal");

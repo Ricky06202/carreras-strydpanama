@@ -36,6 +36,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "start": "vite preview",
-    "deploy": "vinext-cloudflare deploy"
+    "deploy": "vinext-cloudflare deploy",
+    "e2e": "bun scripts/e2e-registration.ts"
   }
 }

@@ -99,8 +99,10 @@ en `code`, `cedula`, `confirmation_code`.
 - **F5 — Admin fase 1**: CRUD carreras/categorías/distancias/códigos bulk, vista de
   inscripciones, aprobación equipos.
 - **F6 — Admin fase 2 (operación de carrera)** ✅: cronómetro vivo estilo v1 (`/admin/timing`), meta/control manual + ingesta por cámara lista (`source:"camera"`, ver `docs/camara-v2.md` — falta decisión de hardware), deshacer con historial de eventos, cálculo de tiempos/podium con puesto por categoría, export CSV, envío masivo de resultados por correo, tómbola con RNG criptográfico (`/admin/tombole`), podio público (`/resultados`, `/resultados/[slug]`) y certificado imprimible/PDF en el portal del corredor.
-- **F7 — Cierre**: SEO/metas, rendimiento (Lighthouse >90), a11y, pruebas E2E del registro,
-  DNS/cutover a producción, desmantelar backend SonicJS.
+- **F7 — Cierre (código) ✅**: metas base con Open Graph/twitter + metadata por página, `robots.txt` y `sitemap.xml` dinámico,
+  a11y (lang es-PA, skip link, `noindex` en panel/portal, aria-labels en iconos), y smoke E2E del registro
+  (`bun run e2e` contra workerd local: flujo completo inscripción → estado → rechazos → SEO, 15/15).
+  Pendiente operativo (no es código): deploy con secrets, Lighthouse, webhook Yappy, DNS y apagar SonicJS → **`docs/cutover-v2.md`**.
 
 ## Reglas del branch
 - `v2` vive del `cms`; nada de tocar el código viejo salvo hotfixes en `cms`.
