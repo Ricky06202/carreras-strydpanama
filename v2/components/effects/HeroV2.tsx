@@ -58,7 +58,7 @@ export function HeroV2() {
           className="mt-10 flex flex-wrap items-center gap-4"
         >
           <Button asChild size="lg">
-            <Link href="/register">Inscríbete ahora</Link>
+            <Link href="/carreras">Inscríbete ahora</Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link href="/carreras">Ver carreras</Link>

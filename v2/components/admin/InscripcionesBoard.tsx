@@ -38,8 +38,8 @@ const statusTone = { preinscrito: "stryd", inscrito: "success", anulado: "danger
 const payTone = { pendiente: "neutral", pagado: "success", reembolsado: "danger", exento: "neutral" } as const;
 const payLabel = { pendiente: "Pendiente", pagado: "Pagado", reembolsado: "Reembolsado", exento: "Exento" } as const;
 
-export function InscripcionesBoard({ races }: { races: RaceOption[] }) {
-  const [raceId, setRaceId] = useState(races[0]?.id ?? "");
+export function InscripcionesBoard({ races, initialRaceId }: { races: RaceOption[]; initialRaceId?: string }) {
+  const [raceId, setRaceId] = useState(initialRaceId && races.some((r) => r.id === initialRaceId) ? initialRaceId : races[0]?.id ?? "");
   const [q, setQ] = useState("");
   const [dq, setDq] = useState("");
   const [status, setStatus] = useState("todos");
