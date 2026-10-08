@@ -39,6 +39,7 @@ export type WizardRace = {
   distances: Distance[];
   categories: Category[];
   termsUrl: string;
+  hasEventTerms: boolean;
 };
 
 type FormData = {
@@ -135,6 +136,8 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
     race.distances[0] ? "yappy" : "transferencia",
   );
   const [terms, setTerms] = useState(false);
+  const [privacy, setPrivacy] = useState(false);
+  const [decl, setDecl] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
@@ -310,6 +313,14 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
       document.getElementById("f-terms")?.focus();
       return;
     }
+    if (!privacy) {
+      document.getElementById("f-privacy")?.focus();
+      return;
+    }
+    if (!decl) {
+      document.getElementById("f-decl")?.focus();
+      return;
+    }
     if (submitting) return;
     if (method === "yappy") void payWithYappy();
     else void submitManual();
@@ -326,6 +337,8 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
         teamName: data.teamName || undefined,
         code: data.code || undefined,
         termsAccepted: terms,
+        privacyAccepted: privacy,
+        adultOrGuardian: decl,
         method,
       };
       const res = await fetch("/api/inscripciones", {
@@ -613,11 +626,33 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
             <input id="f-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1 h-5 w-5 accent-[#FF6B00]" />
             <span>
               Acepto los{" "}
-              <Link href={race.termsUrl} target="_blank" className="text-stryd underline underline-offset-2">
+              <Link href="/terminos" target="_blank" className="text-stryd underline underline-offset-2">
                 términos y condiciones
               </Link>{" "}
-              de {race.title}.
+              de Stryd Panama{race.hasEventTerms ? (
+                <>
+                  {" "}y los{" "}
+                  <Link href={race.termsUrl} target="_blank" className="text-stryd underline underline-offset-2">
+                    términos del evento {race.title}
+                  </Link>
+                </>
+              ) : null}
+              .
             </span>
+          </label>
+          <label className="flex items-start gap-3 text-sm text-mist">
+            <input id="f-privacy" type="checkbox" checked={privacy} onChange={(e) => setPrivacy(e.target.checked)} className="mt-1 h-5 w-5 accent-[#FF6B00]" />
+            <span>
+              He leído y acepto el{" "}
+              <Link href="/privacidad" target="_blank" className="text-stryd underline underline-offset-2">
+                aviso de privacidad
+              </Link>{" "}
+              (Ley 81 de 2019).
+            </span>
+          </label>
+          <label className="flex items-start gap-3 text-sm text-mist">
+            <input id="f-decl" type="checkbox" checked={decl} onChange={(e) => setDecl(e.target.checked)} className="mt-1 h-5 w-5 accent-[#FF6B00]" />
+            <span>Declaro ser mayor de 18 años, o que mi padre, madre o tutor legal autoriza esta inscripción.</span>
           </label>
 
           {fatal && <p className="rounded-xl border border-red-500/30 bg-red-950/40 p-3 text-sm text-red-300">{fatal}</p>}
@@ -669,17 +704,17 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
             )}
             {step < 3 && <Button type="submit" form="wiz" size="lg" className="flex-1">Continuar</Button>}
             {step === 3 && method !== "yappy" && (
-              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || submitting}>
+              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || !privacy || !decl || submitting}>
                 {submitting ? "Enviando…" : method === "code" ? "Confirmar inscripción" : "Finalizar preinscripción"}
               </Button>
             )}
             {step === 3 && method === "yappy" && (
-              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || submitting}>
+              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || !privacy || !decl || submitting}>
                 {submitting ? "Conectando Yappy…" : `Pagar B/. ${total.toFixed(2)} con Yappy`}
               </Button>
             )}
           </div>
-          {step === 3 && !terms && <p className="mx-auto mt-2 max-w-lg text-center text-[11px] text-mist">Acepta los términos para continuar</p>}
+          {step === 3 && (!terms || !privacy || !decl) && <p className="mx-auto mt-2 max-w-lg text-center text-[11px] text-mist">Acepta los tres puntos legales para continuar</p>}
         </div>
       )}
 

@@ -36,6 +36,7 @@ export default async function RegisterPage({ params }: Props) {
           distances: race.distances,
           categories: race.categories,
           termsUrl: `/carrera/${race.slug}#terminos`,
+          hasEventTerms: !!race.termsAndConditions?.trim(),
         }}
       />
     </section>

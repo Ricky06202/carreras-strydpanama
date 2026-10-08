@@ -11,6 +11,9 @@ export function Footer() {
           <Link href="/terminos" className="transition-colors hover:text-stryd">
             Términos
           </Link>
+          <Link href="/privacidad" className="transition-colors hover:text-stryd">
+            Privacidad
+          </Link>
           <a href="https://instagram.com" className="transition-colors hover:text-stryd">
             Instagram
           </a>

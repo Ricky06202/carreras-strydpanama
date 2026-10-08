@@ -66,6 +66,8 @@ async function main(): Promise<void> {
     gender: "masculino",
     distanceId: race.distance_id,
     termsAccepted: true,
+    privacyAccepted: true,
+    adultOrGuardian: true,
     method: "transferencia",
   };
   const reg = await j("/api/inscripciones", { method: "POST", headers: jsonHeaders, body: JSON.stringify(payload) });
@@ -91,6 +93,13 @@ async function main(): Promise<void> {
     body: JSON.stringify({ ...payload, email: `e2e2+${stamp}@example.com`, termsAccepted: false }),
   });
   ok("sin aceptar términos → 422", noTerms.status === 422, `status ${noTerms.status}`);
+
+  const noPrivacy = await j("/api/inscripciones", {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ ...payload, email: `e2e3+${stamp}@example.com`, privacyAccepted: false }),
+  });
+  ok("sin aceptar aviso de privacidad → 422", noPrivacy.status === 422, `status ${noPrivacy.status}`);
 
   // 6) SEO: robots, sitemap, lang, título
   const homeRes = await fetch(`${BASE}/`);

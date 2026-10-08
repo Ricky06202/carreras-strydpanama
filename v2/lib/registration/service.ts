@@ -2,6 +2,7 @@ import { and, eq, ne, sql as dsql } from "drizzle-orm";
 import type { Db } from "@/lib/db";
 import { schema } from "@/lib/db";
 import { createYappyPayment } from "@/lib/yappy";
+import { TERMS_VERSION, termsTextHash } from "@/lib/legal";
 import { isPanamaMobile, registrationSchema, type RegistrationInput } from "./schema";
 import { sendRegistrationEmail } from "@/lib/email";
 
@@ -165,6 +166,8 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
   const isFreeCode = input.method === "code";
   const id = crypto.randomUUID();
   const ts = nowIso();
+  // Trazabilidad de consentimiento (Ley 81-2019): versión del texto + huella SHA-256.
+  const consentHash = await termsTextHash();
 
   await db
     .insert(schema.registrations)
@@ -189,6 +192,11 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
       paymentStatus: isFreeCode ? "exento" : "pendiente",
       amountPaid: isFreeCode ? amount : 0,
       discountCode: codeRow?.code ?? null,
+      termsVersion: TERMS_VERSION,
+      termsTextHash: consentHash,
+      termsAcceptedAt: ts,
+      privacyAcceptedAt: ts,
+      guardianDeclaredAt: ts,
       createdAt: ts,
       updatedAt: ts,
     })
@@ -204,7 +212,14 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
       status: isFreeCode ? "approved" : "pending",
       provider: input.method === "yappy" ? "yappy" : input.method === "code" ? "code" : "manual",
       orderId: confirmationCode,
-      payload: JSON.stringify({ input, createdAt: ts }),
+      // Payload mínimo: sin duplicar PII (cédula/fecha nac. ya viven en registrations).
+      payload: JSON.stringify({
+        method: input.method,
+        code: input.code || null,
+        termsVersion: TERMS_VERSION,
+        termsTextHash: consentHash,
+        createdAt: ts,
+      }),
       createdAt: ts,
       updatedAt: ts,
     })

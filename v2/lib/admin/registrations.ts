@@ -205,7 +205,7 @@ export async function adminRegAction(
     if (reg.paymentStatus !== "pagado") throw new AdminRegError(409, "Solo se reembolsan pagos pagados");
     await db.update(schema.registrations).set({ paymentStatus: "reembolsado", updatedAt: ts }).where(eq(schema.registrations.id, id)).run();
     await db.update(schema.payments).set({ status: "refunded", updatedAt: ts }).where(eq(schema.payments.registrationId, id)).run();
-    return { message: "Pago marcado como reembolsado", reg: { status: reg.status, paymentStatus: "reembolsado", bibNumber: reg.bibNumber } };
+    return { message: "Pago marcado como reembolsado — ejecuta el reembolso real manualmente en Yappy/ACH (esta acción no mueve dinero)", reg: { status: reg.status, paymentStatus: "reembolsado", bibNumber: reg.bibNumber } };
   }
 
   // editar

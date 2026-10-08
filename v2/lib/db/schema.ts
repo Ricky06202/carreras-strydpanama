@@ -206,6 +206,12 @@ export const registrations = sqliteTable(
     studentIdUrl: text("student_id_url"),
     matriculaUrl: text("matricula_url"),
     photoUrl: text("photo_url"),
+    // Consentimiento trazable (Ley 81-2019): qué texto exacto aceptó el corredor y cuándo.
+    termsVersion: text("terms_version"),
+    termsTextHash: text("terms_text_hash"),
+    termsAcceptedAt: text("terms_accepted_at"),
+    privacyAcceptedAt: text("privacy_accepted_at"),
+    guardianDeclaredAt: text("guardian_declared_at"),
     ...timestamps,
   },
   (t) => [

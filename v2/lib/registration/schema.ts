@@ -28,6 +28,8 @@ export const registrationSchema = z.object({
   shirtSize: z.enum(["S", "M", "L", "XL", "XXL"]).optional(),
   code: z.string().trim().toUpperCase().optional().or(z.literal("")),
   termsAccepted: z.literal(true, { error: "Debes aceptar los términos" }),
+  privacyAccepted: z.literal(true, { error: "Debes aceptar el aviso de privacidad" }),
+  adultOrGuardian: z.literal(true, { error: "Declara ser mayor de edad o tener consentimiento de tu tutor" }),
   method: z.enum(["yappy", "transferencia", "efectivo", "code"]),
 });
 
