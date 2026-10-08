@@ -47,6 +47,9 @@ interface Props {
 
 export default function CompleteRegistration({ participant, race, distance, category }: Props) {
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [cuponCode, setCuponCode] = useState('');
+  const [cuponValid, setCuponValid] = useState<{ valid: boolean; message: string } | null>(null);
+  const [checkingCupon, setCheckingCupon] = useState(false);
   const [receiptUrl, setReceiptUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -130,6 +133,46 @@ export default function CompleteRegistration({ participant, race, distance, cate
       setDone(true);
     } catch (err: any) {
       setError(err.message || 'Error al completar la inscripción');
+    }
+    setLoading(false);
+  };
+
+  const validateCupon = async () => {
+    const code = cuponCode.trim().toUpperCase();
+    if (!code) return;
+    setCheckingCupon(true);
+    setError('');
+    setCuponValid(null);
+    try {
+      const res = await fetch('/api/validate-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code, raceId: race.id, participantType: (participant as any).participantType || 'general', registrationType: 'individual' })
+      });
+      const data = await res.json();
+      setCuponValid({ valid: !!data.valid, message: data.message || (data.valid ? 'Código validado' : 'Código inválido') });
+    } catch {
+      setCuponValid({ valid: false, message: 'Error de conexión al validar el código.' });
+    }
+    setCheckingCupon(false);
+  };
+
+  const finishCupon = async () => {
+    if (!cuponValid?.valid) { setError('Primero valida el código del cupón.'); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/complete-registration-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payUrl('cupon'), discountCode: cuponCode.trim().toUpperCase() })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Error al canjear el cupón');
+      setAssignedBib(data.assignedBib || null);
+      setDone(true);
+    } catch (err: any) {
+      setError(err.message || 'Error al canjear el cupón');
     }
     setLoading(false);
   };
@@ -249,7 +292,7 @@ export default function CompleteRegistration({ participant, race, distance, cate
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Categoría: <b>{category?.name || 'General'}</b></Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>Código: <b style={{ fontFamily: 'monospace' }}>{participant.confirmationCode}</b></Typography>
             <Typography variant="body2" color="text.secondary">
-              Estado: <b style={{ color: '#2e7d32' }}>{paymentMethod === 'yappy' ? 'Pagado (Yappy)' : 'Pago pendiente de validación'}</b>
+              Estado: <b style={{ color: '#2e7d32' }}>{paymentMethod === 'yappy' ? 'Pagado (Yappy)' : paymentMethod === 'cupon' ? 'Pagado (Cupón canjeado)' : 'Pago pendiente de validación'}</b>
             </Typography>
           </Box>
 
@@ -287,7 +330,7 @@ export default function CompleteRegistration({ participant, race, distance, cate
           <Typography variant="body2">Participante: <b>{participant.firstName} {participant.lastName}</b></Typography>
           <Typography variant="body2">Distancia: <b>{distance?.name || 'General'}</b></Typography>
           <Typography variant="body2">Categoría: <b>{category?.name || 'General'}</b></Typography>
-          <Typography variant="body2" sx={{ mt: 1, color: ACCENT, fontWeight: 'bold' }}>Total a pagar: ${total.toFixed(2)}</Typography>
+          <Typography variant="body2" sx={{ mt: 1, color: ACCENT, fontWeight: 'bold' }}>Total a pagar: ${(paymentMethod === 'cupon' && cuponValid?.valid ? 0 : total).toFixed(2)}</Typography>
           {paymentMethod === 'yappy' && (
             <Typography variant="caption" color="text.secondary">Incluye cargo de plataforma Yappy: +${(race?.platformFee ?? 0.45).toFixed(2)}</Typography>
           )}
@@ -308,6 +351,7 @@ export default function CompleteRegistration({ participant, race, distance, cate
           >
             <MenuItem value="yappy">Yappy</MenuItem>
             <MenuItem value="transfer">Transferencia Bancaria</MenuItem>
+            <MenuItem value="cupon">🎟️ Cupón Promocional / Gratuito</MenuItem>
           </Select>
         </FormControl>
 
@@ -363,8 +407,45 @@ export default function CompleteRegistration({ participant, race, distance, cate
           </Box>
         )}
 
+        {paymentMethod === 'cupon' && (
+          <Box sx={{ bgcolor: 'action.hover', p: 3, borderRadius: 2, border: '1px dashed #ccc', mb: 2 }}>
+            <Typography variant="subtitle1" fontWeight="bold" sx={{ mb: 1 }}>🎟️ Cupón Promocional *</Typography>
+            <Typography variant="body2" sx={{ mb: 2 }}>¿Ganaste un cupón gratuito o tienes código promocional? Ingrésalo y tu inscripción queda B/. 0.00.</Typography>
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <TextField
+                fullWidth size="small"
+                placeholder="Ej: PRM-ABC123"
+                value={cuponCode}
+                onChange={(e) => { setCuponCode(e.target.value.toUpperCase()); setCuponValid(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') validateCupon(); }}
+                slotProps={{ input: { sx: { fontFamily: 'monospace', textTransform: 'uppercase' } } }}
+              />
+              <Button variant="outlined" onClick={validateCupon} disabled={checkingCupon || !cuponCode.trim()} sx={{ color: ACCENT, borderColor: ACCENT, whiteSpace: 'nowrap' }}>
+                {checkingCupon ? '...' : 'Aplicar'}
+              </Button>
+            </Box>
+            {cuponValid && (
+              <Alert severity={cuponValid.valid ? 'success' : 'error'} sx={{ mt: 2 }}>
+                {cuponValid.valid ? '✅ Cupón válido — tu inscripción queda en B/. 0.00' : cuponValid.message}
+              </Alert>
+            )}
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={finishCupon}
+              disabled={loading || !cuponValid?.valid}
+              sx={{ mt: 2, bgcolor: '#2e7d32', fontWeight: 'bold', '&:hover': { bgcolor: '#1b5e20' } }}
+            >
+              {loading ? 'Procesando...' : 'Canjear Cupón y Oficializar Mi Inscripción'}
+            </Button>
+          </Box>
+        )}
+
         {paymentMethod === 'yappy' && (
           <Box sx={{ mt: 2 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              ¿Tienes un cupón gratuito? Cambia el método de pago a "Cupón Promocional".
+            </Typography>
             <TextField
               fullWidth size="small" sx={{ mb: 2 }}
               label="Celular para el cobro Yappy *"

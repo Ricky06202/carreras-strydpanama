@@ -59,6 +59,60 @@ export const POST: APIRoute = async ({ request }) => {
       }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
+    // Cupon promocional/gratuito: sin cobro, upgrade directo + marca el codigo como canjeado.
+    // Mismas reglas que el flujo de inscripcion nueva (registerLogic processRegistration).
+    const discountCode = String(body.discountCode || '').trim().toUpperCase();
+    if (String(paymentMethod).toLowerCase() === 'cupon' || discountCode) {
+      if (!discountCode) throw new Error('Escribe el codigo del cupon');
+      const codeRaceId = pd.race || pd.raceId;
+      const codesRes = await apiFetch(`/api/collections/registration_codes/content?limit=500&_t=${Date.now()}`, env, { method: 'GET' });
+      const match = (codesRes?.data || []).find((c: any) => String(c.data?.code || '').toUpperCase() === discountCode && c.data?.race === codeRaceId);
+      if (!match) throw new Error('Codigo no encontrado o no pertenece a esta carrera');
+      const cd = match.data || {};
+      if (cd.status === 'redeemed' || cd.used === true) throw new Error('El codigo del cupon ya fue utilizado');
+
+      const label = cd.isFreeCode ? 'Cupon Gratuito' : (cd.isPadrinoCode ? 'Cupon Padrino' : 'Boleto Fisico');
+      const result = await upgradePreinscrito(env, {
+        participantId,
+        confirmationCode: pd.confirmationCode || confirmationCode || '',
+        paymentMethod: label,
+        paymentStatus: label,
+        amountPaid: 0,
+        receiptUrl: '',
+      });
+
+      if (result.success && !result.alreadyUpgraded) {
+        try {
+          const colIdCode = match.collectionId || 'col-registration_codes-469bc379';
+          await apiFetch(`/api/content/${match.id}`, env, {
+            method: 'PUT',
+            body: JSON.stringify({
+              id: match.id,
+              collectionId: colIdCode,
+              collection_id: colIdCode,
+              title: match.title,
+              status: 'published',
+              data: {
+                ...cd,
+                used: true,
+                status: 'redeemed',
+                usedDate: new Date().toISOString(),
+                redeemedBy: `${pd.firstName || ''} ${pd.lastName || ''}`.trim(),
+                redeemedByCedula: pd.cedula || '',
+              }
+            })
+          });
+        } catch (e) {
+          console.error('Cupon validado pero fallo marcar el codigo como canjeado:', e);
+        }
+      }
+
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     if (String(paymentMethod).toLowerCase() === 'yappy') {
       const yappyPhone = normalizePanamaPhone(body.phone || pd.phone || '');
       if (!yappyPhone || !yappyPhone.startsWith('6')) {
