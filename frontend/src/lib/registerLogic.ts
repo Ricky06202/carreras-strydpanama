@@ -728,7 +728,16 @@ export const upgradePreinscrito = async (env: any, body: any) => {
     paymentStatus: finalPaymentStatus,
     paymentMethod: finalPaymentMethod,
     ...(body.receiptUrl ? { receiptUrl: body.receiptUrl } : {}),
-    amountPaid: typeof body.amountPaid === 'number' ? Number(body.amountPaid) : basePrice,
+    // BUG 25/20 (precio por fecha) — ruta PREINSCRITO: un amountPaid explicito
+    // del payload manda (0 = cupon gratis). Si no viene pero el payload trae
+    // totalAmount (monto REAL que se envio a Yappy al cobrar), usar ese: el
+    // precio vigente del CMS puede haber cambiado entre el pago y la
+    // confirmacion (ej. cambio 25->20 del 5/10) y NO debe reinar.
+    amountPaid: typeof body.amountPaid === 'number'
+        ? Number(body.amountPaid)
+        : (typeof body.totalAmount === 'number' && Number(body.totalAmount) > 0)
+            ? Number(body.totalAmount)
+            : basePrice,
     title: newTitle,
   };
 
