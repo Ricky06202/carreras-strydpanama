@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
@@ -16,6 +17,12 @@ function cedulaInput(v: string): string {
   const f = formatCedula(v);
   if (f) return f;
   return v.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11);
+}
+
+// 61234567 → 6123-4567 (con guion hasta 8 dígitos; más largo se deja plano)
+function phoneInput(v: string): string {
+  const d = phoneDigits(v).slice(0, 10);
+  return d.length > 4 && d.length <= 8 ? `${d.slice(0, 4)}-${d.slice(4)}` : d;
 }
 
 type Distance = { id: string; title: string; kilometers: number; price: number | null; description: string | null };
@@ -83,24 +90,29 @@ function matchCategory(categories: Category[], age: number | null, gender: strin
   );
 }
 
+// OJO: claves por índice real del wizard (0-based). Antes estaban 1/2/3 y la
+// validación se corría un paso (el paso de datos nunca se validaba en cliente).
 const STEP_FIELDS: Record<number, (keyof FormData)[]> = {
-  1: ["firstName", "lastName", "email", "phone", "cedula", "birthDate", "gender"],
-  2: ["distanceId"],
-  3: ["teamName"],
+  0: ["firstName", "lastName", "email", "phone", "cedula", "birthDate", "gender"],
+  1: ["distanceId"],
+  2: ["teamName", "shirtSize"],
 };
 
 function validateStep(step: number, race: WizardRace, data: FormData): Record<string, string> {
-  const fields = step === 3 ? [...STEP_FIELDS[3]!, ...(race.showShirtSize && !data.shirtSize ? ["shirtSize"] : [])] : STEP_FIELDS[step] ?? [];
+  const fields = STEP_FIELDS[step] ?? [];
   const slice = registrationSchema.pick(
     Object.fromEntries(fields.map((f) => [f, true])) as any,
   );
   const parsed = slice.safeParse({ ...data, shirtSize: data.shirtSize || undefined });
-  if (parsed.success) return {};
   const errors: Record<string, string> = {};
-  for (const issue of parsed.error.issues) {
-    const k = String(issue.path[0] ?? "_");
-    if (!errors[k]) errors[k] = issue.message;
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const k = String(issue.path[0] ?? "_");
+      if (!errors[k]) errors[k] = issue.message;
+    }
   }
+  // zod permite talla vacía; aquí es obligatoria si la carrera la muestra
+  if (step === 2 && race.showShirtSize && !data.shirtSize) errors.shirtSize = "Elige tu talla de camiseta";
   return errors;
 }
 
@@ -129,6 +141,18 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
   const [result, setResult] = useState<Result | null>(null);
   const [confirmed, setConfirmed] = useState<{ bib: number | null } | null>(null);
   const [copyOk, setCopyOk] = useState(false);
+  const reduceMotion = useReducedMotion();
+
+  // Actualiza un campo y limpia su error en cuanto el usuario lo toca.
+  function set<K extends keyof FormData>(k: K, v: FormData[K]) {
+    setData((d) => ({ ...d, [k]: v }));
+    setErrors((e) => {
+      if (!(k in e)) return e;
+      const rest = { ...e };
+      delete rest[k];
+      return rest;
+    });
+  }
 
   const yappyRef = useRef<any>(null);
   const yappySlotRef = useRef<HTMLSpanElement | null>(null);
@@ -184,6 +208,21 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Si el método activo queda inválido (celular sin 6 inicial, código borrado), no dejarlo trancado.
+  useEffect(() => {
+    if (method === "yappy" && !isPanamaMobile(data.phone)) setMethod("transferencia");
+    if (method === "code" && !data.code) setMethod("transferencia");
+  }, [method, data.phone, data.code]);
+
+  // Preinscrito (paso 4): la promesa es "se actualiza solo" — revisar estado cada 20 s.
+  useEffect(() => {
+    if (step !== 4 || !result || confirmed) return;
+    const id = result.registrationId;
+    const t = setInterval(() => void pollStatus(id, true), 20000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, result, confirmed]);
+
   async function pollStatus(id: string, autoAdvance: boolean) {
     try {
       const res = await fetch(`/api/inscripciones/${id}`);
@@ -221,9 +260,30 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
     const errs = validateStep(step, race, data);
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
+      const first = (STEP_FIELDS[step] ?? []).find((k) => errs[k]);
+      if (first) {
+        const el = document.getElementById(`f-${first}`) ?? document.getElementById(`wrap-${first}`);
+        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+        if (el instanceof HTMLInputElement) el.focus({ preventScroll: true });
+      }
       return;
     }
     go(step + 1);
+  }
+
+  function onFormSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (step < 3) {
+      next();
+      return;
+    }
+    if (!terms) {
+      document.getElementById("f-terms")?.focus();
+      return;
+    }
+    if (submitting) return;
+    if (method === "yappy") void payWithYappy();
+    else void submitManual();
   }
 
   async function createRegistration(): Promise<Result | null> {
@@ -237,7 +297,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
         teamName: data.teamName || undefined,
         code: data.code || undefined,
         termsAccepted: terms,
-        method: method === "code" ? "code" : data.code ? method : method,
+        method,
       };
       const res = await fetch("/api/inscripciones", {
         method: "POST",
@@ -337,7 +397,6 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
   }
 
   const stepTitle = ["Tus datos", "Modalidad", "Detalles", "Pago"][step];
-  const isLast = step === 3;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-4 pb-32 pt-4 sm:pt-10">
@@ -346,41 +405,50 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
         <Link href={`/carrera/${race.slug}`} className="font-mono text-xs uppercase tracking-widest text-mist hover:text-stryd">
           ← {race.title}
         </Link>
-        <span className="font-mono text-[11px] text-mist">Paso {step + 1} de 4</span>
+        {step < 4 && <span className="font-mono text-[11px] text-mist">Paso {step + 1} de 4</span>}
       </div>
-      <div className="mt-3 flex gap-1.5" aria-hidden>
-        {[0, 1, 2, 3].map((i) => (
-          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-stryd" : "bg-white/10"}`} />
-        ))}
-      </div>
-      <h1 className="font-display mt-6 text-3xl font-bold text-snow">{stepTitle}</h1>
-      <p className="mt-1 text-sm text-mist">{race.dateLabel ? `${race.dateLabel} · ` : ""}Inscripción rápida, toma menos de 2 minutos.</p>
+      {step < 4 && (
+        <>
+          <div className="mt-3 flex gap-1.5" aria-hidden>
+            {[0, 1, 2, 3].map((i) => (
+              <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= step ? "bg-stryd" : "bg-white/10"}`} />
+            ))}
+          </div>
+          <h1 className="font-display mt-6 text-3xl font-bold text-snow">{stepTitle}</h1>
+          <p className="mt-1 text-sm text-mist">{race.dateLabel ? `${race.dateLabel} · ` : ""}Inscripción rápida, toma menos de 2 minutos.</p>
+        </>
+      )}
+
+      <form id="wiz" onSubmit={onFormSubmit}>
+      <button type="submit" className="hidden" tabIndex={-1} aria-hidden />
+      <motion.div key={step} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={reduceMotion ? { duration: 0 } : { duration: 0.22, ease: "easeOut" }}>
 
       {/* STEP 1 — datos */}
       {step === 0 && (
         <div className="mt-6 flex flex-col gap-5">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Nombre(s)" error={errors.firstName}>
-              <input className={fieldCls} value={data.firstName} onChange={(e) => setData({ ...data, firstName: e.target.value })} autoComplete="given-name" placeholder="Maria" />
+            <Field htmlFor="f-firstName" label="Nombre(s)" error={errors.firstName}>
+              <input id="f-firstName" className={`${fieldCls}${errors.firstName ? " border-red-500/60" : ""}`} aria-invalid={!!errors.firstName} value={data.firstName} onChange={(e) => set("firstName", e.target.value)} autoComplete="given-name" placeholder="Maria" />
             </Field>
-            <Field label="Apellidos" error={errors.lastName}>
-              <input className={fieldCls} value={data.lastName} onChange={(e) => setData({ ...data, lastName: e.target.value })} autoComplete="family-name" placeholder="González" />
+            <Field htmlFor="f-lastName" label="Apellidos" error={errors.lastName}>
+              <input id="f-lastName" className={`${fieldCls}${errors.lastName ? " border-red-500/60" : ""}`} aria-invalid={!!errors.lastName} value={data.lastName} onChange={(e) => set("lastName", e.target.value)} autoComplete="family-name" placeholder="González" />
             </Field>
           </div>
-          <Field label="Cédula" error={errors.cedula}>
-            <input className={fieldCls} inputMode="text" value={data.cedula} onChange={(e) => setData({ ...data, cedula: cedulaInput(e.target.value) })} placeholder="8-1234-567" autoCapitalize="characters" autoComplete="off" />
+          <Field htmlFor="f-cedula" label="Cédula" error={errors.cedula}>
+            <input id="f-cedula" className={`${fieldCls}${errors.cedula ? " border-red-500/60" : ""}`} aria-invalid={!!errors.cedula} inputMode="text" value={data.cedula} onChange={(e) => set("cedula", cedulaInput(e.target.value))} placeholder="8-1234-567" autoCapitalize="characters" autoComplete="off" />
           </Field>
-          <Field label="Fecha de nacimiento" error={errors.birthDate}>
-            <input className={fieldCls} type="date" value={data.birthDate} onChange={(e) => setData({ ...data, birthDate: e.target.value })} />
+          <Field htmlFor="f-birthDate" label="Fecha de nacimiento" error={errors.birthDate}>
+            <input id="f-birthDate" className={`${fieldCls}${errors.birthDate ? " border-red-500/60" : ""}`} aria-invalid={!!errors.birthDate} type="date" min="1926-01-01" max={new Date().toISOString().slice(0, 10)} value={data.birthDate} onChange={(e) => set("birthDate", e.target.value)} />
             {age != null && <p className="mt-1.5 text-xs text-mist">{age} años {category ? `· categoría ${category.title}` : "· sin categoría asignada"}</p>}
           </Field>
-          <Field label="Género" error={errors.gender}>
+          <Field wrapId="wrap-gender" label="Género" error={errors.gender}>
             <div className="grid grid-cols-3 gap-2">
               {(["masculino", "femenino", "otro"] as const).map((g) => (
                 <button
                   key={g}
                   type="button"
-                  onClick={() => setData({ ...data, gender: g })}
+                  aria-pressed={data.gender === g}
+                  onClick={() => set("gender", g)}
                   className={`h-12 rounded-xl border text-sm capitalize transition ${
                     data.gender === g ? "border-stryd bg-stryd/10 font-semibold text-stryd" : "border-hairline bg-carbon text-mist hover:text-snow"
                   }`}
@@ -390,11 +458,11 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
               ))}
             </div>
           </Field>
-          <Field label="Correo" error={errors.email}>
-            <input className={fieldCls} type="email" inputMode="email" value={data.email} onChange={(e) => setData({ ...data, email: e.target.value })} placeholder="tu@correo.com" autoComplete="email" />
+          <Field htmlFor="f-email" label="Correo" error={errors.email}>
+            <input id="f-email" className={`${fieldCls}${errors.email ? " border-red-500/60" : ""}`} aria-invalid={!!errors.email} type="email" inputMode="email" value={data.email} onChange={(e) => set("email", e.target.value)} placeholder="tu@correo.com" autoComplete="email" />
           </Field>
-          <Field label="Teléfono" error={errors.phone} hint="Celular panameño, 8 dígitos. Empieza con 6 para pagar con Yappy.">
-            <input className={fieldCls} type="tel" inputMode="tel" value={data.phone} onChange={(e) => setData({ ...data, phone: phoneDigits(e.target.value).slice(0, 10) })} placeholder="6123-4567" autoComplete="tel" />
+          <Field htmlFor="f-phone" label="Teléfono" error={errors.phone} hint="Celular panameño, 8 dígitos. Empieza con 6 para pagar con Yappy.">
+            <input id="f-phone" className={`${fieldCls}${errors.phone ? " border-red-500/60" : ""}`} aria-invalid={!!errors.phone} type="tel" inputMode="tel" value={data.phone} onChange={(e) => set("phone", phoneInput(e.target.value))} placeholder="6123-4567" autoComplete="tel" />
           </Field>
         </div>
       )}
@@ -408,7 +476,8 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
               <button
                 key={d.id}
                 type="button"
-                onClick={() => setData({ ...data, distanceId: d.id })}
+                aria-pressed={active}
+                onClick={() => set("distanceId", d.id)}
                 className={`flex items-center justify-between rounded-card border p-5 text-left transition ${
                   active ? "border-stryd bg-stryd/5 shadow-card" : "border-hairline bg-abyss hover:border-white/20"
                 }`}
@@ -419,7 +488,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
                 </div>
                 <div className="text-right">
                   <p className={`font-mono text-sm font-semibold ${active ? "text-stryd" : "text-fog"}`}>
-                    {d.price ?? race.price > 0 ? `B/. ${(d.price ?? race.price).toFixed(2)}` : "Gratis"}
+                    {(d.price ?? race.price) > 0 ? `B/. ${(d.price ?? race.price).toFixed(2)}` : "Gratis"}
                   </p>
                   {active && <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-stryd">Seleccionada</p>}
                 </div>
@@ -434,13 +503,14 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
       {step === 2 && (
         <div className="mt-6 flex flex-col gap-5">
           {race.showShirtSize && (
-            <Field label="Talla de camiseta" error={errors.shirtSize}>
+            <Field wrapId="wrap-shirtSize" label="Talla de camiseta" error={errors.shirtSize}>
               <div className="flex flex-wrap gap-2">
                 {SHIRT_SIZES.map((s) => (
                   <button
                     key={s}
                     type="button"
-                    onClick={() => setData({ ...data, shirtSize: s })}
+                    aria-pressed={data.shirtSize === s}
+                    onClick={() => set("shirtSize", s)}
                     className={`h-11 min-w-12 rounded-xl border px-4 font-mono text-sm transition ${
                       data.shirtSize === s ? "border-stryd bg-stryd/10 font-bold text-stryd" : "border-hairline bg-carbon text-mist hover:text-snow"
                     }`}
@@ -451,18 +521,18 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
               </div>
             </Field>
           )}
-          <Field label="Equipo de running (opcional)">
-            <input className={fieldCls} value={data.teamName} onChange={(e) => setData({ ...data, teamName: e.target.value })} placeholder="Ej. Track Club Panamá" />
+          <Field htmlFor="f-teamName" label="Equipo de running (opcional)" hint="Si tu equipo aún no aparece, lo registramos y aprobamos al revisar.">
+            <input id="f-teamName" className={fieldCls} value={data.teamName} onChange={(e) => set("teamName", e.target.value)} placeholder="Ej. Track Club Panamá" autoComplete="organization" />
           </Field>
-          <Field label="Código de invitación (opcional)" error={errors.code} hint="Si tienes código de vendor o exento, se lo pedimos al final.">
-            <input className={fieldCls} value={data.code} onChange={(e) => setData({ ...data, code: e.target.value.toUpperCase() })} placeholder="ABC123" autoCapitalize="characters" />
+          <Field htmlFor="f-code" label="Código de invitación (opcional)" error={errors.code} hint="De vendor, exento o de invitado.">
+            <input id="f-code" className={`${fieldCls}${errors.code ? " border-red-500/60" : ""}`} aria-invalid={!!errors.code} value={data.code} onChange={(e) => set("code", e.target.value.toUpperCase())} placeholder="ABC123" autoCapitalize="characters" autoComplete="off" />
           </Field>
           <Card className="p-4">
             <p className="font-mono text-[11px] uppercase tracking-widest text-mist">Resumen</p>
             <p className="mt-2 text-sm text-fog">
               {data.firstName} {data.lastName} · {race.distances.find((d) => d.id === data.distanceId)?.title}
               {category ? ` · ${category.title}` : ""}
-              {data.shirtSize ? ` · Talla ${data.shirtSize}` : ""}
+              {data.shirtSize ? ` · Talla ${data.shirtSize}` : ""} · B/. {(race.distances.find((d) => d.id === data.distanceId)?.price ?? race.price).toFixed(2)}
             </p>
           </Card>
         </div>
@@ -480,6 +550,11 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
             active={method === "yappy"}
             onSelect={() => setMethod("yappy")}
           />
+          {!isPanamaMobile(data.phone) && (
+            <p className="rounded-xl border border-hairline bg-abyss px-3 py-2 text-xs leading-relaxed text-mist">
+              Yappy necesita un celular panameño de 8 dígitos que empiece con 6. Puedes seguir pagando por transferencia o efectivo.
+            </p>
+          )}
           <MethodCard id="transferencia" title="Transferencia" subtitle="OXXO pay, SINPE móvil o transferencia bancaria. Quedas preinscrito hasta verificar." active={method === "transferencia"} onSelect={() => setMethod("transferencia")} />
           <MethodCard id="efectivo" title="Efectivo" subtitle="Pago en efectivo el día de la expo. Quedas preinscrito hasta verificar." active={method === "efectivo"} onSelect={() => setMethod("efectivo")} />
           {data.code && (
@@ -506,7 +581,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
           </Card>
 
           <label className="mt-2 flex items-start gap-3 text-sm text-mist">
-            <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1 h-5 w-5 accent-[#FF6B00]" />
+            <input id="f-terms" type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} className="mt-1 h-5 w-5 accent-[#FF6B00]" />
             <span>
               Acepto los{" "}
               <Link href={race.termsUrl} target="_blank" className="text-stryd underline underline-offset-2">
@@ -521,6 +596,8 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
           {errors.phone && method === "yappy" && <p className="text-sm text-red-400">{errors.phone}</p>}
         </div>
       )}
+      </motion.div>
+      </form>
 
       {/* preinscrito (despues de manual/code) */}
       {step === 4 && result && (
@@ -548,7 +625,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
           <Button variant="secondary" size="md" className="mt-5 w-full" onClick={() => void pollStatus(result.registrationId, true)}>
             ¿Ya pagaste? Verificar estado
           </Button>
-          <p className="mt-2 text-center text-xs text-mist">Se actualiza solo en cuanto verifiquemos tu pago.</p>
+          <p className="mt-2 text-center text-xs text-mist">Se actualiza solo en cuanto verifiquemos tu pago (revisamos cada 20 s).</p>
         </Card>
       )}
 
@@ -557,22 +634,20 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
         <div className="fixed inset-x-0 bottom-0 border-t border-hairline bg-abyss/95 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 backdrop-blur">
           <div className="mx-auto flex max-w-lg items-center gap-3">
             {step > 0 && (
-              <Button variant="ghost" size="lg" onClick={() => go(step - 1)} aria-label="Atrás">
+              <Button type="button" variant="ghost" size="lg" onClick={() => go(step - 1)} aria-label="Atrás">
                 ←
               </Button>
             )}
-            {step < 3 && <Button size="lg" className="flex-1" onClick={next}>Continuar</Button>}
+            {step < 3 && <Button type="submit" form="wiz" size="lg" className="flex-1">Continuar</Button>}
             {step === 3 && method !== "yappy" && (
-              <Button size="lg" className="flex-1" disabled={!terms || submitting} onClick={() => void submitManual()}>
+              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || submitting}>
                 {submitting ? "Enviando…" : method === "code" ? "Confirmar inscripción" : "Finalizar preinscripción"}
               </Button>
             )}
             {step === 3 && method === "yappy" && (
-              <>
-                <Button size="lg" className="flex-1" disabled={!terms || submitting || !isLast} onClick={() => void payWithYappy()}>
-                  {submitting ? "Conectando Yappy…" : `Pagar B/. ${total.toFixed(2)} con Yappy`}
-                </Button>
-              </>
+              <Button type="submit" form="wiz" size="lg" className="flex-1" disabled={!terms || submitting}>
+                {submitting ? "Conectando Yappy…" : `Pagar B/. ${total.toFixed(2)} con Yappy`}
+              </Button>
             )}
           </div>
           {step === 3 && !terms && <p className="mx-auto mt-2 max-w-lg text-center text-[11px] text-mist">Acepta los términos para continuar</p>}
@@ -587,10 +662,10 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
   );
 }
 
-function Field({ label, error, hint, children }: { label: string; error?: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, error, hint, htmlFor, wrapId, children }: { label: string; error?: string; hint?: string; htmlFor?: string; wrapId?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className={labelCls}>{label}</label>
+    <div id={wrapId}>
+      <label htmlFor={htmlFor} className={labelCls}>{label}</label>
       {children}
       {error ? <p className="mt-1.5 text-sm text-red-400">{error}</p> : hint ? <p className="mt-1.5 text-xs text-mist/80">{hint}</p> : null}
     </div>
