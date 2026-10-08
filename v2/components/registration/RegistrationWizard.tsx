@@ -214,12 +214,41 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
     if (method === "code" && !data.code) setMethod("transferencia");
   }, [method, data.phone, data.code]);
 
-  // Preinscrito (paso 4): la promesa es "se actualiza solo" — revisar estado cada 20 s.
+  // Preinscrito (paso 4): "se actualiza solo" — con backoff 20→45→60 s, y cero peticiones
+  // si la pestaña está en segundo plano; al volver, chequeo inmediato y backoff se reinicia.
+  const pollDelay = useRef(20000);
   useEffect(() => {
     if (step !== 4 || !result || confirmed) return;
     const id = result.registrationId;
-    const t = setInterval(() => void pollStatus(id, true), 20000);
-    return () => clearInterval(t);
+    let timer = 0;
+    let stopped = false;
+    const schedule = () => {
+      timer = window.setTimeout(() => void run(), pollDelay.current);
+    };
+    async function run() {
+      if (stopped) return;
+      if (document.visibilityState === "visible") {
+        const j = await pollStatus(id, true);
+        if (j?.status === "inscrito") return;
+        pollDelay.current = Math.min(Math.round(pollDelay.current * 2.25), 60000);
+      } else {
+        pollDelay.current = Math.min(pollDelay.current * 2, 60000);
+      }
+      schedule();
+    }
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      window.clearTimeout(timer);
+      pollDelay.current = 20000;
+      void run();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    schedule();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVis);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, result, confirmed]);
 
@@ -625,7 +654,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
           <Button variant="secondary" size="md" className="mt-5 w-full" onClick={() => void pollStatus(result.registrationId, true)}>
             ¿Ya pagaste? Verificar estado
           </Button>
-          <p className="mt-2 text-center text-xs text-mist">Se actualiza solo en cuanto verifiquemos tu pago (revisamos cada 20 s).</p>
+          <p className="mt-2 text-center text-xs text-mist">Se actualiza solo en cuanto verifiquemos tu pago (revisamos cada 20–60 s).</p>
         </Card>
       )}
 
