@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
 export type RaceStatus = "upcoming" | "accepting" | "closed" | "active" | "finished";
@@ -141,6 +141,71 @@ export async function getRaceBySlug(slug: string): Promise<RaceDetail | null> {
 export async function getNextRace(): Promise<PublicRace | null> {
   const active = await getActiveRaces();
   return active[0] ?? null;
+}
+
+export type PublicResultRow = {
+  pos: number | null;
+  catPos: number | null;
+  bib: number | null;
+  name: string;
+  timeSec: number;
+  category: string | null;
+  distance: string | null;
+  team: string | null;
+};
+
+/** Carreras que ya tienen resultados consolidados (para /resultados). */
+export async function getRacesWithResults(): Promise<
+  { slug: string; title: string; date: string; imageUrl: string | null; finishers: number }[]
+> {
+  const db = getDb();
+  return db
+    .select({
+      slug: schema.races.slug,
+      title: schema.races.title,
+      date: schema.races.date,
+      imageUrl: schema.races.imageUrl,
+      finishers: count(),
+    })
+    .from(schema.results)
+    .innerJoin(schema.races, eq(schema.results.raceId, schema.races.id))
+    .groupBy(schema.races.slug, schema.races.title, schema.races.date, schema.races.imageUrl)
+    .orderBy(desc(schema.races.date))
+    .all();
+}
+
+/** Tabla completa de resultados de una carrera por slug (podio + lista). */
+export async function getRaceResults(slug: string): Promise<{ title: string; date: string; rows: PublicResultRow[] } | null> {
+  const db = getDb();
+  const race = await db
+    .select({ id: schema.races.id, title: schema.races.title, date: schema.races.date })
+    .from(schema.races)
+    .where(eq(schema.races.slug, slug))
+    .get();
+  if (!race) return null;
+  const rows = await db
+    .select({
+      pos: schema.results.overallPosition,
+      catPos: schema.results.categoryPosition,
+      bib: schema.registrations.bibNumber,
+      name: schema.registrations.title,
+      timeSec: schema.results.finishTimeSec,
+      category: schema.raceCategories.title,
+      distance: schema.raceDistances.title,
+      team: schema.registrations.teamName,
+    })
+    .from(schema.results)
+    .innerJoin(schema.registrations, eq(schema.results.registrationId, schema.registrations.id))
+    .leftJoin(schema.raceCategories, eq(schema.registrations.categoryId, schema.raceCategories.id))
+    .leftJoin(schema.raceDistances, eq(schema.registrations.distanceId, schema.raceDistances.id))
+    .where(eq(schema.results.raceId, race.id))
+    .orderBy(asc(schema.results.overallPosition))
+    .all();
+  return {
+    title: race.title,
+    date: race.date,
+    rows: rows.map((r) => ({ ...r, name: r.name ?? "" })) as PublicResultRow[],
+  };
 }
 
 export async function getRecentResults(raceId: string, limit = 10) {
