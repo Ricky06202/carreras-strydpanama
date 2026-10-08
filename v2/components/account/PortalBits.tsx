@@ -64,11 +64,18 @@ export function RegistrationCard({ data: r }: { data: RegCardData }) {
         </p>
       )}
 
-      {canEdit && (
-        <div className="mt-4 flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            Actualizar datos
-          </Button>
+      {(canEdit || r.status === "inscrito") && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {canEdit && (
+            <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+              Actualizar datos
+            </Button>
+          )}
+          {r.status === "inscrito" && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/mi-portal/certificado/${r.id}`}>Certificado 🏅</Link>
+            </Button>
+          )}
         </div>
       )}
 

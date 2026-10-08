@@ -100,8 +100,12 @@ export async function recordTiming(opts: {
   bib: number;
   timeSec?: number;
   checkpoint: Checkpoint;
+  source?: "manual" | "camera";
+  confidence?: number;
 }): Promise<{ message: string }> {
   const db = getDb();
+  const src = opts.source ?? "manual";
+  const conf = opts.confidence ?? (src === "camera" ? 0.9 : 1);
   // Sin tiempo explícito = tomarlo del cronómetro vivo (igual que v1: dorsal + enter).
   let timeSec = opts.timeSec;
   if (timeSec == null) {
@@ -132,7 +136,7 @@ export async function recordTiming(opts: {
       bibNumber: opts.bib,
       checkpoint: opts.checkpoint,
       elapsedSec: timeSec,
-      source: "manual",
+      source: src,
       recordedAtMs: Date.now(),
       createdAt: ts,
       updatedAt: ts,
@@ -145,7 +149,7 @@ export async function recordTiming(opts: {
       : { checkpointTimeSec: timeSec };
   await db
     .update(schema.registrations)
-    .set({ ...patch, timingSource: "manual", timingConfidence: 1, updatedAt: ts })
+    .set({ ...patch, timingSource: src, timingConfidence: conf, updatedAt: ts })
     .where(eq(schema.registrations.id, reg.id))
     .run();
 

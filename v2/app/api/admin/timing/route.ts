@@ -21,6 +21,8 @@ const bodySchema = z.object({
   bib: z.coerce.number().int().min(1).max(99999),
   time: z.string().min(1).optional(),
   checkpoint: z.enum(CHECKPOINTS),
+  source: z.enum(["manual", "camera"]).optional(),
+  confidence: z.coerce.number().min(0).max(1).optional(),
 });
 
 export async function POST(req: Request) {
@@ -44,6 +46,8 @@ export async function POST(req: Request) {
       bib: parsed.data.bib,
       timeSec,
       checkpoint: parsed.data.checkpoint as Checkpoint,
+      source: parsed.data.source,
+      confidence: parsed.data.confidence,
     });
     return NextResponse.json(res);
   } catch (e) {

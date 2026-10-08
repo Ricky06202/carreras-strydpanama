@@ -98,8 +98,7 @@ en `code`, `cedula`, `confirmation_code`.
 - **F4 — Portal del corredor**: login/registro, mis-inscripciones, mi-perfil, edición de datos.
 - **F5 — Admin fase 1**: CRUD carreras/categorías/distancias/códigos bulk, vista de
   inscripciones, aprobación equipos.
-- **F6 — Admin fase 2 (operación de carrera)**: checkpoint/finish (cámara + manual),
-  cálculo de tiempos/podium, export CSV/PDF, envío de resultados, tómbola.
+- **F6 — Admin fase 2 (operación de carrera)** ✅: cronómetro vivo estilo v1 (`/admin/timing`), meta/control manual + ingesta por cámara lista (`source:"camera"`, ver `docs/camara-v2.md` — falta decisión de hardware), deshacer con historial de eventos, cálculo de tiempos/podium con puesto por categoría, export CSV, envío masivo de resultados por correo, tómbola con RNG criptográfico (`/admin/tombole`), podio público (`/resultados`, `/resultados/[slug]`) y certificado imprimible/PDF en el portal del corredor.
 - **F7 — Cierre**: SEO/metas, rendimiento (Lighthouse >90), a11y, pruebas E2E del registro,
   DNS/cutover a producción, desmantelar backend SonicJS.
 

@@ -15,7 +15,7 @@ export interface RegistrationEmailData {
   confirmed?: boolean;
 }
 
-const SITE = "https://carreras.strydpanama.com";
+export const SITE = "https://carreras.strydpanama.com";
 
 function shell(body: string, preheader: string): string {
   return `<!doctype html><html><body style="margin:0;padding:0;background:#0A0A0B;font-family:Arial,Helvetica,sans-serif;">
@@ -91,6 +91,71 @@ export function buildRegistrationEmail(d: RegistrationEmailData): { subject: str
       `Preinscripción registrada en ${d.raceTitle}`,
     ),
   };
+}
+
+export interface ResultsEmailData {
+  email: string;
+  firstName: string;
+  raceTitle: string;
+  raceSlug: string;
+  distanceTitle: string | null;
+  categoryTitle: string | null;
+  bibNumber: number | null;
+  timeLabel: string;
+  overallPos: number | null;
+  categoryPos: number | null;
+  certificateUrl: string;
+}
+
+export function buildResultsEmail(d: ResultsEmailData): { subject: string; html: string } {
+  const medals: string[] = [];
+  if (d.overallPos != null) medals.push(`<div style="flex:1;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">Puesto general</div><div style="font-size:30px;font-weight:900;color:#ffffff;">${d.overallPos}${d.overallPos <= 3 ? " 🏆" : ""}</div></div>`);
+  if (d.categoryPos != null && d.categoryTitle) medals.push(`<div style="flex:1;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">${d.categoryTitle}</div><div style="font-size:30px;font-weight:900;color:#ffffff;">${d.categoryPos}º cat.</div></div>`);
+  const medalsRow = medals.length > 0 ? `<div style="display:flex;gap:14px;margin:18px 0;text-align:center;">${medals.join("")}</div>` : "";
+  return {
+    subject: `Tus resultados: ${d.raceTitle}`,
+    html: shell(
+      `<h2 style="color:#ffffff;margin:0 0 14px;">¡Misión cumplida, ${d.firstName}! 🏁</h2>
+       <p>Estos son tus resultados oficiales en <strong style="color:#ffffff;">${d.raceTitle}</strong>:</p>
+       <div style="text-align:center;margin:24px 0 10px;">
+         <div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">Tu tiempo</div>
+         <div style="font-size:46px;font-weight:900;color:#FF6B00;font-family:'Courier New',monospace;margin-top:4px;">${d.timeLabel}</div>
+         <div style="color:#8A8A8E;font-size:13px;margin-top:6px;">${d.bibNumber != null ? `Dorsal #${d.bibNumber} · ` : ""}${d.distanceTitle ?? ""}</div>
+       </div>
+       ${medalsRow}
+       <p style="margin-top:14px;">Descarga tu <strong style="color:#ffffff;">certificado de terminación</strong> (imprímelo o guárdalo en PDF):
+         <a href="${d.certificateUrl}" style="color:#FF6B00;">ver certificado</a></p>
+       <p style="margin-top:8px;">Tabla completa y podio: <a href="${SITE}/resultados/${d.raceSlug}" style="color:#FF6B00;">resultados oficiales</a></p>`,
+      `Tu tiempo: ${d.timeLabel}${d.overallPos != null ? ` · puesto ${d.overallPos}` : ""} en ${d.raceTitle}`,
+    ),
+  };
+}
+
+export async function sendResultsEmail(d: ResultsEmailData): Promise<boolean> {
+  const key = env.RESEND_API_KEY;
+  if (!key) {
+    console.warn("[email] RESEND_API_KEY ausente — no se envió correo de resultados a", d.email);
+    return false;
+  }
+  const { subject, html } = buildResultsEmail(d);
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        from: "Carreras Stryd Panama <carreras@strydpanama.com>",
+        to: [d.email],
+        bcc: ["carreras@strydpanama.com"],
+        subject,
+        html,
+      }),
+    });
+    if (!res.ok) console.error("[email] resend resultados", res.status, (await res.text()).slice(0, 200));
+    return res.ok;
+  } catch (e) {
+    console.error("[email] fallo resultados:", String(e).slice(0, 160));
+    return false;
+  }
 }
 
 export async function sendRegistrationEmail(d: RegistrationEmailData): Promise<boolean> {

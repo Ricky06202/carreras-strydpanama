@@ -49,6 +49,7 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
   const [computing, setComputing] = useState(false);
   const [undo, setUndo] = useState<AdminTimingEventItem | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [notifyOpen, setNotifyOpen] = useState(false);
   const [filter, setFilter] = useState("");
   const bibRef = useRef<HTMLInputElement | null>(null);
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -360,6 +361,9 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
             <Button size="sm" disabled={computing} onClick={() => void compute()}>
               {computing ? "Calculando…" : "Recalcular"}
             </Button>
+            <Button size="sm" variant="secondary" disabled={rows.length === 0} onClick={() => setNotifyOpen(true)}>
+              Enviar resultados
+            </Button>
           </div>
         </div>
         {rows.length === 0 ? (
@@ -452,6 +456,30 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
           };
           setEvents(t.events ?? []);
           setStats(t.stats ?? null);
+        }}
+      />
+
+      <ConfirmSheet
+        open={notifyOpen}
+        onClose={() => setNotifyOpen(false)}
+        title="Enviar resultados por correo"
+        description={
+          <>
+            Se enviará a cada finisher de esta carrera un correo con su tiempo, puesto y enlace a su certificado. Envíalo solo
+            <strong className="text-snow"> después de consolidar</strong> («Recalcular»).
+          </>
+        }
+        confirmLabel="Enviar"
+        onConfirm={async () => {
+          const res = await fetch("/api/admin/timing/notify", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ raceId }),
+          });
+          const d = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+          if (!res.ok) throw new Error(d.error ?? "No se pudo enviar");
+          toast.success(d.message ?? "Resultados enviados");
+          setNotifyOpen(false);
         }}
       />
 
