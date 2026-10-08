@@ -836,6 +836,17 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [participantPage, setParticipantPage] = useState(0);
   const PARTICIPANTS_PER_PAGE = 15;
   const [participantRaceFilter, setParticipantRaceFilter] = useState('');
+  const [participantDistanceFilter, setParticipantDistanceFilter] = useState('');
+
+  // Filtro por distancia en el Directorio: el valor es el id de la distancia;
+  // se acepta también por nombre por si la ficha guarda el nombre en vez del id.
+  const distanceMatches = (p: any) => {
+    if (!participantDistanceFilter) return true;
+    const pid = p.distance || (p as any).distanceId || '';
+    if (pid === participantDistanceFilter) return true;
+    const dName = allDistances.find((d: any) => d.id === participantDistanceFilter)?.name;
+    return !!dName && (p.distanceName === dName || pid === dName);
+  };
 
   const fetchParticipants = async (raceId: string) => {
     if (!raceId) {
@@ -1021,7 +1032,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       if (p.registrationStatus === 'preinscrito') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
-      return matchesSearch && matchesRace;
+      return matchesSearch && matchesRace && distanceMatches(p);
     });
 
     // el export respeta el selector "Ordenar por" de la pantalla
@@ -1058,7 +1069,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       if (p.registrationStatus === 'preinscrito') return false;
       const matchesSearch = (p.title + p.bibNumber + p.teamName).toLowerCase().includes(participantSearch.toLowerCase());
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
-      return matchesSearch && matchesRace;
+      return matchesSearch && matchesRace && distanceMatches(p);
     });
 
     // el export respeta el selector "Ordenar por" de la pantalla
@@ -2517,6 +2528,37 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   ))}
                 </Select>
               </FormControl>
+              <FormControl size="small" sx={{ minWidth: 160 }}>
+                <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-focused': { color: ACCENT } }}>
+                  Distancia
+                </InputLabel>
+                <Select
+                  value={participantDistanceFilter}
+                  label="Distancia"
+                  onChange={e => { setParticipantDistanceFilter(e.target.value); setParticipantPage(0); }}
+                  sx={{
+                    color: 'white',
+                    '.MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: ACCENT },
+                    '.MuiSvgIcon-root': { color: 'white' },
+                  }}
+                  MenuProps={{
+                    PaperProps: {
+                      sx: {
+                        bgcolor: '#1a1a1a',
+                        color: 'white',
+                        '& .MuiMenuItem-root:hover': { bgcolor: 'rgba(255, 107, 0, 0.1)' },
+                      }
+                    }
+                  }}
+                >
+                  <MenuItem value="">Todas</MenuItem>
+                  {allDistances.map((d: any) => (
+                    <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
               <FormControl size="small" sx={{ minWidth: 180 }}>
                 <InputLabel sx={{ color: 'rgba(255, 255, 255, 0.7)', '&.Mui-focused': { color: ACCENT } }}>
                   Ordenar por
@@ -2615,6 +2657,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   const filtered = participants
                     .filter(p => {
                       if ((p.registrationStatus === 'preinscrito') || (p.paymentStatus === 'Preinscrito')) return false;
+                      if (!distanceMatches(p)) return false;
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
