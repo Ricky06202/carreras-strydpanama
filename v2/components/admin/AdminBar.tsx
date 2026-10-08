@@ -9,6 +9,7 @@ const sections = [
   { href: "/admin/inscripciones", label: "Inscripciones" },
   { href: "/admin/codigos", label: "Códigos" },
   { href: "/admin/equipos", label: "Equipos" },
+  { href: "/admin/timing", label: "Timing" },
 ];
 
 export function AdminBar() {

@@ -61,6 +61,7 @@ export default async function AdminDashboard() {
             <QuickLink href="/admin/codigos" label="Generar códigos de inscripción" hint={`${codes?.n ?? 0} sin usar`} />
             <QuickLink href="/admin/inscripciones" label="Revisar pagos pendientes" hint="verificar transferencia / efectivo" />
             <QuickLink href="/admin/equipos" label="Aprobar equipos" hint="solicitudes nuevas" />
+            <QuickLink href="/admin/timing" label="Cronometrar la carrera" hint="meta, podio y CSV" />
             <QuickLink href="/admin/carreras" label="Crear / editar carrera" hint="modalidades y categorías" />
           </div>
         </Card>
