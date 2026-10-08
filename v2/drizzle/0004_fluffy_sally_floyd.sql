@@ -1,0 +1,1 @@
+ALTER TABLE `payments` ADD `confirm_token_hash` text;

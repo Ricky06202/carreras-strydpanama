@@ -22,6 +22,11 @@ export class RegError extends Error {
 
 const nowIso = () => new Date().toISOString();
 
+async function sha256Hex(v: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 function ageFrom(birthDate: string): number {
   const b = new Date(birthDate + "T12:00:00");
   if (Number.isNaN(b.getTime())) throw new RegError(400, "birthDate inválida", { birthDate: "Fecha inválida" });
@@ -77,7 +82,7 @@ export interface CreateResult {
   raceTitle: string;
   runnerName: string;
   category: string | null;
-  pay?: { transactionId: string; token: string; documentName: string };
+  pay?: { transactionId: string; token: string; documentName: string; confirmToken?: string };
 }
 
 export async function createRegistration(db: Db, input: RegistrationInput): Promise<CreateResult> {
@@ -168,6 +173,14 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
   const ts = nowIso();
   // Trazabilidad de consentimiento (Ley 81-2019): versión del texto + huella SHA-256.
   const consentHash = await termsTextHash();
+  // Token de posesión para confirmar el pago desde el cliente: solo quien recibió la
+  // respuesta de creación (el comprador real) puede marcar la orden como pagada vía /confirm.
+  const confirmToken =
+    input.method === "yappy"
+      ? Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map((b) => b.toString(16).padStart(2, "0"))
+          .join("")
+      : null;
 
   await db
     .insert(schema.registrations)
@@ -212,6 +225,7 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
       status: isFreeCode ? "approved" : "pending",
       provider: input.method === "yappy" ? "yappy" : input.method === "code" ? "code" : "manual",
       orderId: confirmationCode,
+      confirmTokenHash: confirmToken ? await sha256Hex(confirmToken) : null,
       // Payload mínimo: sin duplicar PII (cédula/fecha nac. ya viven en registrations).
       payload: JSON.stringify({
         method: input.method,
@@ -228,7 +242,8 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
   let pay: CreateResult["pay"];
   if (input.method === "yappy") {
     try {
-      pay = await createYappyPayment(confirmationCode, amount, input.phone.replace(/\D/g, ""));
+      const yappy = await createYappyPayment(confirmationCode, amount, input.phone.replace(/\D/g, ""));
+      pay = { ...yappy, confirmToken: confirmToken ?? undefined };
     } catch (e) {
       await db.delete(schema.payments).where(eq(schema.payments.registrationId, id)).run();
       await db.delete(schema.registrations).where(eq(schema.registrations.id, id)).run();
@@ -287,7 +302,13 @@ export interface ConfirmResult {
 }
 
 // Idempotente: marca la inscripcion como inscrita/pagada al confirmarse Yappy.
-export async function confirmRegistrationPayment(db: Db, orderIdRaw: string): Promise<ConfirmResult> {
+// opts.viaIpn=true → llamada autenticada por clave compartida en el webhook.
+// Sin viaIpn exige el token de posesión entregado al comprador al crear la orden.
+export async function confirmRegistrationPayment(
+  db: Db,
+  orderIdRaw: string,
+  opts?: { token?: string; viaIpn?: boolean; trusted?: boolean },
+): Promise<ConfirmResult> {
   const orderId = orderIdRaw.trim().toUpperCase();
   let payment = await db
     .select()
@@ -318,6 +339,16 @@ export async function confirmRegistrationPayment(db: Db, orderIdRaw: string): Pr
     .where(eq(schema.registrations.id, payment.registrationId))
     .get();
   if (!reg) return { ok: false, status: "no-registration" };
+
+  // Guardia anti-forja: el camino de cliente necesita poseer el token de la orden.
+  if (!opts?.viaIpn && !opts?.trusted) {
+    const stored = payment.confirmTokenHash;
+    const provided = (opts?.token ?? "").trim();
+    if (!stored) return { ok: false, status: "verify-pending", alreadyProcessed: false };
+    if (!provided || (await sha256Hex(provided)) !== stored) {
+      return { ok: false, status: "unauthorized" };
+    }
+  }
 
   const race = await db.select().from(schema.races).where(eq(schema.races.id, reg.raceId)).get();
   const bib = await nextBib(db, reg.raceId, race?.startingBib ?? null);

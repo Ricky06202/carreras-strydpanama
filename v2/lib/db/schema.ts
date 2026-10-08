@@ -237,6 +237,9 @@ export const payments = sqliteTable(
     provider: text("provider").notNull().default("yappy"),
     orderId: text("order_id").notNull().unique(),
     receiptUrl: text("receipt_url"),
+    // Token de un solo uso entregado al comprador al crear la orden Yappy:
+    // /api/inscripciones/confirm exige poseerlo, así el orderId solo no puede marcar "pagado".
+    confirmTokenHash: text("confirm_token_hash"),
     payload: text("payload"),
     ...timestamps,
   },

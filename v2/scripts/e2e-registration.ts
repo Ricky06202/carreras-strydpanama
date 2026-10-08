@@ -101,6 +101,18 @@ async function main(): Promise<void> {
   });
   ok("sin aceptar aviso de privacidad → 422", noPrivacy.status === 422, `status ${noPrivacy.status}`);
 
+  // 5b) Seguridad: /confirm ya no marca pagado con solo conocer el orderId
+  const fakeConfirm = await j("/api/inscripciones/confirm", {
+    method: "POST",
+    headers: jsonHeaders,
+    body: JSON.stringify({ orderId: reg.body?.confirmationCode ?? "SPY-FAKE-FAKE-FAKE" }),
+  });
+  ok(
+    "confirm sin token → no confirma (403/202) y sigue pendiente",
+    (fakeConfirm.status === 403 || fakeConfirm.status === 202) && fakeConfirm.body?.ok !== true,
+    `status ${fakeConfirm.status}`,
+  );
+
   // 6) SEO: robots, sitemap, lang, título
   const homeRes = await fetch(`${BASE}/`);
   const home = await homeRes.text();

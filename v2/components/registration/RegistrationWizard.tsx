@@ -63,7 +63,7 @@ type Result = {
   paymentStatus: string;
   amount: number;
   category: string | null;
-  pay?: { transactionId: string; token: string; documentName: string };
+  pay?: { transactionId: string; token: string; documentName: string; confirmToken?: string };
 };
 
 const YAPPY_SCRIPT = "https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js";
@@ -409,7 +409,7 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
         const res = await fetch("/api/inscripciones/confirm", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ orderId: result.confirmationCode }),
+          body: JSON.stringify({ orderId: result.confirmationCode, confirmToken: result.pay?.confirmToken ?? "" }),
         });
         const j = (await res.json()) as any;
         setConfirmed({ bib: j.bibNumber ?? null });

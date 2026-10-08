@@ -174,7 +174,7 @@ export async function adminRegAction(
 
   if (action === "confirm") {
     if (reg.status === "anulado") throw new AdminRegError(409, "Está anulada; restáurala primero");
-    const res = await confirmRegistrationPayment(db, reg.confirmationCode);
+    const res = await confirmRegistrationPayment(db, reg.confirmationCode, { trusted: true });
     if (!res.ok) throw new AdminRegError(409, "No hay pago pendiente para confirmar");
     return {
       message: res.alreadyProcessed

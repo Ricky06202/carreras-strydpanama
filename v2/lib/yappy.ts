@@ -45,6 +45,14 @@ export interface YappyPaymentResult {
   documentName: string;
 }
 
+// Clave derivada del secreto del comercio: se empotra en la ipnUrl, así solo
+// quien conozca el secreto (nosotros + Yappy reenviando la URL) puede confirmar pagos
+// por el webhook. Sin esta clave, conocer un orderId bastaba para marcar "pagado".
+export async function ipnKey(): Promise<string> {
+  const { merchantId, secret } = yappyEnv();
+  return hmacSign(`ipn-key:${merchantId}`, secret);
+}
+
 // Crea la orden en Yappy. El orderId debe ir SIN guiones y max 15 chars.
 export async function createYappyPayment(
   orderId: string,
@@ -65,7 +73,7 @@ export async function createYappyPayment(
     taxes: "0.00",
     discount: "0.00",
     total: totalStr,
-    ipnUrl: `${baseUrl.replace(/\/$/, "")}/api/yappy/webhook`,
+    ipnUrl: `${baseUrl.replace(/\/$/, "")}/api/yappy/webhook?k=${await ipnKey()}`,
   };
   const res = await fetch(`${BASE_URL}/payments/payment-wc`, {
     method: "POST",
