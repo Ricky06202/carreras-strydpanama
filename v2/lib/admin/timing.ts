@@ -40,9 +40,11 @@ export type AdminTimingEventItem = {
 
 export type AdminTimingStats = { finishers: number; checkpointed: number; inscritos: number };
 
-export async function adminListTiming(raceId: string): Promise<{ events: AdminTimingEventItem[]; stats: AdminTimingStats }> {
+export type AdminTimerInfo = { id: string; status: string; timerStartMs: number | null; timerStopMs: number | null };
+
+export async function adminListTiming(raceId: string): Promise<{ events: AdminTimingEventItem[]; stats: AdminTimingStats; race: AdminTimerInfo | null }> {
   const db = getDb();
-  const [events, distinctFinish, distinctCk, inscritos] = await Promise.all([
+  const [events, distinctFinish, distinctCk, inscritos, raceRow] = await Promise.all([
     db
       .select({
         id: schema.timingEvents.id,
@@ -74,10 +76,21 @@ export async function adminListTiming(raceId: string): Promise<{ events: AdminTi
       .from(schema.registrations)
       .where(and(eq(schema.registrations.raceId, raceId), ne(schema.registrations.status, "anulado")))
       .get(),
+    db
+      .select({
+        id: schema.races.id,
+        status: schema.races.status,
+        timerStartMs: schema.races.timerStartMs,
+        timerStopMs: schema.races.timerStopMs,
+      })
+      .from(schema.races)
+      .where(eq(schema.races.id, raceId))
+      .get(),
   ]);
   return {
     events,
     stats: { finishers: distinctFinish?.n ?? 0, checkpointed: distinctCk?.n ?? 0, inscritos: inscritos?.n ?? 0 },
+    race: (raceRow as AdminTimerInfo | undefined) ?? null,
   };
 }
 
@@ -85,10 +98,22 @@ export async function adminListTiming(raceId: string): Promise<{ events: AdminTi
 export async function recordTiming(opts: {
   raceId: string;
   bib: number;
-  timeSec: number;
+  timeSec?: number;
   checkpoint: Checkpoint;
 }): Promise<{ message: string }> {
   const db = getDb();
+  // Sin tiempo explícito = tomarlo del cronómetro vivo (igual que v1: dorsal + enter).
+  let timeSec = opts.timeSec;
+  if (timeSec == null) {
+    const race = await db
+      .select({ timerStartMs: schema.races.timerStartMs, timerStopMs: schema.races.timerStopMs })
+      .from(schema.races)
+      .where(eq(schema.races.id, opts.raceId))
+      .get();
+    if (!race?.timerStartMs) throw new AdminTimingError(409, "El cronómetro no está en marcha — registra con tiempo manual");
+    if (race.timerStopMs) throw new AdminTimingError(409, "Cronómetro detenido — corrige con tiempo manual");
+    timeSec = Math.max(1, Math.round((Date.now() - race.timerStartMs) / 1000));
+  }
   const reg = await db
     .select()
     .from(schema.registrations)
@@ -106,7 +131,7 @@ export async function recordTiming(opts: {
       registrationId: reg.id,
       bibNumber: opts.bib,
       checkpoint: opts.checkpoint,
-      elapsedSec: opts.timeSec,
+      elapsedSec: timeSec,
       source: "manual",
       recordedAtMs: Date.now(),
       createdAt: ts,
@@ -116,8 +141,8 @@ export async function recordTiming(opts: {
 
   const patch =
     opts.checkpoint === "finish"
-      ? { finishTimeSec: opts.timeSec, checkpointTimeSec: reg.checkpointTimeSec }
-      : { checkpointTimeSec: opts.timeSec };
+      ? { finishTimeSec: timeSec, checkpointTimeSec: reg.checkpointTimeSec }
+      : { checkpointTimeSec: timeSec };
   await db
     .update(schema.registrations)
     .set({ ...patch, timingSource: "manual", timingConfidence: 1, updatedAt: ts })
@@ -126,8 +151,42 @@ export async function recordTiming(opts: {
 
   const corregido = opts.checkpoint === "finish" ? reg.finishTimeSec != null : reg.checkpointTimeSec != null;
   return {
-    message: `#${opts.bib} ${reg.title} — ${formatTimeSec(opts.timeSec)}${corregido ? " (corregido)" : ""}`,
+    message: `#${opts.bib} ${reg.title} — ${formatTimeSec(timeSec)}${corregido ? " (corregido)" : ""}`,
   };
+}
+
+/** Arrancar/detener/reiniciar el cronómetro de carrera (espejo del flujo v1). */
+export async function setRaceTimer(raceId: string, action: "start" | "stop" | "reset"): Promise<{ message: string }> {
+  const db = getDb();
+  const race = await db
+    .select({ status: schema.races.status, timerStartMs: schema.races.timerStartMs, timerStopMs: schema.races.timerStopMs })
+    .from(schema.races)
+    .where(eq(schema.races.id, raceId))
+    .get();
+  if (!race) throw new AdminTimingError(404, "Carrera no encontrada");
+  const ts = new Date().toISOString();
+
+  if (action === "start") {
+    if (race.timerStartMs && !race.timerStopMs) throw new AdminTimingError(409, "El cronómetro ya está corriendo");
+    await db
+      .update(schema.races)
+      .set({ timerStartMs: Date.now(), timerStopMs: null, status: "active", updatedAt: ts })
+      .where(eq(schema.races.id, raceId))
+      .run();
+    return { message: "🏁 Carrera iniciada — el cronómetro corre" };
+  }
+  if (action === "stop") {
+    if (!race.timerStartMs) throw new AdminTimingError(409, "No hay cronómetro iniciado");
+    if (race.timerStopMs) throw new AdminTimingError(409, "Ya estaba detenido");
+    await db.update(schema.races).set({ timerStopMs: Date.now(), updatedAt: ts }).where(eq(schema.races.id, raceId)).run();
+    return { message: "Cronómetro detenido — para finales tardíos usa tiempo manual" };
+  }
+  await db
+    .update(schema.races)
+    .set({ timerStartMs: null, timerStopMs: null, status: "accepting", updatedAt: ts })
+    .where(eq(schema.races.id, raceId))
+    .run();
+  return { message: "Cronómetro reiniciado (la carrera vuelve a inscripciones)" };
 }
 
 /** Deshacer: borra el evento y retrocede la inscripción al tiempo anterior (si existe). */

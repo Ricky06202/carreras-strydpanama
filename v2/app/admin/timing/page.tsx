@@ -15,6 +15,7 @@ export default async function AdminTimingPage() {
       date: schema.races.date,
       status: schema.races.status,
       timerStartMs: schema.races.timerStartMs,
+      timerStopMs: schema.races.timerStopMs,
     })
     .from(schema.races)
     .orderBy(desc(schema.races.date))

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ConfirmSheet } from "@/components/ui/ConfirmSheet";
 import { toast } from "@/components/ui/Toast";
-import type { AdminResultRow, AdminTimingEventItem, AdminTimingStats, Checkpoint } from "@/lib/admin/timing";
+import type { AdminResultRow, AdminTimingEventItem, AdminTimingStats, AdminTimerInfo, Checkpoint } from "@/lib/admin/timing";
 
-export type TimingRaceOption = { id: string; title: string; date: string; status: string; timerStartMs: number | null };
+export type TimingRaceOption = { id: string; title: string; date: string; status: string; timerStartMs: number | null; timerStopMs: number | null };
 
 const inputCls =
   "h-14 w-full rounded-xl border border-hairline bg-abyss px-4 font-mono text-2xl text-snow placeholder-mist/40 outline-none transition focus:border-stryd/60 focus:shadow-glow-soft";
@@ -34,8 +34,10 @@ function timeGroup(v: string): string {
 export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
   const initialRace = races.find((r) => r.status === "active") ?? races[0];
   const [raceId, setRaceId] = useState(initialRace?.id ?? "");
+  const [raceInfo, setRaceInfo] = useState<AdminTimerInfo | null>(null);
   const [bib, setBib] = useState("");
   const [time, setTime] = useState("");
+  const [manualTime, setManualTime] = useState(false);
   const [checkpoint, setCheckpoint] = useState<Checkpoint>("finish");
   const [events, setEvents] = useState<AdminTimingEventItem[]>([]);
   const [stats, setStats] = useState<AdminTimingStats | null>(null);
@@ -43,10 +45,25 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [timerBusy, setTimerBusy] = useState(false);
   const [computing, setComputing] = useState(false);
   const [undo, setUndo] = useState<AdminTimingEventItem | null>(null);
+  const [confirmReset, setConfirmReset] = useState(false);
   const [filter, setFilter] = useState("");
   const bibRef = useRef<HTMLInputElement | null>(null);
+  const [nowTick, setNowTick] = useState(() => Date.now());
+
+  const timerRunning = raceInfo?.timerStartMs != null && raceInfo?.timerStopMs == null;
+  const timerStopped = raceInfo?.timerStartMs != null && raceInfo?.timerStopMs != null;
+  const autoAvailable = !!timerRunning;
+  const showTimeField = manualTime || !autoAvailable;
+
+  // Cronómetro vivo (solo display local; la captura la hace el server con su reloj).
+  useEffect(() => {
+    if (!timerRunning) return;
+    const t = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [timerRunning]);
 
   const load = useCallback(async () => {
     if (!raceId) return;
@@ -58,12 +75,19 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
         fetch(`/api/admin/timing?${sp.toString()}`, { cache: "no-store" }),
         fetch(`/api/admin/timing/results?${sp.toString()}`, { cache: "no-store" }),
       ]);
-      const t = (await tRes.json().catch(() => ({}))) as { events?: AdminTimingEventItem[]; stats?: AdminTimingStats; error?: string };
+      const t = (await tRes.json().catch(() => ({}))) as {
+        events?: AdminTimingEventItem[];
+        stats?: AdminTimingStats;
+        race?: AdminTimerInfo;
+        error?: string;
+      };
       const r = (await rRes.json().catch(() => ({}))) as { rows?: AdminResultRow[] };
       if (!tRes.ok) throw new Error(t.error ?? "Error cargando cronometraje");
       setEvents(t.events ?? []);
       setStats(t.stats ?? null);
+      setRaceInfo(t.race ?? null);
       setRows(r.rows ?? []);
+      setManualTime(false);
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Error de red");
     } finally {
@@ -76,10 +100,35 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
     bibRef.current?.focus();
   }, [load]);
 
+  async function timerAction(action: "start" | "stop" | "reset") {
+    setTimerBusy(true);
+    try {
+      const res = await fetch("/api/admin/timing/timer", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ raceId, action }),
+      });
+      const d = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
+      if (!res.ok) throw new Error(d.error ?? "No se pudo controlar el cronómetro");
+      toast.success(d.message ?? "Listo");
+      setNowTick(Date.now());
+      await load();
+      bibRef.current?.focus();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Error controlando cronómetro");
+    } finally {
+      setTimerBusy(false);
+    }
+  }
+
   async function record(e: React.FormEvent) {
     e.preventDefault();
-    if (!bib || !time) {
-      toast.error("Pon dorsal y tiempo");
+    if (!bib) {
+      toast.error("Pon el dorsal");
+      return;
+    }
+    if (showTimeField && !time) {
+      toast.error("Pon el tiempo manual");
       return;
     }
     setBusy(true);
@@ -87,7 +136,7 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
       const res = await fetch("/api/admin/timing", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ raceId, bib: Number(bib), time, checkpoint }),
+        body: JSON.stringify({ raceId, bib: Number(bib), checkpoint, time: showTimeField ? time : undefined }),
       });
       const d = (await res.json().catch(() => ({}))) as { error?: string; message?: string };
       if (!res.ok) throw new Error(d.error ?? "No se pudo registrar");
@@ -131,7 +180,6 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
 
   const ff = filter.trim().toLowerCase();
   const recent = ff ? events.filter((ev) => String(ev.bib ?? "").includes(ff) || (ev.title ?? "").toLowerCase().includes(ff)) : events;
-  const race = races.find((r) => r.id === raceId);
 
   if (races.length === 0) {
     return (
@@ -148,10 +196,9 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
     <section className="mx-auto w-full max-w-4xl px-4 pb-28">
       <div className="flex items-baseline justify-between gap-3">
         <h1 className="font-display text-xl font-extrabold text-snow">Cronometraje</h1>
-        {race?.status === "active" && <Badge tone="danger">EN CURSO</Badge>}
+        {timerRunning && <Badge tone="danger">EN VIVO</Badge>}
       </div>
 
-      {/* Carrera */}
       <label className="mt-4 block">
         <span className="mb-1.5 block font-mono text-[11px] uppercase tracking-widest text-mist">Carrera</span>
         <select
@@ -161,11 +208,53 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
         >
           {races.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.title} — {r.date.slice(0, 10)}{r.status === "active" ? " · EN CURSO" : ""}
+              {r.title} — {r.date.slice(0, 10)}
+              {r.timerStartMs && !r.timerStopMs ? " · EN CURSO" : ""}
             </option>
           ))}
         </select>
       </label>
+
+      {/* Cronómetro de la carrera */}
+      <Card className="mt-4 p-4">
+        {raceInfo?.timerStartMs == null ? (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-widest text-mist">Cronómetro</p>
+              <p className="mt-1 text-sm text-mist">Inicia el cronómetro al dar la salida; cada dorsal se toma solo con el tiempo de carrera.</p>
+            </div>
+            <Button disabled={timerBusy || !raceId} onClick={() => void timerAction("start")} className="w-full sm:w-auto">
+              {timerBusy ? "…" : "Iniciar carrera"}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-mono text-[11px] uppercase tracking-widest text-mist">
+                Tiempo de carrera {timerStopped ? "(detenido)" : ""}
+              </p>
+              <p className={`font-display mt-0.5 text-4xl font-black tabular-nums ${timerRunning ? "text-stryd" : "text-fog"}`}>
+                {fmtSec(Math.floor(((raceInfo.timerStopMs ?? nowTick) - raceInfo.timerStartMs) / 1000))}
+              </p>
+              <p className="mt-0.5 text-xs text-mist">
+                Salida: {new Date(raceInfo.timerStartMs).toLocaleTimeString("es-PA")}
+                {timerStopped && raceInfo.timerStopMs ? ` · meta: ${new Date(raceInfo.timerStopMs).toLocaleTimeString("es-PA")}` : ""}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {timerRunning ? (
+                <Button variant="outline" disabled={timerBusy} onClick={() => void timerAction("stop")}>
+                  Detener
+                </Button>
+              ) : (
+                <Button size="sm" variant="ghost" disabled={timerBusy} onClick={() => setConfirmReset(true)}>
+                  Reiniciar cronómetro
+                </Button>
+              )}
+            </div>
+          </div>
+        )}
+      </Card>
 
       {stats && (
         <div className="mt-4 grid grid-cols-3 gap-2">
@@ -175,9 +264,11 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
         </div>
       )}
 
-      {/* Registro manual */}
+      {/* Registro de dorsal */}
       <Card className="mt-4 p-4">
-        <p className="font-mono text-[11px] uppercase tracking-widest text-mist">Registrar tiempo</p>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-mist">
+          {autoAvailable && !manualTime ? "Registrar meta — el tiempo va solo" : "Registrar tiempo"}
+        </p>
         <form onSubmit={record} className="mt-3 grid gap-3 sm:grid-cols-[130px_1fr_auto] sm:items-end">
           <label className="min-w-0 text-sm">
             <span className="mb-1 block text-xs text-mist">Dorsal</span>
@@ -191,22 +282,26 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
               autoComplete="off"
             />
           </label>
-          <label className="min-w-0 text-sm">
-            <span className="mb-1 block text-xs text-mist">Tiempo (desde la salida)</span>
-            <input
-              value={time}
-              onChange={(e) => setTime(timeGroup(e.target.value))}
-              inputMode="numeric"
-              placeholder="52:11"
-              className={inputCls}
-              autoComplete="off"
-            />
-          </label>
-          <Button type="submit" disabled={busy || !bib || !time} className="h-14 w-full sm:w-auto">
+          {showTimeField ? (
+            <label className="min-w-0 text-sm">
+              <span className="mb-1 block text-xs text-mist">Tiempo desde la salida</span>
+              <input
+                value={time}
+                onChange={(e) => setTime(timeGroup(e.target.value))}
+                inputMode="numeric"
+                placeholder="52:11"
+                className={inputCls}
+                autoComplete="off"
+              />
+            </label>
+          ) : (
+            <div className="hidden sm:block" />
+          )}
+          <Button type="submit" disabled={busy || !bib || (showTimeField && !time)} className="h-14 w-full sm:w-auto">
             {busy ? "…" : "Registrar"}
           </Button>
         </form>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {(
             [
               { v: "finish", label: "Meta" },
@@ -224,7 +319,23 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
               {c.label}
             </button>
           ))}
+          {autoAvailable && (
+            <button
+              type="button"
+              onClick={() => setManualTime((m) => !m)}
+              className={`ml-auto rounded-full px-3.5 py-1.5 font-mono text-[11px] uppercase tracking-widest transition ${
+                manualTime ? "bg-stryd-dim text-stryd" : "text-mist hover:text-snow"
+              }`}
+            >
+              {manualTime ? "usar cronómetro" : "tiempo manual"}
+            </button>
+          )}
         </div>
+        {timerStopped && !manualTime && (
+          <p className="mt-2 rounded-xl border border-stryd/30 bg-stryd-dim px-3 py-2 text-xs text-stryd">
+            El cronómetro está detenido — se pedirá tiempo manual (para finales tardíos). Pulsa «Reiniciar cronómetro» para volver al modo automático.
+          </p>
+        )}
       </Card>
 
       {err && (
@@ -277,9 +388,7 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
 
       {/* Historial */}
       <div className="mt-5">
-        <div className="flex items-baseline justify-between">
-          <p className="font-mono text-[11px] uppercase tracking-widest text-mist">Últimos registros ({events.length})</p>
-        </div>
+        <p className="font-mono text-[11px] uppercase tracking-widest text-mist">Últimos registros ({events.length})</p>
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -290,7 +399,9 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
           {loading &&
             Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-12 animate-pulse rounded-card border border-hairline bg-carbon" />)}
           {!loading && recent.length === 0 && (
-            <Card className="p-6 text-center text-sm text-mist">{events.length === 0 ? "Aún no hay tiempos registrados." : "Nada coincide con el filtro."}</Card>
+            <Card className="p-6 text-center text-sm text-mist">
+              {events.length === 0 ? "Aún no hay tiempos registrados." : "Nada coincide con el filtro."}
+            </Card>
           )}
           {!loading &&
             recent.map((ev) => (
@@ -341,6 +452,24 @@ export function TimingBoard({ races }: { races: TimingRaceOption[] }) {
           };
           setEvents(t.events ?? []);
           setStats(t.stats ?? null);
+        }}
+      />
+
+      <ConfirmSheet
+        open={confirmReset}
+        onClose={() => setConfirmReset(false)}
+        title="Reiniciar cronómetro"
+        description={
+          <>
+            Se borra el inicio/paro del cronómetro de esta carrera y el estado vuelve a «inscripciones». <strong className="text-snow">Los
+            tiempos ya registrados se conservan</strong> (se quitan individualmente si hace falta).
+          </>
+        }
+        confirmLabel="Reiniciar"
+        danger
+        onConfirm={async () => {
+          setConfirmReset(false);
+          await timerAction("reset");
         }}
       />
     </section>

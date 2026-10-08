@@ -19,7 +19,7 @@ export async function GET(req: Request) {
 const bodySchema = z.object({
   raceId: z.string().min(1),
   bib: z.coerce.number().int().min(1).max(99999),
-  time: z.string().min(1),
+  time: z.string().min(1).optional(),
   checkpoint: z.enum(CHECKPOINTS),
 });
 
@@ -28,11 +28,15 @@ export async function POST(req: Request) {
   if (denied) return denied;
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Dorsal y tiempo (1:02:03 o 12:03) son obligatorios" }, { status: 422 });
+    return NextResponse.json({ error: "Dorsal inválido (1-99999)" }, { status: 422 });
   }
-  const timeSec = parseTimeSec(parsed.data.time);
-  if (timeSec == null) {
-    return NextResponse.json({ error: "Tiempo inválido — usa 1:02:03 o 12:03" }, { status: 422 });
+  let timeSec: number | undefined;
+  if (parsed.data.time) {
+    const parsedSec = parseTimeSec(parsed.data.time);
+    if (parsedSec == null) {
+      return NextResponse.json({ error: "Tiempo inválido — usa 1:02:03 o 12:03" }, { status: 422 });
+    }
+    timeSec = parsedSec;
   }
   try {
     const res = await recordTiming({
