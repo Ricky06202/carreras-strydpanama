@@ -1,17 +1,23 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { clientIp, rateLimited } from "@/lib/ratelimit";
-import { checkAdminPassword, startAdminSession } from "@/lib/admin/session";
+import { authUrl, googleConfig, randomState } from "@/lib/admin/google";
 
-export async function POST(req: Request) {
-  const db = getDb();
-  if (await rateLimited(db, `admin-login:${clientIp(req)}`, 8, 15 * 60_000)) {
-    return NextResponse.json({ error: "Demasiados intentos. Intenta de nuevo en 15 minutos." }, { status: 429 });
-  }
-  const { password } = (await req.json().catch(() => ({}))) as { password?: string };
-  if (!(await checkAdminPassword(password ?? ""))) {
-    return NextResponse.json({ error: "Contraseña incorrecta" }, { status: 401 });
-  }
-  await startAdminSession(new URL(req.url).protocol === "https:");
-  return NextResponse.json({ ok: true });
+// Login admin con Google OAuth (authorization code). Sin contraseña maestra:
+// la lista blanca vive en settings.admin_emails. Fail-closed sin credenciales.
+// OJO vinext: cookies().set() NO llega al navegador desde un route handler; la
+// cookie de estado se adjunta SIEMPRE a la respuesta.
+export async function GET(req: Request) {
+  const cfg = googleConfig();
+  if (!cfg) return NextResponse.redirect(new URL("/admin/login?error=oauth", req.url));
+  const state = randomState();
+  const secure = new URL(req.url).protocol === "https:";
+  const redirectUri = new URL("/api/admin/callback", req.url).toString();
+  const res = NextResponse.redirect(authUrl(cfg, redirectUri, state));
+  res.cookies.set("stryd2_oauth", state, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure,
+    path: "/api/admin",
+    maxAge: 600,
+  });
+  return res;
 }

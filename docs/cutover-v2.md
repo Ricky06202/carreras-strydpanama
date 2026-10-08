@@ -2,19 +2,35 @@
 
 El código de F7 está hecho (SEO, a11y, E2E). Esto es lo que falta para pasar a producción y **requiere acceso de Ricky**: secrets, DNS y panel de Yappy.
 
-## 0. Secrets (no van en el repo)
-`v2/wrangler.jsonc` declara como `vars` vacíos: `ADMIN_PASSWORD`, `ADMIN_SECRET`, `RESEND_API_KEY`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_URL_DOMAIN`.
-Tras el primer deploy, establecerlos como secrets reales:
+## 0. Secrets y OAuth (no van en el repo)
+`v2/wrangler.jsonc` declara como `vars` vacíos: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `RESEND_API_KEY`, `YAPPY_MERCHANT_ID`, `YAPPY_SECRET_KEY`, `YAPPY_URL_DOMAIN`. El panel admin ya NO usa contraseña maestra: el login es con Google OAuth y la lista blanca vive en la D1 (clave `admin_emails` de `settings`, separada por comas; sin fila = nadie entra).
+
+**Google Cloud Console** (una vez):
+- Config de consentimiento OAuth: externa, con los correos de la lista como test users (o publicarla al dominar la cuenta de trabajo).
+- Credenciales → OAuth client ID → tipo *Web application*:
+  - Orígenes autorizados: `https://carreras.strydpanama.com` y `http://localhost:5173` (dev).
+  - URI de redirección: `https://carreras.strydpanama.com/api/admin/callback` y `http://localhost:5173/api/admin/callback`.
+- Copiar Client ID y Client secret.
+
+Tras el primer deploy, establecer los secrets reales:
 
 ```bash
 cd v2
 bun run deploy                                   # crea/actualiza el worker carreras-strydpanama-v2
-bunx wrangler secret put ADMIN_PASSWORD   # ⚠️ valor NUEVO, no reutilizar el de v1
-bunx wrangler secret put ADMIN_SECRET     # ⚠️ valor NUEVO (los de v1 quedaron expuestos en el historial de la repo)
+bunx wrangler secret put GOOGLE_CLIENT_ID
+bunx wrangler secret put GOOGLE_CLIENT_SECRET
 bunx wrangler secret put RESEND_API_KEY
 bunx wrangler secret put YAPPY_MERCHANT_ID
 bunx wrangler secret put YAPPY_SECRET_KEY
 bunx wrangler secret put YAPPY_URL_DOMAIN
+```
+
+Lista blanca (editable sin redeploy; los correos NO van al repo):
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=66f8699b20c28ad6be430da2eaa98d34 \
+bunx wrangler d1 execute carreras-v2-db --remote --command \
+  "INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES ('admin_emails', '<email1>,<email2>', datetime('now'))"
 ```
 
 ## 1. Staging + performance

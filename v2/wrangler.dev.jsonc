@@ -8,8 +8,8 @@
     { "binding": "MEDIA", "bucket_name": "carreras-v2-media" }
   ],
   "vars": {
-    "ADMIN_PASSWORD": "",
-    "ADMIN_SECRET": "",
+    "GOOGLE_CLIENT_ID": "",
+    "GOOGLE_CLIENT_SECRET": "",
     "RESEND_API_KEY": "",
     "YAPPY_MERCHANT_ID": "REEMPLAZAR_DEV",
     "YAPPY_SECRET_KEY": "REEMPLAZAR_DEV",
