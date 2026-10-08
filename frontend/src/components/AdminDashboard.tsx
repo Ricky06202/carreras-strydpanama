@@ -92,6 +92,34 @@ const hhmmssToSeconds = (str?: string) => {
   return null;
 };
 
+// Orden unificado del Directorio: la lista en pantalla y sus exports (PDF/CSV)
+// usan el mismo comparador, así el papel sale en el orden que se ve.
+function participantsComparator(mode: string) {
+  return (a: any, b: any) => {
+    if (mode === 'updated') {
+      return (Number(b.updatedAt || b.updated_at || b.updatedOn) || 0) - (Number(a.updatedAt || a.updated_at || a.updatedOn) || 0);
+    }
+    if (mode === 'newest') {
+      return (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0);
+    }
+    if (mode === 'pending') {
+      // pendientes por confirmar arriba (mismo criterio que el boton
+      // Confirmar de la tabla), secundario por dorsal
+      const ap = String(a.paymentStatus || '') === 'Confirmado' ? 1 : 0;
+      const bp = String(b.paymentStatus || '') === 'Confirmado' ? 1 : 0;
+      if (ap !== bp) return ap - bp;
+      return (Number(a.bibNumber) || Number.MAX_SAFE_INTEGER) - (Number(b.bibNumber) || Number.MAX_SAFE_INTEGER);
+    }
+    if (mode === 'name') {
+      const nameOf = (p: any) => (`${p.lastName || ''} ${p.firstName || String(p.title || '').split(' - ')[0] || ''}`).trim().toLowerCase();
+      return nameOf(a).localeCompare(nameOf(b), 'es');
+    }
+    // 'bib': dorsal ascendente, sin dorsal (null/pendiente) al final
+    const ab = Number(a.bibNumber), bb = Number(b.bibNumber);
+    return (ab || Number.MAX_SAFE_INTEGER) - (bb || Number.MAX_SAFE_INTEGER);
+  };
+}
+
 function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) {
   const [races, setRaces] = useState<Race[]>(initialRaces);
   const [loading, setLoading] = useState<string | null>(null);
@@ -991,6 +1019,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       return matchesSearch && matchesRace;
     });
 
+    // el export respeta el selector "Ordenar por" de la pantalla
+    filtered.sort(participantsComparator(participantsSort));
+
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -1024,6 +1055,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       const matchesRace = !participantRaceFilter || p.race === participantRaceFilter;
       return matchesSearch && matchesRace;
     });
+
+    // el export respeta el selector "Ordenar por" de la pantalla
+    filtered.sort(participantsComparator(participantsSort));
 
     if (filtered.length === 0) return alert("No hay participantes para exportar");
 
@@ -1105,6 +1139,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const exportPreinscritosCSV = () => {
     const list = getFilteredPreinscritos();
+    // mismo orden que la pantalla
+    list.sort(participantsComparator(participantsSort));
     if (list.length === 0) return alert("No hay preinscritos para exportar");
 
     let csvContent = "data:text/csv;charset=utf-8,";
@@ -1127,6 +1163,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const exportPreinscritosPDF = async () => {
     const list = getFilteredPreinscritos();
+    // mismo orden que la pantalla; sin dorsal, bib/pending quedan estables (por llegada)
+    list.sort(participantsComparator(participantsSort));
     if (list.length === 0) return alert("No hay preinscritos para exportar");
 
     const { jsPDF } = await import('jspdf');
@@ -2575,29 +2613,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       const matchesSearch = (p.title + p.bibNumber + (p.teamName || '')).toLowerCase().includes(participantSearch.toLowerCase());
                       return matchesSearch;
                     })
-                    .sort((a: any, b: any) => {
-                      if (participantsSort === 'updated') {
-                        return (Number(b.updatedAt || b.updated_at || b.updatedOn) || 0) - (Number(a.updatedAt || a.updated_at || a.updatedOn) || 0);
-                      }
-                      if (participantsSort === 'newest') {
-                        return (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0);
-                      }
-                      if (participantsSort === 'pending') {
-                        // pendientes por confirmar arriba (mismo criterio que el boton
-                        // Confirmar de la tabla), secundario por dorsal
-                        const ap = String(a.paymentStatus || '') === 'Confirmado' ? 1 : 0;
-                        const bp = String(b.paymentStatus || '') === 'Confirmado' ? 1 : 0;
-                        if (ap !== bp) return ap - bp;
-                        return (Number(a.bibNumber) || Number.MAX_SAFE_INTEGER) - (Number(b.bibNumber) || Number.MAX_SAFE_INTEGER);
-                      }
-                      if (participantsSort === 'name') {
-                        const nameOf = (p: any) => (`${p.lastName || ''} ${p.firstName || String(p.title || '').split(' - ')[0] || ''}`).trim().toLowerCase();
-                        return nameOf(a).localeCompare(nameOf(b), 'es');
-                      }
-                      // 'bib': dorsal ascendente, sin dorsal (null/pendiente) al final
-                      const ab = Number(a.bibNumber), bb = Number(b.bibNumber);
-                      return (ab || Number.MAX_SAFE_INTEGER) - (bb || Number.MAX_SAFE_INTEGER);
-                    });
+                    .sort(participantsComparator(participantsSort));
                   const totalPages = Math.ceil(filtered.length / PARTICIPANTS_PER_PAGE);
                   const paginated = filtered.slice(participantPage * PARTICIPANTS_PER_PAGE, (participantPage + 1) * PARTICIPANTS_PER_PAGE);
                   return paginated.map((p) => {
