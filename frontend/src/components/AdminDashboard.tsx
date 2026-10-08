@@ -2501,6 +2501,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 >
                   <MenuItem value="bib">Dorsal (estable)</MenuItem>
                   <MenuItem value="name">Apellidos (A-Z)</MenuItem>
+                  <MenuItem value="pending">Pendientes por confirmar</MenuItem>
                   <MenuItem value="updated">Última actualización</MenuItem>
                   <MenuItem value="newest">Más recientes (alta)</MenuItem>
                 </Select>
@@ -2580,6 +2581,14 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                       }
                       if (participantsSort === 'newest') {
                         return (Number(b.createdAt || b.created_at || b.createdOn) || 0) - (Number(a.createdAt || a.created_at || a.createdOn) || 0);
+                      }
+                      if (participantsSort === 'pending') {
+                        // pendientes por confirmar arriba (mismo criterio que el boton
+                        // Confirmar de la tabla), secundario por dorsal
+                        const ap = String(a.paymentStatus || '') === 'Confirmado' ? 1 : 0;
+                        const bp = String(b.paymentStatus || '') === 'Confirmado' ? 1 : 0;
+                        if (ap !== bp) return ap - bp;
+                        return (Number(a.bibNumber) || Number.MAX_SAFE_INTEGER) - (Number(b.bibNumber) || Number.MAX_SAFE_INTEGER);
                       }
                       if (participantsSort === 'name') {
                         const nameOf = (p: any) => (`${p.lastName || ''} ${p.firstName || String(p.title || '').split(' - ')[0] || ''}`).trim().toLowerCase();
