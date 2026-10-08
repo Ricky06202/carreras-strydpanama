@@ -967,8 +967,13 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     finally { setParticipantsLoading(false); }
   };
 
-  const deleteParticipant = async (id: string, name: string) => {
-    if (!confirm(`🚨 ¿ESTÁS SEGURO?\n\nVas a eliminar irreversiblemente la inscripción de: ${name}.\nEste dorsal quedará libre y el registro será borrado. NO se puede deshacer.`)) return;
+  const deleteParticipant = async (id: string, name: string, kind: 'inscrito' | 'preinscrito' = 'inscrito') => {
+    // El aviso cambia según la lista: borrar un PREINSCRITO solo quita esa ficha
+    // (registro aparte); borrar un INSCRITO sí libera el dorsal.
+    const warning = kind === 'preinscrito'
+      ? `🗑️ ¿Eliminar de la lista de PREINSCRITOS?\n\nSolo se borrará la ficha de preinscripción de: ${name}.\nNo afecta a su inscripción con dorsal ni a ningún otro registro. No se puede deshacer.`
+      : `🚨 ¿ESTÁS SEGURO?\n\nVas a eliminar irreversiblemente la inscripción de: ${name}.\nEste dorsal quedará libre y el registro será borrado. NO se puede deshacer.`;
+    if (!confirm(warning)) return;
     try {
       setParticipantsLoading(true);
       const res = await fetch('/api/admin/delete-participant', {
@@ -3194,7 +3199,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                                 size="small"
                                 variant="outlined"
                                 color="error"
-                                onClick={() => deleteParticipant(p.id, `${p.firstName || ''} ${p.lastName || ''}`.trim())}
+                                onClick={() => deleteParticipant(p.id, `${p.firstName || ''} ${p.lastName || ''}`.trim(), 'preinscrito')}
                                 sx={{ fontSize: 11 }}
                               >
                                 Eliminar
