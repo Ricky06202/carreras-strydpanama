@@ -3,7 +3,11 @@ import { env } from "cloudflare:workers";
 import { LOCAL_DB_STATEMENTS } from "@/lib/dev/local-db-sql";
 
 export async function POST() {
-  if (process.env.NODE_ENV === "production") {
+  // Fail-closed: solo habilitado en dev real (import.meta.env.DEV lo fija Vite en build).
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== true &&
+    !(typeof process !== "undefined" && process.env?.NODE_ENV === "development")
+  ) {
     return NextResponse.json({ error: "solo dev" }, { status: 403 });
   }
   if (LOCAL_DB_STATEMENTS.length === 0) {

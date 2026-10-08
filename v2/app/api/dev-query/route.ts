@@ -3,7 +3,11 @@ import { env } from "cloudflare:workers";
 
 // Solo-dev: inspeccion rapida del D1 simulado. No usar en prod.
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production") {
+  // Fail-closed: solo habilitado en dev real (import.meta.env.DEV lo fija Vite en build).
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== true &&
+    !(typeof process !== "undefined" && process.env?.NODE_ENV === "development")
+  ) {
     return NextResponse.json({ error: "solo dev" }, { status: 403 });
   }
   const { sql } = (await req.json()) as { sql?: string };

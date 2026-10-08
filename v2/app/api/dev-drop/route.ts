@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import { env } from "cloudflare:workers";
 
 export async function POST() {
-  if (process.env.NODE_ENV === "production") {
+  // Fail-closed: solo habilitado en dev real (import.meta.env.DEV lo fija Vite en build).
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== true &&
+    !(typeof process !== "undefined" && process.env?.NODE_ENV === "development")
+  ) {
     return NextResponse.json({ error: "solo dev" }, { status: 403 });
   }
   const drop = ["registrations","payments","results","raffle_winners","timing_events","teams","registration_codes","runners","participant_types","race_categories","race_distances","races","settings","sponsors","__new_registrations","__new_teams","__new_races","__drizzle_temp"];

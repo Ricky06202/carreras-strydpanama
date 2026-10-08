@@ -18,9 +18,10 @@ export type CodeStats = { generated: number; sold: number; redeemed: number };
 const CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // sin 0/O/1/I/L para dictado por teléfono
 
 function randomCode(): string {
+  const rnd = crypto.getRandomValues(new Uint8Array(8));
   let out = "SPY-";
   for (let i = 0; i < 8; i++) {
-    out += CHARS[Math.floor(Math.random() * CHARS.length)];
+    out += CHARS[(rnd[i] ?? 0) % CHARS.length];
     if (i === 3) out += "-";
   }
   return out;

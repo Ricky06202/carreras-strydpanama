@@ -65,12 +65,38 @@ async function nextBib(db: Db, raceId: string, startingBib: number | null): Prom
 
 function genConfirmationCode(): string {
   const chars = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+  const rnd = crypto.getRandomValues(new Uint8Array(9));
   let out = "SPY";
   for (let i = 0; i < 9; i++) {
-    out += chars[Math.floor(Math.random() * chars.length)];
+    out += chars[(rnd[i] ?? 0) % chars.length];
     if (i === 3 || i === 6) out += "-";
   }
   return out;
+}
+
+/** Dorsal con reintento: el índice único (raceId,bibNumber) arbitra si dos
+ *  confirmaciones concurrentes calcularon el mismo max+1. */
+async function assignBibWithRetry(
+  db: Db,
+  registrationId: string,
+  raceId: string,
+  startingBib: number | null,
+): Promise<number> {
+  let lastErr: unknown = null;
+  for (let i = 0; i < 4; i++) {
+    const bib = await nextBib(db, raceId, startingBib);
+    try {
+      await db
+        .update(schema.registrations)
+        .set({ bibNumber: bib, updatedAt: nowIso() })
+        .where(eq(schema.registrations.id, registrationId))
+        .run();
+      return bib;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error("No se pudo asignar dorsal");
 }
 
 export interface CreateResult {
@@ -105,6 +131,11 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     .where(eq(schema.raceCategories.raceId, race.id))
     .all();
   const category = matchCategory(categories, age, input.gender);
+  if (categories.length > 0 && !category) {
+    throw new RegError(422, "Tu edad o género no corresponde a ninguna categoría de esta carrera", {
+      birthDate: "Revisa la fecha de nacimiento",
+    });
+  }
 
   const dup = await db
     .select({ id: schema.registrations.id })
@@ -150,8 +181,18 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     if (!codeRow || codeRow.status === "redeemed") {
       throw new RegError(400, "Código inválido o ya usado", { code: "Código inválido o usado" });
     }
-    if (codeRow.allowedType !== "all" && input.participantTypeKey && codeRow.allowedType !== input.participantTypeKey) {
+    if (codeRow.allowedType !== "all" && codeRow.allowedType !== input.participantTypeKey) {
       throw new RegError(400, "Este código no aplica para tu tipo de participante", { code: "No aplica al tipo seleccionado" });
+    }
+    // Canje atómico ANTES de crear la inscripción: cierra la carrera de doble-canje
+    // (el UPDATE condicional solo afecta filas aún no redimidas).
+    const claimed = await db
+      .update(schema.registrationCodes)
+      .set({ status: "redeemed", redeemedByCedula: input.cedula, usedAt: nowIso(), updatedAt: nowIso() })
+      .where(and(eq(schema.registrationCodes.id, codeRow.id), ne(schema.registrationCodes.status, "redeemed")))
+      .run();
+    if (!claimed.meta.changes) {
+      throw new RegError(409, "Este código ya fue usado", { code: "Código inválido o usado" });
     }
     amount = 0;
   }
@@ -266,18 +307,9 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     bibNumber: null,
   }).catch(() => {});
 
-  if (isFreeCode && codeRow) {
-    const bib = await nextBib(db, race.id, race.startingBib);
-    await db
-      .update(schema.registrations)
-      .set({ bibNumber: bib, updatedAt: nowIso() })
-      .where(eq(schema.registrations.id, id))
-      .run();
-    await db
-      .update(schema.registrationCodes)
-      .set({ status: "redeemed", redeemedByCedula: input.cedula, usedAt: nowIso(), updatedAt: nowIso() })
-      .where(eq(schema.registrationCodes.id, codeRow.id))
-      .run();
+  if (isFreeCode) {
+    // Código ya canjeado atómicamente antes del insert; aquí solo el dorsal.
+    await assignBibWithRetry(db, id, race.id, race.startingBib);
   }
 
   return {
@@ -351,13 +383,13 @@ export async function confirmRegistrationPayment(
   }
 
   const race = await db.select().from(schema.races).where(eq(schema.races.id, reg.raceId)).get();
-  const bib = await nextBib(db, reg.raceId, race?.startingBib ?? null);
   const ts = nowIso();
   await db
     .update(schema.registrations)
-    .set({ status: "inscrito", paymentStatus: "pagado", amountPaid: payment.amount, bibNumber: bib, updatedAt: ts })
+    .set({ status: "inscrito", paymentStatus: "pagado", amountPaid: payment.amount, updatedAt: ts })
     .where(eq(schema.registrations.id, reg.id))
     .run();
+  const bib = await assignBibWithRetry(db, reg.id, reg.raceId, race?.startingBib ?? null);
   await db
     .update(schema.payments)
     .set({ status: "approved", updatedAt: ts })

@@ -39,14 +39,26 @@ function codeBox(code: string): string {
 </div>`;
 }
 
-export function buildRegistrationEmail(d: RegistrationEmailData): { subject: string; html: string } {
+function escapeHtml(v: string): string {
+  return v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/** Escapa todos los strings del payload antes de interpolarlos en HTML. */
+function escapeEmailData<T extends object>(data: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) out[k] = typeof v === "string" ? escapeHtml(v) : v;
+  return out as T;
+}
+
+export function buildRegistrationEmail(raw: RegistrationEmailData): { subject: string; html: string } {
+  const d = escapeEmailData(raw);
   if (d.confirmed) {
     const bib = d.bibNumber != null
       ? `<div style="text-align:center;margin:18px 0 6px;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">Tu dorsal</div>
          <div style="font-size:52px;font-weight:900;color:#ffffff;margin-top:4px;">#${d.bibNumber}</div></div>`
       : "";
     return {
-      subject: `Confirmación de inscripción: ${d.raceTitle}`,
+      subject: `Confirmación de inscripción: ${raw.raceTitle}`,
       html: shell(
         `<h2 style="color:#ffffff;margin:0 0 14px;">¡Estás inscrito, ${d.firstName}! 🎉</h2>
          <p>Tu pago quedó confirmado para <strong style="color:#ffffff;">${d.raceTitle}</strong>.</p>
@@ -62,7 +74,7 @@ export function buildRegistrationEmail(d: RegistrationEmailData): { subject: str
 
   if (d.method === "code") {
     return {
-      subject: `Inscripción confirmada: ${d.raceTitle}`,
+      subject: `Inscripción confirmada: ${raw.raceTitle}`,
       html: shell(
         `<h2 style="color:#ffffff;margin:0 0 14px;">¡Cupo confirmado, ${d.firstName}!</h2>
          <p>Tu inscripción con código quedó confirmada para <strong style="color:#ffffff;">${d.raceTitle}</strong>.</p>
@@ -81,7 +93,7 @@ export function buildRegistrationEmail(d: RegistrationEmailData): { subject: str
         ? "Realiza tu <strong style=\"color:#ffffff;\">transferencia o pago</strong> y comparte tu comprobante con un coordinador."
         : "Completa tu pago con <strong style=\"color:#ffffff;\">Yappy</strong> para confirmar tu cupo.";
   return {
-    subject: `Preinscripción: ${d.raceTitle}`,
+    subject: `Preinscripción: ${raw.raceTitle}`,
     html: shell(
       `<h2 style="color:#ffffff;margin:0 0 14px;">Hola ${d.firstName}, tu cupo está reservado</h2>
        <p>Quedaste <strong style="color:#ffffff;">preinscrito(a)</strong> en <strong style="color:#ffffff;">${d.raceTitle}</strong>. Aún no tienes dorsal: se asigna al confirmarse el pago.</p>
@@ -107,13 +119,14 @@ export interface ResultsEmailData {
   certificateUrl: string;
 }
 
-export function buildResultsEmail(d: ResultsEmailData): { subject: string; html: string } {
+export function buildResultsEmail(raw: ResultsEmailData): { subject: string; html: string } {
+  const d = escapeEmailData(raw);
   const medals: string[] = [];
   if (d.overallPos != null) medals.push(`<div style="flex:1;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">Puesto general</div><div style="font-size:30px;font-weight:900;color:#ffffff;">${d.overallPos}${d.overallPos <= 3 ? " 🏆" : ""}</div></div>`);
   if (d.categoryPos != null && d.categoryTitle) medals.push(`<div style="flex:1;"><div style="font-size:11px;letter-spacing:3px;text-transform:uppercase;color:#8A8A8E;">${d.categoryTitle}</div><div style="font-size:30px;font-weight:900;color:#ffffff;">${d.categoryPos}º cat.</div></div>`);
   const medalsRow = medals.length > 0 ? `<div style="display:flex;gap:14px;margin:18px 0;text-align:center;">${medals.join("")}</div>` : "";
   return {
-    subject: `Tus resultados: ${d.raceTitle}`,
+    subject: `Tus resultados: ${raw.raceTitle}`,
     html: shell(
       `<h2 style="color:#ffffff;margin:0 0 14px;">¡Misión cumplida, ${d.firstName}! 🏁</h2>
        <p>Estos son tus resultados oficiales en <strong style="color:#ffffff;">${d.raceTitle}</strong>:</p>

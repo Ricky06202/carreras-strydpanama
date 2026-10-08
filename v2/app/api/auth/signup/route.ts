@@ -3,6 +3,7 @@ import { eq, sql as dsql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { cedulaKey, formatCedula, phoneDigits } from "@/lib/cedula";
+import { clientIp, rateLimited } from "@/lib/ratelimit";
 import { hashPassword, startSession } from "@/lib/auth/session";
 
 const signupSchema = z.object({
@@ -19,6 +20,10 @@ const signupSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const db = getDb();
+  if (await rateLimited(db, `signup:${clientIp(req)}`, 5, 3600_000)) {
+    return NextResponse.json({ error: "Demasiadas cuentas creadas desde esta conexión. Intenta en una hora." }, { status: 429 });
+  }
   const parsed = signupSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     const fields: Record<string, string> = {};
@@ -26,7 +31,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Revisa los datos", fields }, { status: 422 });
   }
   const d = parsed.data;
-  const db = getDb();
 
   const clash = await db.select({ id: schema.runners.id }).from(schema.runners).where(eq(schema.runners.email, d.email)).get();
   if (clash) return NextResponse.json({ error: "Ese correo ya tiene cuenta. Inicia sesión.", fields: { email: "Ya registrado" } }, { status: 409 });
@@ -56,13 +60,8 @@ export async function POST(req: Request) {
     })
     .run();
 
-  // reclama inscripciones previas hechas con el mismo correo
-  await db
-    .update(schema.registrations)
-    .set({ runnerId: id, updatedAt: ts })
-    .where(eq(schema.registrations.email, d.email))
-    .run();
-
+  // Sin reclamo automático por correo (correo no verificado): las inscripciones
+  // previas se vinculan en /mi-portal vía /api/auth/claim con cédula+fecha de nacimiento.
   await startSession(id, new URL(req.url).protocol === "https:");
   return NextResponse.json({ ok: true });
 }

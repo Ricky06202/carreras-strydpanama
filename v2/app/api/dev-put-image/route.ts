@@ -3,7 +3,10 @@ import { env } from "cloudflare:workers";
 
 // Solo-dev: sube un objeto al R2 simulado (usado por scripts/sync-races.ts).
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production") return NextResponse.json({ error: "solo dev" }, { status: 403 });
+  if (
+    (import.meta as unknown as { env?: { DEV?: boolean } }).env?.DEV !== true &&
+    !(typeof process !== "undefined" && process.env?.NODE_ENV === "development")
+  ) return NextResponse.json({ error: "solo dev" }, { status: 403 });
   const key = new URL(req.url).searchParams.get("key");
   if (!key || key.includes("..") || key.startsWith("/")) return NextResponse.json({ error: "key inválida" }, { status: 400 });
   const buf = await req.arrayBuffer();

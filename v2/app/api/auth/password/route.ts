@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
-import { getRunner, hashPassword, verifyPassword } from "@/lib/auth/session";
+import { getRunner, hashPassword, startSession, verifyPassword } from "@/lib/auth/session";
 
 const changeSchema = z.object({
   current: z.string().min(1),
@@ -26,5 +26,7 @@ export async function POST(req: Request) {
     .set({ passwordHash: hash, passwordSalt: salt, updatedAt: new Date().toISOString() })
     .where(eq(schema.runners.id, runner.id))
     .run();
+  // Rotar la sesión: un token robado muere al cambiar la contraseña.
+  await startSession(runner.id, new URL(req.url).protocol === "https:");
   return NextResponse.json({ ok: true });
 }

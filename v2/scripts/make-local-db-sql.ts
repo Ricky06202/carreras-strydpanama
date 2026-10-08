@@ -9,6 +9,9 @@ const files = [
   "drizzle/0001_rainy_groot.sql",
   "drizzle/0002_cynical_madame_web.sql",
   "scripts/migrate/output/migrated.sql",
+  "drizzle/0003_gorgeous_terrax.sql",
+  "drizzle/0004_fluffy_sally_floyd.sql",
+  "drizzle/0005_rapid_tinkerer.sql",
 ];
 
 const chunks: string[] = [];

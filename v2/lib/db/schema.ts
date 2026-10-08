@@ -218,9 +218,23 @@ export const registrations = sqliteTable(
     uniqueIndex("registrations_race_cedula_idx").on(t.raceId, t.cedula),
     index("registrations_race_status_idx").on(t.raceId, t.status),
     index("registrations_runner_idx").on(t.runnerId),
-    index("registrations_bib_idx").on(t.raceId, t.bibNumber),
+    uniqueIndex("registrations_race_bib_idx").on(t.raceId, t.bibNumber),
   ],
 );
+
+// Sesiones admin revocables: token aleatorio por login, guardado como hash.
+export const adminSessions = sqliteTable("admin_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
+  expiresAt: text("expires_at").notNull(),
+});
+
+// Rate limiting de ventana fija para endpoints de login/claim.
+export const loginAttempts = sqliteTable("login_attempts", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(1),
+  windowStart: text("window_start").notNull(),
+});
 
 export const payments = sqliteTable(
   "payments",

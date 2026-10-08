@@ -25,11 +25,18 @@ export async function hashPassword(password: string): Promise<{ hash: string; sa
 export async function verifyPassword(password: string, hash: string, salt: string): Promise<boolean> {
   const km = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", salt: asBS(hexToBytes(salt)), iterations: 100_000, hash: "SHA-256" }, km, 256);
-  return bytesToHex(new Uint8Array(bits)) === hash;
+  return timingSafeEqStr(bytesToHex(new Uint8Array(bits)), hash);
 }
 
 export function generateSessionToken(): string {
   return bytesToHex(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+function timingSafeEqStr(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
 }
 
 const isoExpiry = () => new Date(Date.now() + DAYS * 24 * 60 * 60 * 1000).toISOString();
@@ -78,7 +85,7 @@ export async function getRunner(): Promise<RunnerSession | null> {
   if (!runnerId || !token) return null;
   const db = getDb();
   const runner = await db.select().from(schema.runners).where(eq(schema.runners.id, runnerId)).get();
-  if (!runner || runner.sessionToken !== token) return null;
+  if (!runner || !runner.sessionToken || !timingSafeEqStr(runner.sessionToken, token)) return null;
   if (!runner.sessionExpiry || new Date(runner.sessionExpiry).getTime() < Date.now()) return null;
   return runner;
 }

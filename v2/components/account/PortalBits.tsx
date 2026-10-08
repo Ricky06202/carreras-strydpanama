@@ -169,6 +169,7 @@ function EditDialog({ open, onClose, data }: { open: boolean; onClose: () => voi
 export function PortalActions({ hasCedula }: { hasCedula: boolean }) {
   const router = useRouter();
   const [cedula, setCedula] = useState("");
+  const [birthDate, setBirthDate] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -179,10 +180,10 @@ export function PortalActions({ hasCedula }: { hasCedula: boolean }) {
       const res = await fetch("/api/auth/claim", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ cedula }),
+        body: JSON.stringify({ cedula, birthDate }),
       });
       const j = (await res.json()) as { claimed?: number; error?: string };
-      setMsg(j.error ?? (j.claimed ? `${j.claimed} inscripción(es) vinculada(s)` : "No encontramos inscripciones con esa cédula"));
+      setMsg(j.error ?? (j.claimed ? `${j.claimed} inscripción(es) vinculada(s)` : "No encontramos inscripciones con esa cédula y fecha de nacimiento"));
       if (j.claimed) router.refresh();
     } finally {
       setBusy(false);
@@ -200,9 +201,10 @@ export function PortalActions({ hasCedula }: { hasCedula: boolean }) {
       {!hasCedula && (
         <div className="flex flex-col gap-3">
           <p className="font-mono text-[11px] uppercase tracking-widest text-mist">¿Te inscribiste antes de crear cuenta?</p>
-          <div className="flex gap-2">
-            <input className={field} inputMode="numeric" value={cedula} onChange={(e) => { const f = formatCedula(e.target.value); setCedula(f ?? e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11)); }} placeholder="Ej. 8-1234-567" autoCapitalize="characters" />
-            <Button variant="secondary" size="lg" disabled={!cedula || busy} onClick={() => void claim()}>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input className={field} inputMode="numeric" value={cedula} onChange={(e) => { const f = formatCedula(e.target.value); setCedula(f ?? e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 11)); }} placeholder="Cédula (ej. 8-1234-567)" autoCapitalize="characters" aria-label="Cédula" />
+            <input className={field} type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} aria-label="Fecha de nacimiento" />
+            <Button variant="secondary" size="lg" disabled={!cedula || !birthDate || busy} onClick={() => void claim()}>
               {busy ? "…" : "Vincular"}
             </Button>
           </div>

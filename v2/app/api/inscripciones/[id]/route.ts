@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
-import { phoneDigits } from "@/lib/cedula";
+import { phoneDigits, cedulaKey } from "@/lib/cedula";
 import { getRunner } from "@/lib/auth/session";
 import { getRegistrationStatus } from "@/lib/registration/service";
 
@@ -33,7 +33,10 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
   const reg = await db.select().from(schema.registrations).where(eq(schema.registrations.id, id)).get();
   if (!reg) return NextResponse.json({ error: "no encontrada" }, { status: 404 });
 
-  const mine = reg.runnerId === runner.id || reg.email === runner.email || (reg.cedula && reg.cedula === runner.cedula);
+  // Correo sin verificar no prueba propiedad: solo runnerId o cédula coincidente.
+  const mine =
+    reg.runnerId === runner.id ||
+    (!!reg.cedula && !!runner.cedula && cedulaKey(reg.cedula) === cedulaKey(runner.cedula));
   if (!mine) return NextResponse.json({ error: "No te pertenece" }, { status: 403 });
   if (reg.status === "anulado") return NextResponse.json({ error: "Inscripción anulada" }, { status: 409 });
 
