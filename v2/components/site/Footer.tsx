@@ -21,7 +21,10 @@ export function Footer() {
             Facebook
           </a>
         </div>
-        <p className="font-mono text-xs text-mist">© {new Date().getFullYear()} Stryd Panama</p>
+        <p className="font-mono text-xs text-mist">
+          © {new Date().getFullYear()} Stryd Panama · hecho por{" "}
+          <a href="https://rsanjur.com" target="_blank" rel="noopener" className="transition-colors hover:text-stryd">rsanjur.com</a>
+        </p>
       </div>
     </footer>
   );
