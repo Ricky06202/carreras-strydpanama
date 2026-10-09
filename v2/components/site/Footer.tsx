@@ -23,7 +23,7 @@ export function Footer() {
         </div>
         <p className="font-mono text-xs text-mist">
           © {new Date().getFullYear()} Stryd Panama · hecho por{" "}
-          <a href="https://rsanjur.com" target="_blank" rel="noopener" className="transition-colors hover:text-stryd">rsanjur.com</a>
+          <a href="https://rsanjur.com" target="_blank" rel="noopener" className="inline-flex items-center gap-1.5 transition-colors hover:text-stryd"><svg width="16" height="16" viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" rx="112" fill="#FFFFFF"/><text x="256" y="340" text-anchor="middle" fontFamily="Inter,system-ui,sans-serif" fontSize="252" fontWeight="800" letterSpacing="-8" fill="#0B1220">RS</text><rect x="196" y="380" width="120" height="26" rx="13" fill="#06B6D4"/></svg><span>rsanjur.com</span></a>
         </p>
       </div>
     </footer>
