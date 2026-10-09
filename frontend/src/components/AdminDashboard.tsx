@@ -5,7 +5,7 @@ import {
   Box, Typography, Button, Card, CardContent, 
   Grid, Container, Chip, CircularProgress, Alert,
   TextField, List, ListItem, ListItemText,
-  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel,
+  Tabs, Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Select, MenuItem, FormControl, InputLabel, LinearProgress,
   Dialog, DialogTitle, DialogContent, DialogActions, Checkbox, FormControlLabel, IconButton, InputAdornment, useMediaQuery, useTheme, Tooltip
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -147,6 +147,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     { label: 'Lista de Padrinos', value: 6, icon: <FavoriteIcon sx={{ mr: 2 }} /> },
     { label: 'Lista de Preinscritos', value: 7, icon: <HourglassEmptyIcon sx={{ mr: 2 }} /> },
     { label: 'Gestión Financiera', value: 9, icon: <ReceiptLongIcon sx={{ mr: 2 }} /> },
+    { label: 'Correos', value: 10, icon: <EmailIcon sx={{ mr: 2 }} /> },
   ];
   const [vendorInput, setVendorInput] = useState('');
   const [codeRaceId, setCodeRaceId] = useState('');
@@ -760,6 +761,166 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       const data = await res.json();
       if (data.success) fetchExpenses(financeRaceId); else alert(data.error);
     } catch (e) { console.error(e); }
+  };
+
+  // ===================== Correos (tab 10) =====================
+  const [emailTemplates, setEmailTemplates] = useState<any[]>([]);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [emailTodaySent, setEmailTodaySent] = useState(0);
+  const [emailQuota, setEmailQuota] = useState(100);
+  const [emailAudience, setEmailAudience] = useState<'todos' | 'inscritos' | 'preinscritos' | 'individual'>('inscritos');
+  const [emailRaceId, setEmailRaceId] = useState('');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [emailTemplateId, setEmailTemplateId] = useState('');
+  const [emailSavingTemplate, setEmailSavingTemplate] = useState(false);
+  const [emailAllParticipants, setEmailAllParticipants] = useState<any[]>([]);
+  const [emailIndividualQuery, setEmailIndividualQuery] = useState('');
+  const [emailSelectedIds, setEmailSelectedIds] = useState<string[]>([]);
+  const [emailPreview, setEmailPreview] = useState<any>(null);
+  const [emailPreviewLoading, setEmailPreviewLoading] = useState(false);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailProgress, setEmailProgress] = useState(0);
+  const [emailConfirmCount, setEmailConfirmCount] = useState('');
+  const [emailLogQuery, setEmailLogQuery] = useState('');
+  const [emailLogRace, setEmailLogRace] = useState('');
+  const [emailMsg, setEmailMsg] = useState<{ text: string; ok: boolean } | null>(null);
+
+  const loadEmailData = async () => {
+    try {
+      const [tRes, lRes] = await Promise.all([
+        fetch('/api/admin/email-templates').then(r => r.json()).catch(() => ({})),
+        fetch('/api/admin/email-log').then(r => r.json()).catch(() => ({})),
+      ]);
+      setEmailTemplates(tRes.templates || []);
+      setEmailLogs(lRes.logs || []);
+      setEmailTodaySent(Number(lRes.todaySent) || 0);
+      setEmailQuota(Number(lRes.quota) || 100);
+    } catch (e) { console.error(e); }
+  };
+
+  const loadEmailParticipants = async () => {
+    try {
+      const res = await fetch('/api/admin/participants');
+      const data = await res.json();
+      setEmailAllParticipants(data.participants || []);
+    } catch (e) { console.error(e); }
+  };
+
+  useEffect(() => {
+    if (tabIndex === 10) {
+      loadEmailData();
+      if (emailAllParticipants.length === 0) loadEmailParticipants();
+    }
+  }, [tabIndex]);
+
+  const emailAudienceLabel = (a: string) => ({ todos: 'Todos', inscritos: 'Inscritos', preinscritos: 'Preinscritos', individual: 'Individual' } as any)[a] || a;
+
+  const individualMatches = (() => {
+    const q = emailIndividualQuery.trim().toLowerCase();
+    const base = q
+      ? emailAllParticipants.filter((p: any) =>
+          `${p.firstName || ''} ${p.lastName || ''} ${p.title || ''} ${p.cedula || ''} ${p.email || ''}`.toLowerCase().includes(q))
+      : emailAllParticipants;
+    return base.slice(0, 40);
+  })();
+
+  const emailPayloadBase = () => ({
+    audience: emailAudience,
+    raceId: emailRaceId || undefined,
+    participantIds: emailAudience === 'individual' ? emailSelectedIds : undefined,
+    subject: emailSubject,
+    body: emailBody,
+    templateId: emailTemplateId || undefined,
+  });
+
+  const runEmailPreview = async () => {
+    setEmailMsg(null);
+    if (emailAudience === 'inscritos' && !emailRaceId) { setEmailPreview(null); setEmailMsg({ text: 'Elige una carrera para los inscritos.', ok: false }); return; }
+    if (emailAudience === 'individual' && emailSelectedIds.length === 0) { setEmailPreview(null); setEmailMsg({ text: 'Selecciona al menos una persona.', ok: false }); return; }
+    setEmailPreviewLoading(true);
+    try {
+      const res = await fetch('/api/admin/send-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...emailPayloadBase(), preview: true }) });
+      const data = await res.json();
+      if (!res.ok || data.error) { setEmailPreview(null); setEmailMsg({ text: data.error || 'No se pudo calcular los destinatarios.', ok: false }); return; }
+      setEmailPreview(data);
+      setEmailTodaySent(Number(data.todaySent) || 0);
+      setEmailQuota(Number(data.quota) || 100);
+    } catch (e: any) {
+      setEmailMsg({ text: String(e?.message || e), ok: false });
+    } finally {
+      setEmailPreviewLoading(false);
+    }
+  };
+
+  const saveEmailTemplate = async () => {
+    if (!emailSubject.trim() || !emailBody.trim()) return alert('Escribe un asunto y un cuerpo antes de guardar la plantilla.');
+    const name = prompt('Nombre de la nueva plantilla:');
+    if (!name) return;
+    setEmailSavingTemplate(true);
+    try {
+      const res = await fetch('/api/admin/email-templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, subject: emailSubject, body: emailBody }) });
+      const data = await res.json();
+      if (!res.ok || data.error) { alert(data.error || 'Error al guardar la plantilla'); return; }
+      await loadEmailData();
+      if (data.template?.id) setEmailTemplateId(String(data.template.id));
+      setEmailMsg({ text: `Plantilla "${name}" guardada.`, ok: true });
+    } catch (e: any) {
+      alert(String(e?.message || e));
+    } finally {
+      setEmailSavingTemplate(false);
+    }
+  };
+
+  const sendEmails = async () => {
+    setEmailMsg(null);
+    if (!emailPreview) { await runEmailPreview(); return; }
+    if (emailPreview.total === 0) { setEmailMsg({ text: 'No hay destinatarios con correo para este envío.', ok: false }); return; }
+    if (!emailSubject.trim() || !emailBody.trim()) { setEmailMsg({ text: 'Asunto y cuerpo son obligatorios.', ok: false }); return; }
+    if (emailAudience === 'todos' && emailConfirmCount.trim() !== String(emailPreview.total)) {
+      setEmailMsg({ text: `Para enviar a TODOS debes escribir la cantidad exacta de destinatarios (${emailPreview.total}).`, ok: false });
+      return;
+    }
+    if (emailPreview.cupoRestante <= 0) { setEmailMsg({ text: 'El cupo diario de Resend (100) ya está agotado. Reintenta mañana.', ok: false }); return; }
+
+    const campaignId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `camp-${Date.now()}`;
+    const total = emailPreview.total;
+    let offset = 0;
+    let sent = 0; let failed = 0; let paused = false; let lastCupo = emailPreview.cupoRestante;
+    const skippedNoEmail = emailPreview.skippedNoEmail || 0;
+
+    setEmailSending(true);
+    setEmailProgress(0);
+    try {
+      while (offset < total) {
+        const res = await fetch('/api/admin/send-bulk', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...emailPayloadBase(), offset, batchSize: 25, campaignId }),
+        });
+        const d = await res.json();
+        if (!res.ok || d.error) { setEmailMsg({ text: d.error || 'Error al enviar el lote.', ok: false }); break; }
+        sent += Number(d.sent) || 0;
+        failed += Number(d.failed) || 0;
+        lastCupo = Number(d.cupoRestante) ?? lastCupo;
+        const processed = Number(d.recipients) || 0;
+        offset += processed;
+        setEmailProgress(Math.min(100, Math.round((offset / total) * 100)));
+        if (d.pausado && d.remaining > 0) { paused = true; break; }
+        if (d.remaining === 0) break;
+        if (processed === 0) break;
+      }
+      setEmailMsg({
+        text: `Enviados: ${sent} · Omitidos sin correo: ${skippedNoEmail} · Fallidos: ${failed}` + (paused ? ` · PAUSADO por cupo (quedan ${total - offset} en espera, cupo restante ${lastCupo})` : ''),
+        ok: !paused && failed === 0,
+      });
+      setEmailPreview(null);
+      setEmailConfirmCount('');
+      await loadEmailData();
+    } catch (e: any) {
+      setEmailMsg({ text: String(e?.message || e), ok: false });
+    } finally {
+      setEmailSending(false);
+    }
   };
 
   const exportFinancePDF = async () => {
@@ -3410,6 +3571,221 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <Button variant="contained" onClick={saveExpense} disabled={financeSaving}>{financeSaving ? 'Guardando…' : 'Guardar'}</Button>
               </DialogActions>
             </Dialog>
+          </Box>
+        );
+      })()}
+
+
+      {/* ===================== Correos (tab 10) ===================== */}
+      {tabIndex === 10 && (() => {
+        const filteredEmailLogs = emailLogs.filter((l: any) => {
+          if (emailLogRace && l.race !== emailLogRace) return false;
+          if (emailLogQuery && !String(l.details || '').toLowerCase().includes(emailLogQuery.toLowerCase())) return false;
+          return true;
+        });
+        const quotaPct = emailQuota > 0 ? Math.min(100, Math.round((emailTodaySent / emailQuota) * 100)) : 0;
+        const audienceNeedsRace = emailAudience === 'inscritos';
+        const confirmOk = emailAudience !== 'todos' || (emailPreview && emailConfirmCount.trim() === String(emailPreview.total));
+        return (
+          <Box>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 2, mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 900 }}>Correos</Typography>
+              <Chip label={`Enviados hoy: ${emailTodaySent}/${emailQuota}`} color={emailTodaySent >= emailQuota ? 'error' : (quotaPct > 80 ? 'warning' : 'success')} />
+              <Box sx={{ flex: 1, minWidth: 180 }}>
+                <LinearProgress variant="determinate" value={quotaPct} color={emailTodaySent >= emailQuota ? 'error' : 'primary'} sx={{ height: 8, borderRadius: 4 }} />
+              </Box>
+              <Button variant="outlined" size="small" onClick={loadEmailData}>Refrescar</Button>
+            </Box>
+
+            {emailMsg && <Alert severity={emailMsg.ok ? 'success' : 'warning'} sx={{ mb: 3 }} onClose={() => setEmailMsg(null)}>{emailMsg.text}</Alert>}
+
+            <Card variant="outlined" sx={{ mb: 4 }}>
+              <CardContent>
+                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Componer envío</Typography>
+
+                <Grid container spacing={2} sx={{ mb: 2 }}>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl size="small" fullWidth>
+                      <InputLabel>Destinatarios</InputLabel>
+                      <Select label="Destinatarios" value={emailAudience} onChange={(e) => { setEmailAudience(e.target.value as any); setEmailPreview(null); setEmailConfirmCount(''); }}>
+                        <MenuItem value="todos">Todos (⚠️ global)</MenuItem>
+                        <MenuItem value="inscritos">Solo inscritos de una carrera</MenuItem>
+                        <MenuItem value="preinscritos">Solo preinscritos</MenuItem>
+                        <MenuItem value="individual">Individual (buscar persona)</MenuItem>
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl size="small" fullWidth disabled={emailAudience === 'todos' || (emailAudience === 'individual')}>
+                      <InputLabel>Carrera{audienceNeedsRace ? ' *' : ''}</InputLabel>
+                      <Select label={`Carrera${audienceNeedsRace ? ' *' : ''}`} value={emailRaceId} onChange={(e) => { setEmailRaceId(String(e.target.value)); setEmailPreview(null); }}>
+                        {emailAudience === 'preinscritos' && <MenuItem value="">Todas las carreras</MenuItem>}
+                        {races.map((r: any) => <MenuItem key={r.id} value={r.id}>{r.data?.title || (r as any).title}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <FormControl size="small" fullWidth>
+                      <InputLabel>Plantilla guardada</InputLabel>
+                      <Select
+                        label="Plantilla guardada"
+                        value={emailTemplateId}
+                        onChange={(e) => {
+                          const id = String(e.target.value);
+                          setEmailTemplateId(id);
+                          const t = emailTemplates.find((x: any) => String(x.id) === id);
+                          if (t) { setEmailSubject(t.subject || ''); setEmailBody(t.body || ''); }
+                        }}
+                      >
+                        <MenuItem value=""><em>— Ninguna (asunto propio) —</em></MenuItem>
+                        {emailTemplates.map((t: any) => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                </Grid>
+
+                {emailAudience === 'individual' && (
+                  <Box sx={{ mb: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
+                    <TextField
+                      label="Buscar por nombre, cédula o correo"
+                      size="small"
+                      fullWidth
+                      value={emailIndividualQuery}
+                      onChange={(e) => setEmailIndividualQuery(e.target.value)}
+                      InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+                    />
+                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                      {emailSelectedIds.length} seleccionado(s) · se muestran {individualMatches.length} coincidencia(s)
+                    </Typography>
+                    <Box sx={{ maxHeight: 240, overflow: 'auto', mt: 1 }}>
+                      {individualMatches.map((p: any) => (
+                        <Box key={p.id} sx={{ display: 'flex', alignItems: 'center' }}>
+                          <Checkbox
+                            size="small"
+                            checked={emailSelectedIds.includes(String(p.id))}
+                            onChange={(e) => {
+                              setEmailPreview(null);
+                              const id = String(p.id);
+                              setEmailSelectedIds(prev => e.target.checked ? [...prev, id] : prev.filter(x => x !== id));
+                            }}
+                          />
+                          <ListItemText
+                            primary={`${p.firstName || ''} ${p.lastName || ''}`.trim() || p.title || 'Sin nombre'}
+                            secondary={`${p.cedula || 'sin cédula'} · ${p.email || 'sin correo'}`}
+                          />
+                        </Box>
+                      ))}
+                      {individualMatches.length === 0 && <Typography variant="body2" color="text.secondary" sx={{ py: 2, textAlign: 'center' }}>Sin coincidencias</Typography>}
+                    </Box>
+                  </Box>
+                )}
+
+                <TextField label="Asunto" size="small" fullWidth sx={{ mb: 2 }} value={emailSubject} onChange={(e) => { setEmailSubject(e.target.value); setEmailPreview(null); }} />
+                <TextField
+                  label="Cuerpo del correo"
+                  size="small"
+                  fullWidth
+                  multiline
+                  minRows={6}
+                  value={emailBody}
+                  onChange={(e) => { setEmailBody(e.target.value); setEmailPreview(null); }}
+                  helperText="Puedes usar {nombre} y etiquetas simples (b, i, a). Los saltos de línea se respetan."
+                />
+
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                  <Button variant="outlined" onClick={saveEmailTemplate} disabled={emailSavingTemplate}>{emailSavingTemplate ? 'Guardando…' : 'Guardar como plantilla'}</Button>
+                  <Button variant="outlined" onClick={runEmailPreview} disabled={emailPreviewLoading}>{emailPreviewLoading ? 'Calculando…' : 'Calcular destinatarios'}</Button>
+                </Box>
+
+                {emailPreview && (
+                  <Alert severity={emailPreview.total === 0 ? 'warning' : 'info'} sx={{ mt: 2 }}>
+                    <b>Destinatarios con correo:</b> {emailPreview.total} · Omitidos sin correo: {emailPreview.skippedNoEmail}
+                    {emailPreview.skippedBadEmail ? ` · Correo inválido: ${emailPreview.skippedBadEmail}` : ''}
+                    {emailPreview.raceTitle ? ` · Carrera: ${emailPreview.raceTitle}` : ''} · Cupo restante hoy: {emailPreview.cupoRestante}/{emailPreview.quota}
+                  </Alert>
+                )}
+
+                {emailAudience === 'todos' && emailPreview && (
+                  <Alert severity="error" sx={{ mt: 2 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      Enviar a <b>TODOS</b> es una acción global ({emailPreview.total} correos) y no se puede deshacer.
+                      Escribe la cantidad exacta para confirmar:
+                    </Typography>
+                    <TextField size="small" value={emailConfirmCount} onChange={(e) => setEmailConfirmCount(e.target.value)} placeholder={String(emailPreview.total)} />
+                  </Alert>
+                )}
+
+                {emailSending && (
+                  <Box sx={{ mt: 2 }}>
+                    <LinearProgress variant="determinate" value={emailProgress} />
+                    <Typography variant="caption" color="text.secondary">{emailProgress}%</Typography>
+                  </Box>
+                )}
+
+                <Box sx={{ mt: 2 }}>
+                  <Button variant="contained" startIcon={<EmailIcon />} onClick={sendEmails} disabled={emailSending || !confirmOk || (emailPreview ? emailPreview.total === 0 : false)}>
+                    {emailSending ? 'Enviando…' : 'Enviar correos'}
+                  </Button>
+                </Box>
+              </CardContent>
+            </Card>
+
+            <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>Bitácora de correos</Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+              <FormControl size="small" sx={{ minWidth: 240 }}>
+                <InputLabel>Carrera</InputLabel>
+                <Select label="Carrera" value={emailLogRace} onChange={(e) => setEmailLogRace(String(e.target.value))}>
+                  <MenuItem value="">Todas las carreras</MenuItem>
+                  {races.map((r: any) => <MenuItem key={r.id} value={r.id}>{r.data?.title || (r as any).title}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <TextField
+                label="Buscar persona (nombre o correo)"
+                size="small"
+                sx={{ minWidth: 260 }}
+                value={emailLogQuery}
+                onChange={(e) => setEmailLogQuery(e.target.value)}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
+              />
+            </Box>
+
+            <TableContainer component={Paper} variant="outlined">
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Fecha</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Asunto</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Destinatarios</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Carrera</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Enviados</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>Fallidos</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold' }}>Estado</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filteredEmailLogs.length === 0 && (
+                    <TableRow><TableCell colSpan={7} sx={{ textAlign: 'center', color: 'text.secondary', py: 4 }}>No hay registros de correos</TableCell></TableRow>
+                  )}
+                  {filteredEmailLogs.map((l: any) => (
+                    <TableRow key={l.id} hover>
+                      <TableCell>{l.date}</TableCell>
+                      <TableCell>{l.subject}</TableCell>
+                      <TableCell>{emailAudienceLabel(l.audience)}</TableCell>
+                      <TableCell>{l.raceTitle || '—'}</TableCell>
+                      <TableCell align="right">{l.sent}</TableCell>
+                      <TableCell align="right">{l.failed}</TableCell>
+                      <TableCell>
+                        <Chip
+                          size="small"
+                          label={l.status}
+                          color={l.status === 'completado' ? 'success' : (l.status === 'pausado' ? 'warning' : 'error')}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         );
       })()}
