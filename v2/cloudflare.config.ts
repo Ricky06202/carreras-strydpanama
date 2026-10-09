@@ -2,7 +2,7 @@ import { bindings, defineConfig, defineWorker } from "cf/config";
 
 export default defineConfig({
   worker: defineWorker({
-    name: "v2",
+    name: "carreras-strydpanama-v2",
     entrypoint: "vinext/server/fetch-handler",
     compatibilityDate: "2026-10-07",
     compatibilityFlags: ["nodejs_compat"],
