@@ -2626,6 +2626,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Categoría / Equipo</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Cédula</TableCell>
                   <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Inscripción</TableCell>
+                  <TableCell sx={{ bgcolor: 'black', color: 'white', fontWeight: 'bold' }}>Monto Pagado</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -2724,6 +2725,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                           <TableCell>
                             <Typography variant="body2">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : (p.created_at ? new Date(p.created_at).toLocaleDateString() : (p.createdOn ? new Date(p.createdOn).toLocaleDateString() : 'N/A'))}</Typography>
                             <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary', display: 'block', mt: 0.5 }}>{p.paymentStatus}</Typography>
+                          </TableCell>
+                          
+                          <TableCell>
+                            <Typography variant="body2" sx={{ fontWeight: 'bold', color: (Number(p.amountPaid) || 0) > 0 ? 'success.main' : 'text.secondary' }}>
+                              ${(Number(p.amountPaid) || 0).toFixed(2)}
+                            </Typography>
                           </TableCell>
                           
 
