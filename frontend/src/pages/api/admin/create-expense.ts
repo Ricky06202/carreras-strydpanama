@@ -7,7 +7,7 @@ const COLLECTION_ID = 'col-financial_expenses-d1d2fdf3';
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
-    const { raceId, title, beneficiary, amount, payDate, method, reference, notes } = body;
+    const { raceId, title, beneficiary, amount, payDate, method, reference, notes, category } = body;
 
     if (!raceId || !title || amount === undefined || !payDate) {
       return new Response(JSON.stringify({ error: 'Faltan campos obligatorios (carrera, referencia, monto, fecha)' }), { status: 400 });
@@ -19,6 +19,7 @@ export const POST: APIRoute = async ({ request }) => {
       beneficiary: beneficiary || '',
       amount: Number(amount),
       payDate,
+      category: category || '',
       method: method || 'Yappy',
       reference: reference || '',
       notes: notes || '',

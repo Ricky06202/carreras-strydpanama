@@ -21,6 +21,7 @@ export const GET: APIRoute = async ({ request }) => {
       beneficiary: item.data?.beneficiary || '',
       amount: Number(item.data?.amount ?? 0),
       payDate: item.data?.payDate || '',
+      category: item.data?.category || '',
       method: item.data?.method || 'Yappy',
       reference: item.data?.reference || '',
       notes: item.data?.notes || '',

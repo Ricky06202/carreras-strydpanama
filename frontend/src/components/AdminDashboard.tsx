@@ -644,7 +644,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [financeRaceId, setFinanceRaceId] = useState<string>('');
   const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [expenseEdit, setExpenseEdit] = useState<any>(null);
-  const [expenseForm, setExpenseForm] = useState({ title: '', beneficiary: '', amount: '', payDate: '', method: 'Yappy', reference: '', notes: '' });
+  const EXPENSE_CATEGORIES = ['Producción y Logística de Carrera', 'Transferencias al Organizador', 'Premiación y Trofeos', 'Marketing y Publicidad', 'Personal y Servicios', 'Otros'];
+  const [expenseForm, setExpenseForm] = useState({ title: '', beneficiary: '', amount: '', payDate: '', method: 'Yappy', reference: '', notes: '', category: '' });
 
   const fetchExpenses = async (raceId: string) => {
     if (!raceId) { setExpenses([]); return; }
@@ -716,13 +717,13 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const openAddExpense = () => {
     setExpenseEdit(null);
-    setExpenseForm({ title: '', beneficiary: '', amount: '', payDate: new Date().toISOString().slice(0, 10), method: 'Yappy', reference: '', notes: '' });
+    setExpenseForm({ title: '', beneficiary: '', amount: '', payDate: new Date().toISOString().slice(0, 10), method: 'Yappy', reference: '', notes: '', category: '' });
     setExpenseDialogOpen(true);
   };
 
   const openEditExpense = (e: any) => {
     setExpenseEdit(e);
-    setExpenseForm({ title: e.title || '', beneficiary: e.beneficiary || '', amount: String(e.amount ?? ''), payDate: String(e.payDate || '').slice(0, 10), method: e.method || 'Yappy', reference: e.reference || '', notes: e.notes || '' });
+    setExpenseForm({ title: e.title || '', beneficiary: e.beneficiary || '', amount: String(e.amount ?? ''), payDate: String(e.payDate || '').slice(0, 10), method: e.method || 'Yappy', reference: e.reference || '', notes: e.notes || '', category: e.category || '' });
     setExpenseDialogOpen(true);
   };
 
@@ -734,8 +735,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     try {
       const url = expenseEdit ? '/api/admin/update-expense' : '/api/admin/create-expense';
       const body = expenseEdit
-        ? { id: expenseEdit.id, updates: { title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes } }
-        : { raceId: financeRaceId, title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes };
+        ? { id: expenseEdit.id, updates: { title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes, category: f.category } }
+        : { raceId: financeRaceId, title: f.title, beneficiary: f.beneficiary, amount: Number(f.amount), payDate: f.payDate, method: f.method, reference: f.reference, notes: f.notes, category: f.category };
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const data = await res.json();
       if (!res.ok || data.error) { alert(data.error || 'Error al guardar'); return; }
@@ -975,21 +976,61 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       return;
     }
 
+    const ORANGE: [number, number, number] = [232, 138, 30];
+    const GREEN: [number, number, number] = [40, 130, 70];
+    const RED: [number, number, number] = [180, 40, 40];
+    const DARK: [number, number, number] = [30, 30, 30];
+
     const doc = new jsPDF({ orientation: 'landscape' });
+    const W = doc.internal.pageSize.getWidth();
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(18);
-    doc.setTextColor(255, 107, 0);
-    doc.text('STRYD PANAMA — Informe Financiero', 14, 18);
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(12);
-    doc.text(`Carrera: ${raceTitle}`, 14, 27);
-    doc.setFontSize(10);
-    doc.text(`Fecha de la carrera: ${raceObj?.data?.date || '—'}   ·   Generado: ${new Date().toLocaleString()}`, 14, 34);
+    doc.setTextColor(ORANGE[0], ORANGE[1], ORANGE[2]);
+    doc.text('STRYD PANAMÁ', 14, 18);
+    const wBrand = doc.getTextWidth('STRYD PANAMÁ');
+    doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+    doc.text('— INFORME FINANCIERO EJECUTIVO', 14 + wBrand + 2, 18);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(11);
+    doc.text(`Carrera: ${raceTitle}`, 14, 26);
+    doc.setFontSize(9);
+    doc.text(`Fecha de la carrera: ${raceObj?.data?.date || '—'}  |  Generado: ${new Date().toLocaleString()}`, 14, 32);
+
+    const boxY = 37;
+    const boxH = 34;
+    doc.setDrawColor(ORANGE[0], ORANGE[1], ORANGE[2]);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(14, boxY, W - 28, boxH, 2, 2, 'S');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+    doc.text('RESUMEN EJECUTIVO', 18, boxY + 7);
+    const colW = (W - 28) / 3;
+    const kpi = (i: number, label: string, value: string, color: number[]) => {
+      const cx = 14 + colW * i + colW / 2;
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+      doc.text(label, cx, boxY + 14, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(19);
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.text(value, cx, boxY + 24, { align: 'center' });
+    };
+    kpi(0, 'Recaudación Neta:', `$${financeStats.recaudado.toFixed(2)}`, DARK);
+    kpi(1, 'Pagos Salientes:', `$${financeStats.salientes.toFixed(2)}`, RED);
+    kpi(2, 'SALDO DISPONIBLE:', `$${financeStats.saldo.toFixed(2)}`, financeStats.saldo >= 0 ? GREEN : RED);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(90, 90, 90);
+    doc.text(`Inscritos confirmados: ${financeStats.confirmados}  |  Pendientes de pago: ${financeStats.pendientes}  |  Pagos salientes registrados: ${expenses.length}`, 18, boxY + boxH - 4);
 
     const body: any[][] = [];
     groupedExpenses.days.forEach((g) => {
-      g.items.forEach((e: any, i: number) => {
+      g.items.forEach((e: any) => {
         body.push([
-          i === 0 ? g.day : '',
+          e.payDate ? String(e.payDate).slice(0, 10) : '-',
           e.title || '-',
           e.beneficiary || '-',
           e.method || '-',
@@ -997,35 +1038,55 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
           `$${(Number(e.amount) || 0).toFixed(2)}`,
         ]);
       });
-      body.push([{ content: `SUBTOTAL ${g.day}`, colSpan: 5, styles: { fontStyle: 'bold', fillColor: [245, 245, 245] } }, { content: `$${g.total.toFixed(2)}`, styles: { fontStyle: 'bold', fillColor: [245, 245, 245] } }]);
     });
     if (body.length === 0) body.push([{ content: 'Sin pagos salientes registrados', colSpan: 6, styles: { fontStyle: 'italic' } }]);
 
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+    doc.text('PAGOS SALIENTES', 14, boxY + boxH + 11);
     autoTable(doc, {
-      startY: 40,
+      startY: boxY + boxH + 14,
       head: [['Fecha Pago', 'Referencia', 'Beneficiario', 'Método', 'Comprobante', 'Monto']],
       body,
-      styles: { fontSize: 8, cellPadding: 2 },
-      headStyles: { fillColor: [255, 107, 0], textColor: [255, 255, 255] },
+      foot: [[{ content: 'TOTAL', colSpan: 5 }, `$${financeStats.salientes.toFixed(2)}`]],
+      styles: { fontSize: 9, cellPadding: 2.4 },
+      headStyles: { fillColor: [40, 40, 40], textColor: [255, 255, 255] },
+      footStyles: { fillColor: [245, 245, 245], textColor: [30, 30, 30], fontStyle: 'bold' },
+      columnStyles: { 5: { halign: 'right' } },
+      theme: 'grid',
     });
 
-    const finalY = (doc as any).lastAutoTable?.finalY || 200;
-    let y = finalY + 12;
-    doc.setFontSize(13);
-    doc.text('RESUMEN POR CARRERA', 14, y); y += 8;
-    doc.setFontSize(11);
-    doc.text(`Recaudacion Neta (inscripciones confirmadas): $${financeStats.recaudado.toFixed(2)}`, 14, y); y += 6;
-    doc.text(`Pagos Salientes (enviados por el servicio de cronometraje): $${financeStats.salientes.toFixed(2)}`, 14, y); y += 6;
+    const byCat = new Map<string, number>();
+    expenses.forEach((e: any) => {
+      const c = String(e.category || '').trim() || 'Sin categoría';
+      byCat.set(c, (byCat.get(c) || 0) + (Number(e.amount) || 0));
+    });
+    const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1]);
+    let y = ((doc as any).lastAutoTable?.finalY || boxY + boxH + 20) + 12;
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(financeStats.saldo >= 0 ? 0 : 200, financeStats.saldo >= 0 ? 120 : 0, 0);
-    doc.text(`SALDO: $${financeStats.saldo.toFixed(2)}`, 14, y);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont('helvetica', 'normal');
-    y += 6;
-    doc.setFontSize(9);
-    doc.text(`Inscritos confirmados: ${financeStats.confirmados}   ·   Pendientes de pago: ${financeStats.pendientes}   ·   Pagos salientes registrados: ${expenses.length}`, 14, y); y += 6;
-    const amtLine = groupedExpenses.byAmount.map(([amt, n]) => `$${Number(amt).toFixed(2)} × ${n}`).join('   ·   ') || '—';
-    doc.text(`Pagos salientes por monto: ${amtLine}`, 14, Math.min(y + 6, 190));
+    doc.setFontSize(12);
+    doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+    doc.text('DISTRIBUCIÓN POR CATEGORÍA DE GASTO', 14, y);
+    y += 8;
+    const maxCat = Math.max(1, ...cats.map((c) => c[1]));
+    cats.forEach(([label, amt]) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(DARK[0], DARK[1], DARK[2]);
+      doc.text(String(label), 18, y + 5);
+      const w = Math.max(2, (amt / maxCat) * 130);
+      doc.setFillColor(ORANGE[0], ORANGE[1], ORANGE[2]);
+      doc.roundedRect(120, y, w, 7, 1.5, 1.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.text(`$${amt.toFixed(2)}`, 120 + w + 3, y + 5);
+      y += 11;
+    });
+    if (cats.length === 0) {
+      doc.setFont('helvetica', 'italic');
+      doc.setTextColor(120, 120, 120);
+      doc.text('Sin gastos registrados.', 18, y + 4);
+    }
 
     doc.save(`Informe_Financiero_${(raceTitle || 'carrera').toLowerCase().replace(/[^a-z0-9]+/g, '-')}_${new Date().toISOString().split('T')[0]}.pdf`);
   };
@@ -3601,6 +3662,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                     </Select>
                   </FormControl>
                   <TextField label="Nº comprobante / orden" size="small" sx={{ flex: 1, minWidth: 180 }} value={expenseForm.reference} onChange={(e) => setExpenseForm({ ...expenseForm, reference: e.target.value })} />
+                  <FormControl size="small" sx={{ flex: 1, minWidth: 220 }}>
+                    <InputLabel>Categoría de gasto</InputLabel>
+                    <Select value={expenseForm.category} label="Categoría de gasto" onChange={(e) => setExpenseForm({ ...expenseForm, category: String(e.target.value) })}>
+                      {EXPENSE_CATEGORIES.map((c) => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+                    </Select>
+                  </FormControl>
                 </Box>
                 <TextField label="Notas" size="small" multiline minRows={2} value={expenseForm.notes} onChange={(e) => setExpenseForm({ ...expenseForm, notes: e.target.value })} />
               </DialogContent>
