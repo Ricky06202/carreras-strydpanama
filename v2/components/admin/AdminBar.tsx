@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+// Orden por uso real (lo que más se abre primero), no alfabético.
 const sections = [
   { href: "/admin", label: "Resumen" },
-  { href: "/admin/carreras", label: "Carreras" },
   { href: "/admin/inscripciones", label: "Inscripciones" },
+  { href: "/admin/carreras", label: "Carreras" },
+  { href: "/admin/timing", label: "Timing" },
+  { href: "/admin/finanzas", label: "Finanzas" },
   { href: "/admin/codigos", label: "Códigos" },
   { href: "/admin/equipos", label: "Equipos" },
-  { href: "/admin/timing", label: "Timing" },
   { href: "/admin/tombole", label: "Tómbola" },
 ];
 

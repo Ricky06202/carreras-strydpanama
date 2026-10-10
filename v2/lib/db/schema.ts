@@ -333,6 +333,28 @@ export const settings = sqliteTable("settings", {
   updatedAt: text("updated_at").notNull().default(sql`(datetime('now'))`),
 });
 
+// Pagos salientes (dinero que Stryd Panamá envía/paga por carrera: personal,
+// logística, proveedores). Insumo del informe financiero por carrera.
+export const expenses = sqliteTable(
+  "expenses",
+  {
+    ...pkId(),
+    raceId: text("race_id")
+      .notNull()
+      .references(() => races.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    beneficiary: text("beneficiary"),
+    amount: real("amount").notNull(),
+    payDate: text("pay_date").notNull(),
+    category: text("category"),
+    method: text("method").notNull().default("Yappy"),
+    reference: text("reference"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (t) => [index("expenses_race_idx").on(t.raceId, t.payDate)],
+);
+
 export type Race = typeof races.$inferSelect;
 export type Runner = typeof runners.$inferSelect;
 export type Registration = typeof registrations.$inferSelect;
@@ -341,3 +363,4 @@ export type Payment = typeof payments.$inferSelect;
 export type Team = typeof teams.$inferSelect;
 export type Result = typeof results.$inferSelect;
 export type Sponsor = typeof sponsors.$inferSelect;
+export type Expense = typeof expenses.$inferSelect;
