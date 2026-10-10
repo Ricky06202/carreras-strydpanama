@@ -672,17 +672,33 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const financeStats = (() => {
     const raceObj: any = races.find((r: any) => r.id === financeRaceId);
+    const rd = raceObj?.data || {};
+    const racePrice = Number(rd.price) || 15;
+    const legacyPrice = Number(rd.legacyPrice) || 0;
+    const legacyCutoff = Number(rd.legacyCutoff) || 0;
+    const priceFor = (p: any) => {
+      const createdMs = Number(p.createdAt || 0) || 0;
+      const isLegacy = legacyPrice > 0 && legacyCutoff > 0 && createdMs > 0 && createdMs < legacyCutoff;
+      if ((p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
+      return isLegacy ? legacyPrice : racePrice;
+    };
     let recaudado = 0, confirmados = 0, pendientes = 0;
     participants.filter((p: any) => p.race === financeRaceId).forEach((p: any) => {
+      const isPadrinoSolo = p.participantType === 'padrino';
       const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
       const isFreeCodePay = p.paymentMethod === 'Cupon Gratuito' || p.paymentStatus === 'Cupon Gratuito';
       const isConfirmed = isPadrinoSponsored || isFreeCodePay || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
       if (!isConfirmed) { pendientes++; return; }
       if (isPadrinoSponsored || isFreeCodePay) { confirmados++; return; }
-      // Recaudacion = dinero REAL recibido (amountPaid), igual que el 'TOTAL RECAUDADO'
-      // del informe de inscritos. Antes se usaba el precio de lista como respaldo, lo que
-      // inflaba 'Recaudacion Neta' cuando el monto real no estaba registrado.
-      recaudado += Number(p.amountPaid) || 0;
+      const paidAmount = Number(p.amountPaid) || 0;
+      if (isPadrinoSolo) {
+        // Padrinos: cuenta SOLO lo pagado (sin inventar por boletos donados). Igual que el Dashboard.
+        recaudado += paidAmount;
+      } else {
+        // Corredores: lo realmente pagado; si no hay monto registrado, se estima con el precio
+        // de la carrera (mismo criterio que el Dashboard -> 'Recaudacion Neta' coincide en ambas pantallas).
+        recaudado += paidAmount > 0 ? paidAmount : priceFor(p);
+      }
       confirmados++;
     });
     const salientes = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
