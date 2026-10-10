@@ -855,6 +855,28 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const updateEmailTemplate = async () => {
+    setEmailMsg(null);
+    if (!emailTemplateId) { setEmailMsg({ text: 'Elige primero una plantilla de la lista Plantilla guardada.', ok: false }); return; }
+    if (!emailSubject.trim() || !emailBody.trim()) { setEmailMsg({ text: 'Asunto y cuerpo son obligatorios.', ok: false }); return; }
+    const t = emailTemplates.find((x: any) => String(x.id) === String(emailTemplateId));
+    const name = t?.name || '';
+    setEmailSavingTemplate(true);
+    try {
+      const res = await fetch('/api/admin/email-templates', {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: emailTemplateId, name, subject: emailSubject, body: emailBody }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data.error) { setEmailMsg({ text: data.error || 'Error al actualizar la plantilla', ok: false }); return; }
+      await loadEmailData();
+      setEmailMsg({ text: 'Plantilla actualizada: ' + (name || 'sin nombre'), ok: true });
+    } catch (e: any) {
+      setEmailMsg({ text: String(e?.message || e), ok: false });
+    } finally {
+      setEmailSavingTemplate(false);
+    }
+  };
   const saveEmailTemplate = async () => {
     if (!emailSubject.trim() || !emailBody.trim()) return alert('Escribe un asunto y un cuerpo antes de guardar la plantilla.');
     const name = prompt('Nombre de la nueva plantilla:');
@@ -3715,6 +3737,7 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                   <Button variant="outlined" onClick={saveEmailTemplate} disabled={emailSavingTemplate}>{emailSavingTemplate ? 'Guardando…' : 'Guardar como plantilla'}</Button>
+                  <Button variant="outlined" color="secondary" onClick={updateEmailTemplate} disabled={emailSavingTemplate || !emailTemplateId}>Guardar cambios en plantilla</Button>
                   <Button variant="outlined" onClick={runEmailPreview} disabled={emailPreviewLoading}>{emailPreviewLoading ? 'Calculando…' : 'Calcular destinatarios'}</Button>
                 </Box>
 
