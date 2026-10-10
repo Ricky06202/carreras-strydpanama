@@ -10,7 +10,7 @@ const FROM = 'Carreras STRYD <carreras@strydpanama.com>';
 const SITE = 'https://carreras.strydpanama.com';
 const DAILY_QUOTA = 100;
 const LOG_COLLECTION_ID = 'col-email_log-97d1ec29';
-const MAX_BATCH = 25;
+const MAX_BATCH = 100;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -63,9 +63,26 @@ export const POST: APIRoute = async ({ request }) => {
     const participantIds: string[] = Array.isArray(body.participantIds) ? body.participantIds.map(String) : [];
     const preview = body.preview === true;
     const offset = Math.max(0, Number(body.offset) || 0);
-    const batchSize = Math.min(MAX_BATCH, Math.max(1, Number(body.batchSize) || MAX_BATCH));
+    const batchSize = MAX_BATCH;
     const campaignId = body.campaignId ? String(body.campaignId) : `camp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+    // --- Envio de PRUEBA: no consume cupo ni escribe bitacora ---
+    if (body.test === true) {
+      const tkey = (env as any).RESEND_API_KEY;
+      if (!tkey) return new Response(JSON.stringify({ error: 'Falta el secreto RESEND_API_KEY en el worker' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      const testTo = String(body.testEmail || '').trim();
+      if (!EMAIL_RE.test(testTo)) return new Response(JSON.stringify({ error: 'Correo de prueba invalido' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      const tSubject = String(body.subject || '').trim() || 'Prueba - Carreras Stryd Panama';
+      const tBody = String(body.body || '') || 'Este es un correo de prueba del panel de Correos.';
+      const tRes = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tkey },
+        body: JSON.stringify({ from: FROM, to: testTo, subject: tSubject, html: renderHtml(tBody) }),
+      });
+      const tJson = await tRes.json().catch(() => ({}));
+      if (!tRes.ok) return new Response(JSON.stringify({ error: tJson?.message || ('HTTP ' + tRes.status) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ success: true, test: true, to: testTo }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    }
     if (!['todos', 'inscritos', 'preinscritos', 'individual'].includes(audience)) {
       return new Response(JSON.stringify({ error: 'Tipo de destinatarios inválido' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
@@ -228,7 +245,9 @@ export const POST: APIRoute = async ({ request }) => {
     // --- Bitácora: un registro por lote (campaignId agrupa la campaña) ---
     try {
       const detailsStr = details.map(d => (d.name ? `${d.name} <${d.email}>` : d.email)).join(', ');
-      const logTitle = `${subject} — ${today}`;
+      const logTitle = recipients.length > MAX_BATCH
+        ? `${subject} — ${today} · ${offset + 1}–${offset + slice.length}`
+        : `${subject} — ${today}`;
       await fetch(`${baseUrl}/api/content`, {
         method: 'POST',
         headers: authHeaders,

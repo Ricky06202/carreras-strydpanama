@@ -785,6 +785,8 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [emailLogQuery, setEmailLogQuery] = useState('');
   const [emailLogRace, setEmailLogRace] = useState('');
   const [emailMsg, setEmailMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const [emailTestTo, setEmailTestTo] = useState('');
+  const [emailTesting, setEmailTesting] = useState(false);
 
   const loadEmailData = async () => {
     try {
@@ -872,6 +874,25 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     }
   };
 
+  const sendTestEmail = async () => {
+    setEmailMsg(null);
+    const to = emailTestTo.trim();
+    if (!to) { setEmailMsg({ text: 'Escribe un correo para la prueba.', ok: false }); return; }
+    setEmailTesting(true);
+    try {
+      const res = await fetch('/api/admin/send-bulk', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ test: true, testEmail: to, subject: emailSubject.trim() || 'Prueba - Carreras Stryd Panama', body: emailBody || 'Este es un correo de prueba del panel de Correos.' }),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || d.error) { setEmailMsg({ text: d.error || 'No se pudo enviar la prueba.', ok: false }); return; }
+      setEmailMsg({ text: 'Prueba enviada a ' + (d.to || to) + ' — revisa esa bandeja (y spam).', ok: true });
+    } catch (e: any) {
+      setEmailMsg({ text: String(e?.message || e), ok: false });
+    } finally {
+      setEmailTesting(false);
+    }
+  };
   const sendEmails = async () => {
     setEmailMsg(null);
     if (!emailPreview) { await runEmailPreview(); return; }
@@ -3722,9 +3743,13 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                   </Box>
                 )}
 
-                <Box sx={{ mt: 2 }}>
+                <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
                   <Button variant="contained" startIcon={<EmailIcon />} onClick={sendEmails} disabled={emailSending || !confirmOk || (emailPreview ? emailPreview.total === 0 : false)}>
                     {emailSending ? 'Enviando…' : 'Enviar correos'}
+                  </Button>
+                  <TextField size="small" label="Enviar prueba a (correo)" value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} sx={{ minWidth: 240 }} />
+                  <Button variant="outlined" onClick={sendTestEmail} disabled={emailTesting || !emailTestTo.trim()}>
+                    {emailTesting ? 'Enviando…' : 'Enviar prueba'}
                   </Button>
                 </Box>
               </CardContent>
