@@ -690,15 +690,9 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
       const isConfirmed = isPadrinoSponsored || isFreeCodePay || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
       if (!isConfirmed) { pendientes++; return; }
       if (isPadrinoSponsored || isFreeCodePay) { confirmados++; return; }
-      const paidAmount = Number(p.amountPaid) || 0;
-      if (isPadrinoSolo) {
-        // Padrinos: cuenta SOLO lo pagado (sin inventar por boletos donados). Igual que el Dashboard.
-        recaudado += paidAmount;
-      } else {
-        // Corredores: lo realmente pagado; si no hay monto registrado, se estima con el precio
-        // de la carrera (mismo criterio que el Dashboard -> 'Recaudacion Neta' coincide en ambas pantallas).
-        recaudado += paidAmount > 0 ? paidAmount : priceFor(p);
-      }
+      // Recaudado = lo REALMENTE cobrado (amountPaid). Es exactamente lo que suma el
+      // 'TOTAL RECAUDADO' del informe de inscritos (no se estima con el precio de lista).
+      recaudado += Number(p.amountPaid) || 0;
       confirmados++;
     });
     const salientes = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);

@@ -86,19 +86,14 @@ export default function DashboardView({ races, allDistances, participants, onFet
            const isYappy = (p.paymentMethod || '').toLowerCase().includes('yappy') || (p.paymentStatus || '').toLowerCase().includes('yappy');
 
            if (isPadrinoSolo) {
-               // El padrino donante paga $10 por cupo donado.
-               let amount = Number(p.amountPaid);
-               if (!amount || amount === 0) {
-                   amount = Number(p.donatedTickets || 0) * 10;
-               }
-               baseRevenue += amount;
+               // El padrino donante: solo lo realmente pagado (sin estimar por boletos donados).
+               baseRevenue += Number(p.amountPaid) || 0;
                if (isYappy) platformFeeRevenue += feeConfig;
                return; 
            }
 
-             // Corredor normal (online o cupón físico): lo realmente pagado; si no hay monto registrado, el precio esperado
-             const paidAmount = Number(p.amountPaid) || 0;
-             baseRevenue += paidAmount > 0 ? paidAmount : priceFor(p);
+             // Corredor normal: lo realmente cobrado (amountPaid), igual que el informe de inscritos.
+             baseRevenue += Number(p.amountPaid) || 0;
              if (isYappy) platformFeeRevenue += feeConfig;
        }
     });
