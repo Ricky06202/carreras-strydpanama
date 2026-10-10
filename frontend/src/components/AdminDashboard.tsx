@@ -672,32 +672,17 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
 
   const financeStats = (() => {
     const raceObj: any = races.find((r: any) => r.id === financeRaceId);
-    const rd = raceObj?.data || {};
-    const racePrice = Number(rd.price) || 15;
-    const legacyPrice = Number(rd.legacyPrice) || 0;
-    const legacyCutoff = Number(rd.legacyCutoff) || 0;
-    const priceFor = (p: any) => {
-      const createdMs = Number(p.createdAt || 0) || 0;
-      const isLegacy = legacyPrice > 0 && legacyCutoff > 0 && createdMs > 0 && createdMs < legacyCutoff;
-      if ((p.categoryName || '').toLowerCase().includes('estudiante')) return 10;
-      return isLegacy ? legacyPrice : racePrice;
-    };
     let recaudado = 0, confirmados = 0, pendientes = 0;
     participants.filter((p: any) => p.race === financeRaceId).forEach((p: any) => {
-      const isPadrinoSolo = p.participantType === 'padrino';
       const isPadrinoSponsored = p.paymentMethod === 'Cupon Padrino' || p.paymentStatus === 'Cupon Padrino';
       const isFreeCodePay = p.paymentMethod === 'Cupon Gratuito' || p.paymentStatus === 'Cupon Gratuito';
       const isConfirmed = isPadrinoSponsored || isFreeCodePay || p.paymentStatus === 'Confirmado' || p.paymentStatus === 'Completado' || p.paymentStatus === 'Yappy' || Number(p.amountPaid) > 0;
       if (!isConfirmed) { pendientes++; return; }
       if (isPadrinoSponsored || isFreeCodePay) { confirmados++; return; }
-      if (isPadrinoSolo) {
-        let amount = Number(p.amountPaid) || 0;
-        if (!amount) amount = Number(p.donatedTickets || 0) * 10;
-        recaudado += amount;
-      } else {
-        const paidAmount = Number(p.amountPaid) || 0;
-        recaudado += paidAmount > 0 ? paidAmount : priceFor(p);
-      }
+      // Recaudacion = dinero REAL recibido (amountPaid), igual que el 'TOTAL RECAUDADO'
+      // del informe de inscritos. Antes se usaba el precio de lista como respaldo, lo que
+      // inflaba 'Recaudacion Neta' cuando el monto real no estaba registrado.
+      recaudado += Number(p.amountPaid) || 0;
       confirmados++;
     });
     const salientes = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0);
