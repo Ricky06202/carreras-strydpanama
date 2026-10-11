@@ -1,9 +1,13 @@
 import { HeroV2 } from "@/components/effects/HeroV2";
 import { RaceCard } from "@/components/site/RaceCard";
 import { Button } from "@/components/ui/Button";
+import type { Metadata } from "next";
 import { getActiveRaces } from "@/lib/db/queries";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = pageMetadata({ path: "/" });
 
 export default async function Home() {
   const races = await getActiveRaces();

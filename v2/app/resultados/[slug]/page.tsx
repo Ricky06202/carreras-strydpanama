@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { getRaceResults } from "@/lib/db/queries";
 import { formatDateEs } from "@/lib/format";
 import { ResultsBoard } from "@/components/site/ResultsBoard";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { breadcrumbLd, pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -11,19 +13,27 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const data = await getRaceResults(slug);
-  return {
-    title: data ? `Resultados — ${data.title}` : "Resultados",
-    description: data ? `Podio y tiempos oficiales de ${data.title}.` : "Resultados oficiales STRYD Panamá.",
-  };
+  if (!data) return { title: "Resultados", robots: { index: false, follow: false } };
+  return pageMetadata({
+    path: `/resultados/${slug}`,
+    title: `Resultados — ${data.title}`,
+    description: `Podio, ganadores por categoría y tiempos oficiales de ${data.title}.`,
+  });
 }
 
 export default async function ResultadosRacePage({ params }: Props) {
   const { slug } = await params;
   const data = await getRaceResults(slug);
   if (!data) notFound();
+  const breadcrumbsLd = breadcrumbLd([
+    { name: "Inicio", path: "/" },
+    { name: "Resultados", path: "/resultados" },
+    { name: data.title, path: `/resultados/${slug}` },
+  ]);
 
   return (
     <section className="mx-auto max-w-6xl px-5 pb-20 pt-28">
+      <JsonLd data={breadcrumbsLd} />
       <p className="mb-8 font-mono text-xs uppercase tracking-[0.3em] text-stryd">// Resultados</p>
       <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl">{data.title}</h1>
       <p className="mt-3 text-sm text-mist">

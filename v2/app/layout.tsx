@@ -4,6 +4,17 @@ import "./globals.css";
 import { SmoothScroll } from "@/components/site/SmoothScroll";
 import { Nav } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  DEFAULT_DESCRIPTION,
+  DEFAULT_OG_IMAGE,
+  OG_IMAGE_HEIGHT,
+  OG_IMAGE_WIDTH,
+  ORGANIZATION_LD,
+  SITE_NAME,
+  SITE_URL,
+  WEBSITE_LD,
+} from "@/lib/seo";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -18,26 +29,29 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://carreras.strydpanama.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Carreras Stryd Panamá — inscripciones y cronometraje",
     template: "%s · Stryd Panamá",
   },
-  description:
-    "Carreras, cronometraje y comunidad de corredores en Panamá. Inscríbete, consulta podios y resultados oficiales de Stryd Panamá.",
+  description: DEFAULT_DESCRIPTION,
   keywords: ["carreras Panamá", "running Panamá", "cronometraje", "inscripciones carreras", "stryd panama", "10K", "media maratón"],
   openGraph: {
     type: "website",
-    siteName: "Stryd Panamá",
+    siteName: SITE_NAME,
     locale: "es_PA",
     url: "/",
     title: "Carreras Stryd Panamá",
     description: "Inscripciones, cronometraje y resultados de carreras en Panamá.",
+    images: [
+      { url: DEFAULT_OG_IMAGE, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: `${SITE_NAME} — carreras y cronometraje en Panamá` },
+    ],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: "Carreras Stryd Panamá",
     description: "Inscripciones, cronometraje y resultados de carreras en Panamá.",
+    images: [DEFAULT_OG_IMAGE],
   },
   robots: { index: true, follow: true },
 };
@@ -60,6 +74,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <Nav />
         <main id="contenido">{children}</main>
         <Footer />
+        <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
       </body>
     </html>
   );

@@ -2,13 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getRacesWithResults } from "@/lib/db/queries";
 import { formatDateEs, raceImageUrl } from "@/lib/format";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/resultados",
   title: "Resultados",
   description: "Podios y resultados oficiales de las carreras STRYD Panamá.",
-};
+});
 
 export default async function ResultadosPage() {
   const races = await getRacesWithResults();

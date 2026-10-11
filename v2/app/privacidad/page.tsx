@@ -2,14 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { PRIVACY_SECTIONS, PRIVACY_UPDATED_LABEL } from "@/lib/legal";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/privacidad",
   title: "Aviso de Privacidad",
   description:
     "Aviso de privacidad de la plataforma de inscripciones Stryd Panama, conforme a la Ley 81 de 2019 de Protección de Datos Personales.",
-};
+});
 
 export default function PrivacidadPage() {
   return (

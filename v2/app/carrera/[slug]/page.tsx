@@ -7,6 +7,8 @@ import { Card } from "@/components/ui/Card";
 import { PosterViewer } from "@/components/site/PosterViewer";
 import { getRaceBySlug } from "@/lib/db/queries";
 import { formatDateEs, formatMoney, formatRaceTime, raceImageUrl, STATUS_META } from "@/lib/format";
+import { JsonLd } from "@/components/seo/JsonLd";
+import { absUrl, breadcrumbLd, eventStartDate, pageMetadata, SITE_URL } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +17,16 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const race = await getRaceBySlug(slug);
-  if (!race) return { title: "Carrera no encontrada" };
-  return {
+  if (!race) return { title: "Carrera no encontrada", robots: { index: false, follow: false } };
+  return pageMetadata({
+    path: `/carrera/${race.slug}`,
     title: race.title,
-    description: race.description ?? `${race.title} — ${formatDateEs(race.date)}`,
-  };
+    description:
+      race.description ??
+      `${race.title} — ${formatDateEs(race.date)}${race.location ? ` en ${race.location}` : ""}. Inscripciones y detalles del evento.`,
+    image: raceImageUrl(race.imageUrl),
+    imageAlt: `Afiche oficial de ${race.title}`,
+  });
 }
 
 export default async function RacePage({ params }: Props) {
@@ -32,9 +39,50 @@ export default async function RacePage({ params }: Props) {
   const inscripcionesUrl = `/carrera/${race.slug}/inscribirse`;
   const open = race.status === "accepting";
   const cuposRestantes = race.maxParticipants ? Math.max(0, race.maxParticipants - race.confirmedCount) : null;
+  const eventImage = img ? absUrl(img) : undefined;
+  const eventLd = {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: race.title,
+    ...(race.description ? { description: race.description } : {}),
+    startDate: eventStartDate(race.date, race.startTime),
+    endDate: undefined,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+    sport: "Running",
+    url: absUrl(`/carrera/${race.slug}`),
+    ...(eventImage ? { image: [eventImage] } : {}),
+    location: {
+      "@type": "Place",
+      name: race.location ?? "Panamá",
+      address: {
+        "@type": "PostalAddress",
+        addressLocality: race.location ?? "Panamá",
+        addressCountry: "PA",
+      },
+    },
+    organizer: { "@type": "SportsOrganization", name: "Stryd Panamá", url: `${SITE_URL}/` },
+    ...(open
+      ? {
+          offers: {
+            "@type": "Offer",
+            url: absUrl(`/carrera/${race.slug}/inscribirse`),
+            price: race.price,
+            priceCurrency: "USD",
+            availability: "https://schema.org/InStock",
+          },
+        }
+      : {}),
+  };
+  const breadcrumbsLd = breadcrumbLd([
+    { name: "Inicio", path: "/" },
+    { name: "Carreras", path: "/carreras" },
+    { name: race.title, path: `/carrera/${race.slug}` },
+  ]);
 
   return (
     <>
+      <JsonLd data={[eventLd, breadcrumbsLd]} />
       <header className="relative overflow-hidden border-b border-hairline bg-abyss">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_60%_at_50%_-20%,var(--color-stryd-glow),transparent_65%)] opacity-25" />
         <div className="relative mx-auto grid max-w-6xl gap-8 px-5 pb-14 pt-24 sm:pt-28 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start lg:gap-14">

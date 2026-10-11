@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { RaceCard } from "@/components/site/RaceCard";
 import { getActiveRaces } from "@/lib/db/queries";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/carreras",
   title: "Carreras",
-  description: "Todas las carreras de STRYD Panamá con inscripciones abiertas.",
-};
+  description: "Todas las carreras de STRYD Panamá: calendario, inscripciones abiertas y próximos eventos.",
+});
 
 export default async function CarrerasPage() {
   const races = await getActiveRaces();

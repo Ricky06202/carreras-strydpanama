@@ -9,7 +9,10 @@ import { PrintButton } from "@/components/site/PrintButton";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Certificado de finalización" };
+export const metadata: Metadata = {
+  title: "Certificado de finalización",
+  robots: { index: false, follow: false },
+};
 
 type Props = { params: Promise<{ id: string }> };
 

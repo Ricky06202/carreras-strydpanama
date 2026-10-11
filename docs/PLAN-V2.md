@@ -102,6 +102,9 @@ en `code`, `cedula`, `confirmation_code`.
 - **F7 — Cierre (código) ✅**: metas base con Open Graph/twitter + metadata por página, `robots.txt` y `sitemap.xml` dinámico,
   a11y (lang es-PA, skip link, `noindex` en panel/portal, aria-labels en iconos), y smoke E2E del registro
   (`bun run e2e` contra workerd local: flujo completo inscripción → estado → rechazos → SEO, 15/15).
+  **Súper SEO (2026-10-11)**: canonical por ruta, og:image (por defecto `public/og-default.png` 1200×630 + afiche real en cada carrera), twitter card `summary_large_image`,
+  JSON-LD (SportsOrganization + WebSite site-wide, SportsEvent + BreadcrumbList en carreras, BreadcrumbList en resultados), 404 propio, `/api/images/` permitido en robots,
+  `/privacidad` en el sitemap y `noindex` en el wizard de inscripción y certificados.
   Pendiente operativo (no es código): deploy con secrets, Lighthouse, webhook Yappy, DNS y apagar SonicJS → **`docs/cutover-v2.md`**.
 
 ## Reglas del branch

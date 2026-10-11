@@ -59,4 +59,4 @@ bunx wrangler d1 execute carreras-v2-db --remote --command \
 ## 6. Post-cutover
 - Search Console: someter `https://carreras.strydpanama.com/sitemap.xml`.
 - Rotar credenciales expuestas de v1 (ADMIN_PASSWORD/ADMIN_SECRET históricos).
-- OG image dedicada (hoy la tarjeta usa solo título/desc; pendiente diseño).
+- OG image: ya implementada. Por defecto `public/og-default.png` (1200×630, placeholder de marca) y en cada carrera el afiche real como `og:image`. Pendiente: (opcional) arte oficial definitivo si Ricky quiere reemplazar el placeholder.

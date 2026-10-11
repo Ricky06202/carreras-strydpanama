@@ -3,13 +3,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { TERMS_SECTIONS, TERMS_UPDATED_LABEL, TERMS_VERSION } from "@/lib/legal";
+import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
+  path: "/terminos",
   title: "Términos y Condiciones",
   description: "Términos y condiciones de las carreras y la plataforma Stryd Panama.",
-};
+});
 
 const SECTIONS = TERMS_SECTIONS;
 
