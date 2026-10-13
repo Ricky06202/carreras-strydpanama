@@ -190,6 +190,13 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   
   const [recoveredPayment, setRecoveredPayment] = useState(false);
 
+  // RS Pay EMBEBIDO (modal). null = cerrado. Todo el flujo queda detras del flag PAGO_RS_PAY:
+  // con el flag apagado este estado nunca se usa y el sitio se comporta como hoy.
+  const [rsPayModal, setRsPayModal] = useState<{ url: string; token: string; base: string; orderId: string } | null>(null);
+  const rsPayPanelRef = useRef<HTMLDivElement | null>(null);
+  const rsPayCloseRef = useRef<HTMLButtonElement | null>(null);
+  const rsPayDoneRef = useRef(false);
+
   const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
@@ -800,6 +807,77 @@ const handleSubmit = async () => {
   // ¿Este evento cobra por RS Pay? (flag apagado por defecto; lo decide el server).
   const rsPayOn = raceInfo?.data?.pagoRsPay === true;
 
+  // Pago con RS Pay EMBEBIDO: el checkout va en un iframe dentro de la propia pagina.
+  // Cuando RS Pay confirma el pago avisa por postMessage
+  // {origen:"rs-pay", tipo:"pagado"|"expirado"|"cancelado", orden:{id,estado}}.
+  // Si ese aviso no llega, se sondea el estado de la orden como respaldo.
+  useEffect(() => {
+    if (!rsPayModal) return;
+    const { token, base } = rsPayModal;
+    let vivo = true;
+
+    const confirmar = () => {
+      if (rsPayDoneRef.current) return;
+      rsPayDoneRef.current = true;
+      try { localStorage.removeItem('stryd_pending_yappy'); } catch { /* noop */ }
+      setRsPayModal(null);
+      // Mismo comportamiento que hoy al volver del pago: pantalla de confirmacion.
+      setRecoveredPayment(true);
+      setStep(4);
+      setNotification({ message: '¡Pago confirmado! Tu inscripción quedó registrada.', type: 'success' });
+    };
+    const detener = (estado: string) => {
+      if (rsPayDoneRef.current) return;
+      rsPayDoneRef.current = true;
+      try { localStorage.removeItem('stryd_pending_yappy'); } catch { /* noop */ }
+      setRsPayModal(null);
+      setNotification({ message: estado === 'expirado' ? 'La orden de pago expiró. Intenta de nuevo.' : 'El pago fue cancelado.', type: 'error' });
+    };
+
+    const onMsg = (e: MessageEvent) => {
+      if (!vivo || !e.data || e.data.origen !== 'rs-pay') return;
+      if (base && e.origin !== base) return; // solo del checkout de RS Pay
+      const tipo = e.data.tipo;
+      if (tipo === 'pagado') confirmar();
+      else if (tipo === 'expirado' || tipo === 'cancelado') detener(tipo);
+    };
+    window.addEventListener('message', onMsg);
+
+    const poll = window.setInterval(async () => {
+      try {
+        const r = await fetch(`${base}/api/orders/${encodeURIComponent(token)}`, { cache: 'no-store' });
+        const j = await r.json();
+        if (!vivo || !j || !j.estado) return;
+        if (j.estado === 'pagado') confirmar();
+        else if (j.estado === 'expirado' || j.estado === 'cancelado') detener(j.estado);
+      } catch { /* sin conexion: se reintenta en el proximo tick */ }
+    }, 5000);
+
+    return () => { vivo = false; window.removeEventListener('message', onMsg); window.clearInterval(poll); };
+  }, [rsPayModal]);
+
+  // Accesibilidad del modal: Esc cierra, el foco queda atrapado y el fondo no scrollea.
+  useEffect(() => {
+    if (!rsPayModal) return;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    try { rsPayCloseRef.current?.focus(); } catch { /* noop */ }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setRsPayModal(null); return; }
+      if (e.key !== 'Tab') return;
+      const panel = rsPayPanelRef.current;
+      if (!panel) return;
+      const f = panel.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), iframe, [tabindex]:not([tabindex="-1"])');
+      if (!f.length) return;
+      const first = f[0]; const last = f[f.length - 1];
+      const activo = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && (activo === first || !activo || !panel.contains(activo))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && activo === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => { document.body.style.overflow = prevOverflow; document.removeEventListener('keydown', onKey); };
+  }, [rsPayModal]);
+
   // Pago con RS Pay (pay.rsanjur.com). Solo se usa cuando el flag esta encendido.
   // Registra la inscripcion como PENDIENTE (igual que Yappy) y crea la orden en RS Pay;
   // el navegador va al checkout de RS Pay y RS Pay se encarga de Yappy. El callback de
@@ -877,8 +955,19 @@ const handleSubmit = async () => {
       const pay = await resCheck.json();
       if (!pay.success || !pay.url_pago) throw new Error(pay.error || 'No se pudo iniciar el pago con RS Pay');
 
+      // Se guarda igual que hoy: si el usuario recarga, el useEffect de recuperacion lo
+      // devuelve a la pantalla de confirmacion (dentro de 15 min).
       localStorage.setItem('stryd_pending_yappy', JSON.stringify({ code: orderId, timestamp: Date.now(), rsPay: true }));
-      window.location.href = pay.url_pago;
+      // NO se sale del sitio: el checkout de RS Pay se abre EMBEBIDO en un modal
+      // (iframe /p/<token>/embed). El modal avisa por postMessage al confirmarse el pago.
+      setLoading(false);
+      rsPayDoneRef.current = false;
+      setRsPayModal({
+        url: pay.url_pago,
+        token: pay.token,
+        base: String(pay.rs_pay || 'https://pay.rsanjur.com').replace(/\/+$/, ''),
+        orderId,
+      });
     } catch (e: any) {
       console.error('[RS Pay] initiation error:', e);
       setNotification({ message: e?.message || 'Error iniciando el pago. Revisa tu conexion e intenta de nuevo.', type: 'error' });
@@ -2233,6 +2322,47 @@ const handleSubmit = async () => {
         <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
           <Box>{notification && <Alert severity={notification.type} sx={{ width: '100%' }}>{notification.message}</Alert>}</Box>
         </Snackbar>
+
+        {/* Checkout de RS Pay EMBEBIDO (flag PAGO_RS_PAY). El usuario NO sale del sitio. */}
+        {rsPayModal && (
+          <Box
+            role="dialog" aria-modal="true" aria-label="Pago con RS Pay"
+            sx={{ position: 'fixed', inset: 0, zIndex: 3000, display: 'flex', alignItems: 'center', justifyContent: 'center', p: 1.5, bgcolor: 'rgba(15,23,42,.62)', backdropFilter: 'blur(3px)' }}
+          >
+            <Box ref={rsPayPanelRef} sx={{ width: '100%', maxWidth: 480, height: 'min(720px, 92vh)', bgcolor: '#fff', borderRadius: 3, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 30px 80px rgba(2,6,23,.45)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 1.5, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+                <Typography sx={{ fontWeight: 700, fontSize: 14, color: '#0F172A' }}>Pago seguro</Typography>
+                <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                  <Typography
+                    component="a" href={rsPayModal.url} target="_blank" rel="noopener"
+                    sx={{ fontSize: 11.5, fontWeight: 700, color: ACCENT, textDecoration: 'none', whiteSpace: 'nowrap' }}
+                  >
+                    Abrir en otra pestaña
+                  </Typography>
+                  <Button
+                    ref={rsPayCloseRef} size="small" aria-label="Cerrar" onClick={() => setRsPayModal(null)}
+                    sx={{ minWidth: 32, width: 32, height: 32, p: 0, bgcolor: 'action.hover', color: 'text.secondary', fontSize: 16, '&:hover': { bgcolor: 'action.selected' } }}
+                  >
+                    ✕
+                  </Button>
+                </Box>
+              </Box>
+              <Box sx={{ flex: 1, position: 'relative', bgcolor: '#F6F8FB' }}>
+                <iframe
+                  title="RS Pay - checkout"
+                  allow="payment"
+                  src={`${rsPayModal.base}/p/${rsPayModal.token}/embed?embed=1&parent=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}`}
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0, background: '#F6F8FB' }}
+                />
+              </Box>
+              <Box sx={{ px: 1.5, py: 0.75, borderTop: 1, borderColor: 'divider', bgcolor: 'action.hover' }}>
+                <Typography variant="caption" color="text.secondary">
+                  Si el pago no carga aquí, usa “Abrir en otra pestaña”. En el celular, la app de Yappy puede tomar la pantalla: vuelve al navegador y el pago se confirma igual.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        )}
 
         {croppingImageSrc && (
           <ImageCropper
