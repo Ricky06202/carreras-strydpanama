@@ -797,6 +797,95 @@ const handleSubmit = async () => {
 
   const getTeamAutocompleteOptions = () => ['Ninguno', 'Agregar manualmente', ...teamOptions];
 
+  // ¿Este evento cobra por RS Pay? (flag apagado por defecto; lo decide el server).
+  const rsPayOn = raceInfo?.data?.pagoRsPay === true;
+
+  // Pago con RS Pay (pay.rsanjur.com). Solo se usa cuando el flag esta encendido.
+  // Registra la inscripcion como PENDIENTE (igual que Yappy) y crea la orden en RS Pay;
+  // el navegador va al checkout de RS Pay y RS Pay se encarga de Yappy. El callback de
+  // RS Pay confirmara la inscripcion con el mismo handler que usa Yappy.
+  const iniciarPagoRsPay = async () => {
+    if (codeValid && codeValid.valid) { handleSubmit(); return; }
+    setLoading(true);
+    try {
+      const participantData: ParticipantData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: normalizePanamaPhone(formData.phone) || formData.phone,
+        cedula: formData.cedula,
+        country: formData.country,
+        birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
+        gender: formData.gender,
+        size: raceInfo?.data?.showShirtSize !== false ? formData.size : '',
+        raceId: selectedRace,
+        categoryId: formData.category || null,
+        distanceId: formData.distance || null,
+        paymentMethod: 'Yappy (Pendiente)',
+        termsAccepted: termsAccepted,
+        discountCode: code,
+        registrationType: registrationType,
+        receiptUrl: formData.receiptUrl,
+        studentIdUrl: formData.studentIdUrl,
+        matriculaUrl: formData.matriculaUrl,
+        photoUrl: formData.photoUrl,
+        participantType: formData.participantType,
+        isPadrino: formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual'),
+        donatedTickets: (formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual')) ? donatedTickets : 0
+      };
+      if (registrationType === 'team') {
+        participantData.teamName = teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? '' : teamName);
+        participantData.teamMembers = teamMembers.map(m => ({
+          ...m,
+          size: raceInfo?.data?.showShirtSize !== false ? m.size : '',
+          birthDate: `${m.birthYear}-${m.birthMonth}-${m.birthDay}`
+        }));
+      } else {
+        participantData.teamName = formData.teamName === 'Agregar manualmente' ? manualTeamNameInd : (formData.teamName === 'Ninguno' ? '' : formData.teamName);
+      }
+
+      // 1. Registrar la inscripcion como pendiente (crea la transaccion con el payload)
+      const resReg = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(participantData)
+      });
+      const dataReg = await resReg.json();
+      if (!resReg.ok) throw new Error(dataReg.message || 'Error guardando el registro');
+
+      setFinalConfirmationCode(dataReg.confirmationCode || '');
+      if (dataReg.assignedBib) setAssignedBib(dataReg.assignedBib);
+
+      const orderId = dataReg.confirmationCode;
+      if (!orderId) throw new Error('No se pudo obtener el codigo de la inscripcion');
+
+      // 2. Precio (mismo calculo que el pago Yappy directo)
+      const isPadrinoOnly = formData.participantType === 'padrino';
+      const selectedDistanceObj = distances.find(d => d.id === formData.distance);
+      const basePrice = isPadrinoOnly ? 0 : (selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0);
+      const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
+      const effectiveIsPadrino = isPadrinoOnly || (isPadrino && registrationType === 'individual');
+      const sponsorshipCost = effectiveIsPadrino ? (donatedTickets * 10) : 0;
+      const totalAmount = basePrice + platformFeeVal + sponsorshipCost;
+
+      // 3. Crear la orden en RS Pay y redirigir al checkout
+      const resCheck = await fetch('/api/rs-pay/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, total: totalAmount })
+      });
+      const pay = await resCheck.json();
+      if (!pay.success || !pay.url_pago) throw new Error(pay.error || 'No se pudo iniciar el pago con RS Pay');
+
+      localStorage.setItem('stryd_pending_yappy', JSON.stringify({ code: orderId, timestamp: Date.now(), rsPay: true }));
+      window.location.href = pay.url_pago;
+    } catch (e: any) {
+      console.error('[RS Pay] initiation error:', e);
+      setNotification({ message: e?.message || 'Error iniciando el pago. Revisa tu conexion e intenta de nuevo.', type: 'error' });
+      setLoading(false);
+    }
+  };
+
   const yappyBtnRef = useRef<any>(null);
 
   // Yappy Event Listeners setup
@@ -1838,6 +1927,21 @@ const handleSubmit = async () => {
               <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {formData.paymentMethod === 'yappy' ? (
+                  rsPayOn ? (
+                    <Box sx={{ minWidth: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <Button
+                        variant="contained"
+                        onClick={() => { if (codeValid && codeValid.valid) { handleSubmit(); return; } iniciarPagoRsPay(); }}
+                        disabled={loading}
+                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
+                      >
+                        {loading ? 'Procesando...' : 'Pagar con Yappy'}
+                      </Button>
+                      <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '10px' }}>
+                        (Pago seguro vía RS Pay)
+                      </Typography>
+                    </Box>
+                  ) : (
                   <Box sx={{ 
                     minWidth: '200px', 
                     minHeight: '44px', 
@@ -1861,6 +1965,7 @@ const handleSubmit = async () => {
                       (Haz clic arriba para pagar con Yappy)
                     </Typography>
                   </Box>
+                  )
                 ) : (
                   <Button 
                     variant="contained" 
