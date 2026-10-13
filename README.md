@@ -70,19 +70,47 @@ defecto**: con `PAGO_RS_PAY=0` (o ausente) el sitio se comporta **exactamente** 
 
 1. El frontend registra la inscripcion como **pendiente** (`/api/register`) y crea la orden en RS Pay
    server-side (`POST /api/rs-pay/checkout` -> `{ url_pago, token, rs_pay }`).
-2. **NO redirige.** Abre el checkout de RS Pay **embebido en un modal** (iframe) apuntando a la
-   variante compacta:
-   ```
-   {RS_PAY_URL}/p/{token}/embed?embed=1&parent={origen del sitio}
-   ```
-3. RS Pay confirma el pago (Yappy) y **avisa por `postMessage`** al sitio:
+2. **NO redirige.** Abre el checkout con el **helper existente de RS Pay** (`rs-pay.js`,
+   `window.RSPay.open(url_pago, { onSuccess, onCancel })`) — el mismo mecanismo que documentan
+   `pay.rsanjur.com/marca` y `/docs`. El helper carga el checkout **embebido en un modal** (iframe a
+   `/p/{token}?embed=1&parent={origen del sitio}`), sin que el usuario salga del sitio.
+   No se inventa un modal propio: se reusa el del helper (que ya trae foco atrapado, `Esc`, scroll del
+   fondo bloqueado y "Abrir en otra pestaña").
+3. RS Pay confirma el pago (Yappy) y **avisa por `postMessage`**:
    `{ origen: "rs-pay", tipo: "pagado"|"expirado"|"cancelado", orden: { id, estado } }`.
-   El modal se cierra solo y se muestra la confirmacion en la propia pagina (mismo comportamiento que
-   hoy al volver del pago).
-4. **Respaldo:** si el `postMessage` no llega, el modal consulta
-   `GET {RS_PAY_URL}/api/orders/{token}` cada 5s y actua igual.
+   El helper lo escucha, cierra su modal y dispara `onSuccess`; carreras entonces muestra la
+   confirmacion en la propia pagina (mismo comportamiento que hoy al volver del pago).
+4. **Respaldo:** si el `postMessage` no llega, el propio helper consulta
+   `GET {RS_PAY_URL}/api/orders/{token}` y actua igual. Si el helper no llega a cargar (red/bloqueo de
+   terceros), carreras abre `url_pago` en otra pestaña como escape.
 5. La inscripcion la confirma el **webhook** de RS Pay (`POST /api/rs-pay/webhook`, firma HMAC), que
    reutiliza `confirmYappyOrder()` — el mismo handler idempotente de Yappy.
+
+### Como se embebe en CUALQUIER sitio (el helper)
+
+```html
+<script src="https://pay.rsanjur.com/rs-pay.js"></script>
+<!-- Boton listo: crea la orden y abre el checkout en el modal -->
+<rs-pay-button monto="12.50" concepto="Pedido #1042" api-key="***"></rs-pay-button>
+```
+
+```js
+// Si tu backend ya creo la orden:
+var host = window.RSPay.open(orden.url_pago, {
+  onSuccess: function (e) { /* e.orden -> { id, estado } */ },
+  onCancel:  function (e) { /* cierre manual, o e.estado = "expirado"|"cancelado" */ },
+});
+// host.close();   // o eventos: rs-pay:success | rs-pay:cancel | rs-pay:error
+
+// Para sitios SIN el helper, el checkout embebido avisa por postMessage:
+window.addEventListener('message', function (e) {
+  if (e.origin !== 'https://pay.rsanjur.com') return;
+  if (!e.data || e.data.origen !== 'rs-pay') return;   // { origen, tipo, orden:{id,estado} }
+});
+```
+
+carreras carga el helper **bajo demanda** (solo al iniciar el pago con el flag encendido), para no meter
+un script de terceros en el resto del sitio.
 
 ### Accesibilidad y fallback
 
