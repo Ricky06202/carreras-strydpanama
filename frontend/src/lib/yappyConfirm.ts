@@ -1,5 +1,6 @@
 import { apiFetch } from './api';
 import { processRegistration, upgradePreinscrito } from './registerLogic';
+import { notifyDiscord } from './discord';
 
 /**
  * Busca una transacción Yappy pendiente por orderId (tolerando guiones o no),
@@ -9,7 +10,7 @@ import { processRegistration, upgradePreinscrito } from './registerLogic';
  * Usado tanto por el webhook de Yappy como por el endpoint /api/yappy/confirm
  * llamado desde el frontend en eventSuccess como safety net.
  */
-export async function confirmYappyOrder(env: any, orderId: string, transactionId?: string | null) {
+export async function confirmYappyOrder(env: any, orderId: string, transactionId?: string | null, ctx?: any) {
   const normalizedOrderId = (orderId || '').replace(/-/g, '').trim();
 
   if (!normalizedOrderId) {
@@ -120,6 +121,19 @@ export async function confirmYappyOrder(env: any, orderId: string, transactionId
   } catch (e) {
     console.error('[confirmYappyOrder] No se pudo marcar Success_Pagado', e);
   }
+
+  // Aviso de PAGO confirmado (best-effort, no altera el flujo).
+  try {
+    const _amt = Number(
+      transactionPayload?.amountPaid ?? transactionPayload?.totalAmount ?? txMatch?.data?.amount ?? 0,
+    );
+    const _ref = transactionPayload?.confirmationCode || orderId;
+    notifyDiscord(env, 'pagos',
+      `\u2705 Pago confirmado — Carreras Stryd Panamá` +
+      (_amt > 0 ? ` · $${_amt.toFixed(2)}` : '') +
+      ` · ref ${_ref}`,
+      ctx);
+  } catch { /* best-effort */ }
 
   return { foundTransaction: true, status: 'processed', message: 'OK' };
 }

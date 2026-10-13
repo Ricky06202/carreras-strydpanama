@@ -9,7 +9,7 @@ import { confirmYappyOrder } from '../../../lib/yappyConfirm';
  * Es IDEMPOTENTE: si la transacción ya fue procesada (status = Success_Pagado),
  * no hace nada. Si está pendiente, ejecuta processRegistration y la marca como pagada.
  */
-export const POST: APIRoute = async ({ request }) => {
+export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json() as any;
     const orderId = body.orderId || body.confirmationCode;
@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request }) => {
 
     console.log(`[Yappy Confirm] Frontend safety net triggered for orderId=${orderId}`);
 
-    const result = await confirmYappyOrder(env, orderId, transactionId);
+    const result = await confirmYappyOrder(env, orderId, transactionId, (locals as any)?.runtime?.ctx);
 
     return new Response(JSON.stringify({
       success: true,

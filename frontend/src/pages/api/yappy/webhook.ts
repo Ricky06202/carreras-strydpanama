@@ -3,11 +3,12 @@ import { env } from 'cloudflare:workers';
 import { apiFetch, api } from '../../../lib/api';
 import { confirmYappyOrder } from '../../../lib/yappyConfirm';
 import { sendRegistrationEmail } from '../../../lib/mailer';
+import { notifyDiscord } from '../../../lib/discord';
 
-export const GET: APIRoute = async ({ request }) => handleRequest(request);
-export const POST: APIRoute = async ({ request }) => handleRequest(request);
+export const GET: APIRoute = async ({ request, locals }) => handleRequest(request, (locals as any)?.runtime?.ctx);
+export const POST: APIRoute = async ({ request, locals }) => handleRequest(request, (locals as any)?.runtime?.ctx);
 
-async function handleRequest(request: Request) {
+async function handleRequest(request: Request, ctx?: any) {
   try {
     const url = new URL(request.url);
     const searchParams = url.searchParams;
@@ -31,7 +32,7 @@ async function handleRequest(request: Request) {
     // "E" significa Ejecutado (Éxito) en la V2 de Yappy
     if ((status === 'E' || status === 'SUCCESS') && orderId) {
 
-      const confirmResult = await confirmYappyOrder(env, orderId, transactionId);
+      const confirmResult = await confirmYappyOrder(env, orderId, transactionId, ctx);
 
       if (confirmResult.foundTransaction) {
           console.log(`[Yappy Webhook] Transacción procesada vía confirmYappyOrder: ${confirmResult.status}`);
@@ -128,6 +129,14 @@ async function handleRequest(request: Request) {
              }
           }
       }
+    }
+
+    // Aviso de PAGO rechazado/cancelado (best-effort).
+    const FAIL_TOKENS = ['R', 'C', 'F', 'FAILED', 'FAIL', 'REJECTED', 'CANCELED', 'CANCELLED', 'DECLINED', 'ERROR'];
+    if (orderId && status && FAIL_TOKENS.includes(String(status).toUpperCase())) {
+      try {
+        notifyDiscord(env, 'pagos', `\u274C Pago rechazado — Carreras Stryd Panamá · ref ${orderId}`, ctx);
+      } catch { /* best-effort */ }
     }
 
     return new Response("success", { status: 200 });
