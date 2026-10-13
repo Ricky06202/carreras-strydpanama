@@ -3,10 +3,10 @@ import { env } from 'cloudflare:workers';
 import { apiFetch, api } from '../../../lib/api';
 import { confirmYappyOrder } from '../../../lib/yappyConfirm';
 import { sendRegistrationEmail } from '../../../lib/mailer';
-import { notifyDiscord } from '../../../lib/discord';
+import { notifyDiscord, execCtx } from '../../../lib/discord';
 
-export const GET: APIRoute = async ({ request, locals }) => handleRequest(request, (locals as any)?.runtime?.ctx);
-export const POST: APIRoute = async ({ request, locals }) => handleRequest(request, (locals as any)?.runtime?.ctx);
+export const GET: APIRoute = async ({ request, locals }) => handleRequest(request, execCtx(locals));
+export const POST: APIRoute = async ({ request, locals }) => handleRequest(request, execCtx(locals));
 
 async function handleRequest(request: Request, ctx?: any) {
   try {

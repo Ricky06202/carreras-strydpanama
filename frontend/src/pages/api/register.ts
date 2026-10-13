@@ -1,11 +1,12 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { processRegistration } from '../../lib/registerLogic';
+import { execCtx } from '../../lib/discord';
 
 export const POST: APIRoute = async ({ request, locals }) => {
   try {
     const body = await request.json();
-    const result = await processRegistration(env, body, (locals as any)?.runtime?.ctx);
+    const result = await processRegistration(env, body, execCtx(locals));
     
     return new Response(JSON.stringify(result), {
       status: 200,
