@@ -1,7 +1,6 @@
 import { api, apiFetch } from './api';
 import { sendRegistrationEmail } from './mailer';
 import { normalizePanamaPhone } from './phone';
-import { notifyDiscord } from './discord';
 
 export const processRegistration = async (env: any, body: any, ctx?: any) => {
   try {
@@ -298,15 +297,6 @@ export const processRegistration = async (env: any, body: any, ctx?: any) => {
 
         // Retornar éxito inmediato para que el front redirija a Yappy. 
         // No creamos corredores ni participantes en base de datos oficial.
-        try {
-          const _m = body.paymentStatus || body.paymentMethod || 'Yappy';
-          const _ln = (body.lastName || '').trim().charAt(0);
-          notifyDiscord(env, 'pedidos',
-            `🏃 Nueva inscripción — ${raceName}` +
-            (body.firstName ? ` · ${body.firstName}${_ln ? ' ' + _ln + '.' : ''}` : '') +
-            ` · ${_m} (pendiente de pago)`,
-            ctx);
-        } catch { /* best-effort */ }
         return { 
             success: true,
             assignedBib: null, 
@@ -624,23 +614,6 @@ export const processRegistration = async (env: any, body: any, ctx?: any) => {
       console.log(`Email sent successfully to ${body.email}`);
     } catch (mailError) {
       console.error('Failed to send confirmation email:', mailError);
-    }
-
-    // Aviso a Discord (best-effort). En el flujo Yappy confirmado por webhook
-    // isWebhookConfirmed=true y el aviso ya se emitió al crear la orden.
-    if (!body.isWebhookConfirmed) {
-      try {
-        const _m = body.paymentStatus || body.paymentMethod || 'inscripción';
-        const _ln = (body.lastName || '').trim().charAt(0);
-        const _extra = (body.registrationType === 'team' && Array.isArray(body.teamMembers))
-          ? ` · equipo (${body.teamMembers.filter((m: any) => m?.firstName && m?.lastName).length})`
-          : '';
-        notifyDiscord(env, 'pedidos',
-          `🏃 Nueva inscripción — ${raceName}` +
-          (body.firstName ? ` · ${body.firstName}${_ln ? ' ' + _ln + '.' : ''}` : '') +
-          ` · ${_m}${_extra}`,
-          ctx);
-      } catch { /* best-effort */ }
     }
 
     // Retornamos el objeto con el código en la raíz para facilitar la lectura del frontend

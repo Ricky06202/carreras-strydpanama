@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { env } from 'cloudflare:workers';
 import { confirmYappyOrder } from '../../../lib/yappyConfirm';
-import { execCtx } from '../../../lib/discord';
 
 /**
  * Endpoint de safety net llamado desde el frontend cuando Yappy dispara
@@ -25,7 +24,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
 
     console.log(`[Yappy Confirm] Frontend safety net triggered for orderId=${orderId}`);
 
-    const result = await confirmYappyOrder(env, orderId, transactionId, execCtx(locals));
+    const result = await confirmYappyOrder(env, orderId, transactionId);
 
     return new Response(JSON.stringify({
       success: true,
