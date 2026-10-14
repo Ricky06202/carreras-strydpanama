@@ -16,7 +16,7 @@ el cupo vive en la cadena.
 | Página pública `/mi-cupo/<regId>` (QR + estado + wallet) | ✅ |
 | Verificador público `/verificar` (id, dirección, firma o código) | ✅ |
 | Panel admin de cupos + reintento idempotente | ✅ |
-| Mint real en la cadena (Bubblegum) | ⛔ **simulado** — falta tesorería con SOL y merkle tree |
+| Mint real en la cadena (Bubblegum) | ✅ **devnet** — cupo real emitido (2026-10-13), tx + asset id verificados; árbol `3JqcFjR6GqgsZMMLTB6zQj3YH8XWm8J7xWggUBTdPxDC` |
 
 Sin tesorería el sistema está en **modo mock**: genera cupos con la forma exacta
 de un asset id (base58 de 32 bytes) y lo marca como *simulado* en la UI. Nada se
@@ -108,25 +108,35 @@ Es un cupo **personal**; el default es no transferible:
 
 ## Qué falta para emitir de verdad
 
-### Devnet
-1. `solana-keygen new -o treasury.json` y pedir SOL al faucet: `solana airdrop 2 --url devnet`.
-2. Crear el merkle tree (Metaplex Bubblegum), p. ej. con `umi`/`mpl-bubblegum`:
-   `createTree({ merkleTree: ..., maxDepth: 14, maxBufferSize: 64, canopyDepth: 10, ... })`
-   → guardar la dirección en `CNFT_TREE_ADDRESS`.
-3. `wrangler secret put CNFT_TREASURY_SECRET` (JSON o base58 de `treasury.json`).
-4. `wrangler secret put CNFT_WALLET_KEY` (32 bytes hex).
-5. `CNFT_RED=devnet` + instalar deps del provider real:
-   ```bash
-   bun add @metaplex-foundation/mpl-bubblegum @metaplex-foundation/umi-bundle-defaults
-   ```
-   El provider (`lib/cnft/provider.ts`) las importa de forma dinámica; si faltan,
-   el cupo queda en `error` con mensaje claro (no rompe el build).
-6. Subir metadata: ya la servimos nosotros en `/api/cupos/meta/<id>` (no hace falta Arweave).
+### Devnet ✅ (2026-10-13)
+Emitido un cupo REAL en devnet (tx firmada por la tesorería, asset id de Bubblegum
+y `onChain: true` en `/mi-cupo/<regId>` y en el verificador):
+1. Tesorería con SOL de devnet ✅ (cuenta chica que firma; ver `keys/solana/README.md`).
+2. Merkle tree creado por la tesorería ✅ →
+   `CNFT_TREE_ADDRESS=3JqcFjR6GqgsZMMLTB6zQj3YH8XWm8J7xWggUBTdPxDC`
+   (maxDepth 14 / buffer 64 / canopy 10 ≈ 0.495 SOL). Script: `bun v2/scripts/create-cnft-tree.ts`.
+3. `CNFT_TREASURY_SECRET` (JSON de `solana-keygen`) ✅ — solo como secreto del worker.
+4. `CNFT_WALLET_KEY` (32 bytes hex) ✅
+5. `CNFT_RED=devnet` + deps del provider real (`mpl-bubblegum`, `umi`, `umi-bundle-defaults`) ✅
+6. Metadata servida por nosotros en `/api/cupos/meta/<id>` (no hace falta Arweave) ✅
 
-### Mainnet
-Todo lo anterior + `CNFT_MAINNET_OK=1` + tesorería con SOL real (fondear el tree y
-los mints; un cNFT cuesta fracciones de centavo, pero el tree sí requiere SOL).
-Sin `CNFT_MAINNET_OK=1` el sistema se queda apagado aunque `CNFT_RED=mainnet`.
+Tres cosas que hubo que arreglar en `lib/cnft/provider.ts` para que el mint real funcione:
+- **Signer**: un `Keypair` de umi NO es un `Signer`; hay que envolverlo con
+  `createSignerFromKeypair` + `signerIdentity` (si no: `signer.signTransaction is not a function`).
+- **Nombre on-chain ≤ 32 BYTES** (no caracteres): `·`/acentos cuentan >1 → truncar por bytes.
+- **Confirmación**: `sendAndConfirm` (web3.js) tira `"Signature ... has expired: block height
+  exceeded"` con Helius aunque la tx SÍ entre. Se confirma por HTTP con `getSignatureStatuses`,
+  y el **asset id real** se lee de los logs del programa (`Leaf asset ID: ...`), no es la firma.
+
+### Mainnet (lo que falta)
+1. **Decidir la tesorería**: la cuenta chica de devnet NO se reusa. O se crea una nueva
+   con SOL real, o se usa la del dueño. Documentarlo en `keys/solana/README.md`.
+2. **Crear un merkle tree NUEVO en mainnet** (mismo script, con RPC de mainnet):
+   ~0.5 SOL según profundidad (depth 14/buffer 64/canopy 10).
+3. **Fondear la tesorería**: ~1 SOL alcanza para miles de cupos (mint ≈ 0.000005 SOL + fee).
+4. `wrangler secret put CNFT_TREASURY_SECRET` (cuenta nueva) y `CNFT_TREE_ADDRESS` = árbol de mainnet.
+5. `CNFT_RED=mainnet` + `CNFT_MAINNET_OK=1` (sin el flag queda apagado).
+6. RPC dedicado: `CNFT_RPC_URL` con la key de Helius (la misma key sirve para mainnet) o QuickNode.
 
 ## Costos y límites
 
