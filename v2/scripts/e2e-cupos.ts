@@ -105,6 +105,24 @@ async function main(): Promise<void> {
   const mi = await html(`/mi-cupo/${regId}`);
   ok("GET /mi-cupo/:id -> 200 con datos", mi.status === 200 && mi.text.includes("Mi cupo") && mi.text.includes(reg.body?.confirmationCode ?? "@@"), `status ${mi.status}`);
 
+  // Identidad del cupo + tarjeta OG (lo que se ve al compartir en redes).
+  ok("mi-cupo muestra el bloque de identidad", mi.text.includes("Este cupo pertenece a"), "falta el bloque de identidad");
+  ok(
+    "mi-cupo declara og:image absoluta (1200x630)",
+    /<meta property="og:image" content="https:\/\/[^"]+\/og\.png"/.test(mi.text) &&
+      /<meta property="og:image:width" content="1200"/.test(mi.text) &&
+      /<meta property="og:image:height" content="630"/.test(mi.text),
+    "faltan etiquetas og:image",
+  );
+  const ogRes = await fetch(`${BASE}/mi-cupo/${regId}/og.png`);
+  const ogType = ogRes.headers.get("content-type") ?? "";
+  const ogBytes = (await ogRes.arrayBuffer()).byteLength;
+  ok(
+    "GET /mi-cupo/:id/og.png -> 200 image/png",
+    ogRes.status === 200 && ogType.startsWith("image/png") && ogBytes > 5000,
+    `status ${ogRes.status} ${ogType} ${ogBytes}b`,
+  );
+
   const ver = await html(`/verificar/${regId}`);
   ok("GET /verificar/:id -> 200", ver.status === 200 && ver.text.includes("Resultado"), `status ${ver.status}`);
 

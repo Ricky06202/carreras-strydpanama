@@ -335,6 +335,44 @@ export async function getPublicCupo(db: Db, registrationId: string): Promise<Cup
   };
 }
 
+/**
+ * ¿Este cupo le pertenece a la cuenta (runner) con sesion? Cruza por cuenta
+ * (runnerId), por correo, y por la wallet gestionada del atleta: si la direccion
+ * dueña del cupo es la wallet de esa cuenta, es suyo. Sin sesion no hay match.
+ */
+export async function cupoBelongsToRunner(
+  db: Db,
+  registrationId: string,
+  runner: { id: string; email?: string | null } | null,
+): Promise<boolean> {
+  if (!runner) return false;
+  const reg = await db
+    .select({ runnerId: schema.registrations.runnerId, email: schema.registrations.email })
+    .from(schema.registrations)
+    .where(eq(schema.registrations.id, registrationId))
+    .get();
+  if (!reg) return false;
+  if (reg.runnerId && reg.runnerId === runner.id) return true;
+  if (reg.email && runner.email && reg.email.toLowerCase() === runner.email.toLowerCase()) return true;
+
+  const ticket = await findTicketByRegistration(db, registrationId);
+  if (ticket?.ownerAddress) {
+    const wallet = await db
+      .select({ id: schema.athleteWallets.id })
+      .from(schema.athleteWallets)
+      .where(
+        and(
+          eq(schema.athleteWallets.ownerType, "runner"),
+          eq(schema.athleteWallets.ownerId, runner.id),
+          eq(schema.athleteWallets.publicKey, ticket.ownerAddress),
+        ),
+      )
+      .get();
+    if (wallet) return true;
+  }
+  return false;
+}
+
 /** Verificador: acepta id de inscripcion, asset id, firma o direccion de wallet. */
 export async function verifyCupo(db: Db, rawQuery: string): Promise<CupoPublic[]> {
   const q = (rawQuery ?? "").trim();

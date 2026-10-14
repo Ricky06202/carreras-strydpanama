@@ -13,7 +13,8 @@ el cupo vive en la cadena.
 | Tablas D1 (`athlete_wallets`, `cnft_tickets`) | ✅ listas (migración `0007_cnft_cupos`) |
 | Wallet gestionada por atleta (keypair ed25519 + cifrado AES-GCM) | ✅ reales, direcciones Solana válidas |
 | Metadata Metaplex (nombre/símbolo/fecha/distancia/categoría/dorsal/atleta + crédito rsanjur) | ✅ real, servida en `/api/cupos/meta/<id>` |
-| Página pública `/mi-cupo/<regId>` (QR + estado + wallet) | ✅ |
+| Página pública `/mi-cupo/<regId>` (bloque de identidad + QR + estado + wallet + "es tuyo") | ✅ |
+| Tarjeta para compartir `/mi-cupo/<regId>/og.png` (1200x630, satori + resvg WASM, cacheada) | ✅ |
 | Verificador público `/verificar` (id, dirección, firma o código) | ✅ |
 | Panel admin de cupos + reintento idempotente | ✅ |
 | Mint real en la cadena (Bubblegum) | ✅ **devnet** — cupo real emitido (2026-10-13), tx + asset id verificados; árbol `3JqcFjR6GqgsZMMLTB6zQj3YH8XWm8J7xWggUBTdPxDC` |
@@ -93,6 +94,42 @@ Es un cupo **personal**; el default es no transferible:
   (Token Extensions / `non_transferable` del Token-2022), fuera del alcance de
   Bubblegum. Queda documentado, no inventado.
 
+## Tarjeta para compartir (OG)
+
+Al pegar el link `/mi-cupo/<regId>` en WhatsApp, Instagram o X sale una **tarjeta
+con la identidad del atleta**, no un link pelado:
+
+- **Ruta:** `GET /mi-cupo/<regId>/og.png` → PNG **1200x630**.
+- **Cómo se genera:** el worker dibuja la tarjeta con JSX → **satori** → SVG →
+  **`@resvg/resvg-wasm`** (resvg en WebAssembly), todo dentro de workerd usando el
+  `ImageResponse` de **`next/og`** que ya trae vinext (`@vercel/og` + sus WASM
+  resvg/yoga/harfbuzz; el plugin `vinext:og-*` los bundlea). No hay servicio
+  externo ni imagen pre-renderizada.
+- **Datos (reales, de `getPublicCupo`):** nombre del atleta (protagonista), carrera
+  y fecha, modalidad y categoría, **dorsal**, sello **"Verificado en cadena"**
+  (o "Simulado" según el estado), marca rsanjur y un **QR** hacia
+  `/verificar/<regId>`.
+- **Tipografías de marca:** Space Grotesk (500/700) + JetBrains Mono (400),
+  recortadas a latin+acentos y embebidas en base64 en `lib/cupo/og-fonts.ts` (no
+  depende de la red). Se regeneran con `python3 v2/scripts/make-og-fonts.py`.
+- **QR en el servidor:** `lib/cupo/qr.ts` es un port fiel del generador propio
+  `public/qr-client.js` (RSQR), para poder pintar el QR dentro del PNG.
+- **Cache:** se guarda en la Cache API (clave = URL sin querystring) y responde
+  `Cache-Control: public, max-age=600, s-maxage=86400`. La segunda petición no
+  vuelve a rasterizar.
+- **Head de la página:** declara `og:image` absoluta + `og:image:width/height`
+  (1200x630) + `twitter:image` (`summary_large_image`).
+
+## Identidad del cupo en la página
+
+`/mi-cupo/<regId>` abre con un bloque **"Este cupo pertenece a: <atleta>"** (sale
+de la metadata), con dorsal, carrera y fecha; la **wallet dueña** (pública) y el
+estado **verificado en cadena** con enlace al explorador (devnet/mainnet según la
+config). Si el visitante tiene **sesión de RS ID** y el cupo es suyo (se cruza por
+cuenta `runnerId`, por correo y por la **wallet** del atleta) muestra
+**"Este cupo es tuyo"** y el botón **Compartir**. Todo mobile-first y con foco
+visible (AA).
+
 ## Rutas
 
 | Ruta | Qué es |
@@ -103,6 +140,7 @@ Es un cupo **personal**; el default es no transferible:
 | `/api/cupos/<regId>` | JSON público del cupo |
 | `/api/cupos/verify?q=` | Verificador (JSON) |
 | `/api/cupos/meta/<regId>` | Metadata Metaplex (URI del cNFT, CORS abierto) |
+| `/mi-cupo/<regId>/og.png` | Tarjeta OG dinámica del cupo (1200x630 PNG, cacheada) |
 | `/api/admin/cupos?race=<id>` | Lista de cupos de la carrera (admin) |
 | `POST /api/admin/cupos` `{ticketId}` | Reintento idempotente de emisión |
 
