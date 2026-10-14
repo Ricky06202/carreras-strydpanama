@@ -77,12 +77,8 @@ export const bubblegumProvider: CnftProvider = {
       return { ok: false, provider: "bubblegum", mock: false, error: "falta tesoreria o merkle tree" };
     }
     try {
-      // Specifiers armados en runtime: el bundle compila aunque las deps de Solana
-      // no esten instaladas (estado actual del repo).
-      const spec = ["@metaplex-foundation", "mpl-bubblegum"].join("/");
-      const umiSpec = ["@metaplex-foundation", "umi-bundle-defaults"].join("/");
-      const mod: Record<string, any> = await import(/* @vite-ignore */ spec);
-      const umiMod: Record<string, any> = await import(/* @vite-ignore */ umiSpec);
+      const mod: Record<string, any> = await import("@metaplex-foundation/mpl-bubblegum");
+      const umiMod: Record<string, any> = await import("@metaplex-foundation/umi-bundle-defaults");
       return await mintWithBubblegum(mod, umiMod, args);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
