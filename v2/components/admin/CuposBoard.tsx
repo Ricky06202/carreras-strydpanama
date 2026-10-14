@@ -141,7 +141,7 @@ export function CuposBoard({
 
           {config.mode !== "live" && (
             <p className="mt-3 rounded-lg bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-              Emisión <b>simulada</b>: falta para emitir de verdad {config.reasons.join("; ") || "configuración de tesorería"}.
+              Emisión <b>simulada</b>: para emitir de verdad {config.reasons.join("; ") || "falta configurar la tesorería"}.
             </p>
           )}
 

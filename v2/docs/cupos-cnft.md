@@ -52,6 +52,13 @@ lib/cnft/issue.ts  issueTicketForRegistration()
 Secretos en producción: `wrangler secret put CNFT_WALLET_KEY` y
 `wrangler secret put CNFT_TREASURY_SECRET`. **Nunca** al repo.
 
+> **Ojo, en dev local (`bun run dev` / vite):** las vars del worker salen de los
+> `bindings` de `cloudflare.config.ts`; un `.dev.vars` **no** llega al `env` del
+> worker (verificado: `Object.keys(env)` = solo lo declarado en el config).
+> Para probar la emisión local, agregá ahí un texto temporal
+> `CNFT_RED: bindings.text("devnet")` + `CNFT_WALLET_KEY: bindings.text("<32 bytes hex>")`
+> y **revertilo antes de commitear** (son valores de prueba, no secretos reales).
+
 Generar la clave de cifrado:
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"

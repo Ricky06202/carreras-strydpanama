@@ -13,6 +13,16 @@ export async function generateMetadata({ params }: { params: Promise<{ q: string
   return { title: `Verificar ${decodeURIComponent(q).slice(0, 24)}`, robots: { index: false, follow: false } };
 }
 
+// Fecha/hora de emisión legible (Panamá, UTC-5 sin DST) en vez del ISO crudo.
+function fmtFecha(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const p = new Date(d.getTime() - 5 * 3600_000);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(p.getUTCDate())}/${pad(p.getUTCMonth() + 1)}/${p.getUTCFullYear()} ${pad(p.getUTCHours())}:${pad(p.getUTCMinutes())} (Panamá)`;
+}
+
 function Chip({ cupo }: { cupo: CupoPublic }) {
   if (cupo.status === "minted" && !cupo.mock)
     return <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300 ring-1 ring-inset ring-emerald-400/30">Verificado en cadena</span>;
@@ -89,7 +99,7 @@ export default async function VerificarResultadoPage({ params }: { params: Promi
                 </div>
                 <div>
                   <dt className="font-mono text-[10px] uppercase tracking-widest text-mist">Emitido</dt>
-                  <dd className="text-snow">{cupo.mintedAt ?? "—"}</dd>
+                  <dd className="text-snow">{fmtFecha(cupo.mintedAt)}</dd>
                 </div>
               </dl>
 

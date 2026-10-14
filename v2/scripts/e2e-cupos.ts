@@ -9,6 +9,8 @@
  *   - flag APAGADO  -> la inscripcion funciona igual que hoy (cupo "skipped")
  *   - flag ENCENDIDO-> cupo emitido (mock si no hay tesoreria), /mi-cupo, verificador
  */
+export {}; // modulo: aisla los globals de e2e-registration.ts y habilita top-level await
+
 const BASE = process.env.E2E_BASE ?? "http://localhost:5173";
 
 let pass = 0;
@@ -55,7 +57,7 @@ async function main(): Promise<void> {
       sql: "SELECT r.id, r.slug, d.id AS distance_id FROM races r JOIN race_distances d ON d.race_id = r.id WHERE r.status = 'accepting' LIMIT 1",
     }),
   });
-  const race = q.body?.results?.[0] as { slug: string; distance_id: string } | undefined;
+  const race = q.body?.results?.[0] as { id: string; slug: string; distance_id: string } | undefined;
   ok("hay una carrera accepting con modalidad", !!race, JSON.stringify(q.body ?? {}).slice(0, 160));
   if (!race) return finish();
 
@@ -113,7 +115,7 @@ async function main(): Promise<void> {
     ok("cupo minted con assetId + owner", !!pub.body?.assetId && !!pub.body?.ownerAddress);
     ok("owner es direccion Solana plausible", /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(pub.body?.ownerAddress ?? ""));
     const meta = await fetch(`${BASE}/api/cupos/meta/${regId}`);
-    const metaBody = await meta.json().catch(() => null);
+    const metaBody: any = await meta.json().catch(() => null);
     ok("GET /api/cupos/meta/:id -> 200 metaplex", meta.status === 200 && !!metaBody?.name && !!metaBody?.rsanjur?.creado_por, `status ${meta.status}`);
     ok("metadata no transferible + credito rsanjur", metaBody?.properties?.non_transferable === true && metaBody?.rsanjur?.creado_por === "rsanjur.com");
 
