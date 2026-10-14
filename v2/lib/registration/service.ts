@@ -5,6 +5,7 @@ import { createYappyPayment } from "@/lib/yappy";
 import { TERMS_VERSION, termsTextHash } from "@/lib/legal";
 import { isPanamaMobile, registrationSchema, type RegistrationInput } from "./schema";
 import { sendRegistrationEmail } from "@/lib/email";
+import { issueTicketForRegistration } from "@/lib/cnft/issue";
 
 export { registrationSchema, isPanamaMobile };
 export type { RegistrationInput };
@@ -21,6 +22,20 @@ export class RegError extends Error {
 }
 
 const nowIso = () => new Date().toISOString();
+
+// Cupo digital (cNFT): disparo BEST-EFFORT. Con el flag apagado no hace nada; si
+// falla, guarda el error en la fila del cupo y se reintenta desde el panel.
+// Nunca lanza ni retrasa de verdad la inscripcion (corte duro de 8s).
+async function emitCupoSafe(db: Db, registrationId: string): Promise<void> {
+  try {
+    await Promise.race([
+      issueTicketForRegistration(db, registrationId),
+      new Promise((resolve) => setTimeout(resolve, 8000)),
+    ]);
+  } catch {
+    /* la inscripcion nunca depende del cupo */
+  }
+}
 
 async function sha256Hex(v: string): Promise<string> {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
@@ -310,6 +325,8 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
   if (isFreeCode) {
     // Código ya canjeado atómicamente antes del insert; aquí solo el dorsal.
     await assignBibWithRetry(db, id, race.id, race.startingBib);
+    // Inscripcion ya confirmada (código) -> emitir su cupo digital.
+    await emitCupoSafe(db, id);
   }
 
   return {
@@ -390,6 +407,8 @@ export async function confirmRegistrationPayment(
     .where(eq(schema.registrations.id, reg.id))
     .run();
   const bib = await assignBibWithRetry(db, reg.id, reg.raceId, race?.startingBib ?? null);
+  // Pago confirmado (Yappy o admin) -> emitir el cupo digital del atleta.
+  await emitCupoSafe(db, reg.id);
   await db
     .update(schema.payments)
     .set({ status: "approved", updatedAt: ts })

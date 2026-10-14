@@ -17,6 +17,14 @@ export default defineConfig({
       RESEND_API_KEY: bindings.text(""),
       YAPPY_SECRET_KEY: bindings.text(""),
       YAPPY_URL_DOMAIN: bindings.text(""),
+      // Cupos digitales (cNFT). Vacios = apagado; los secretos
+      // (CNFT_WALLET_KEY, CNFT_TREASURY_SECRET) NUNCA van aqui en claro:
+      // en produccion se ponen con "wrangler secret put". Ver docs/cupos-cnft.md.
+      SITE_URL: bindings.text(""),
+      CNFT_RED: bindings.text(""),
+      CNFT_MAINNET_OK: bindings.text(""),
+      CNFT_TREE_ADDRESS: bindings.text(""),
+      CNFT_PROVIDER: bindings.text("bubblegum"),
     },
   }),
 });

@@ -355,6 +355,69 @@ export const expenses = sqliteTable(
   (t) => [index("expenses_race_idx").on(t.raceId, t.payDate)],
 );
 
+// ---------------------------------------------------------------------------
+// Cupo digital (cNFT comprimido en Solana) por inscripcion - rsanjur.com
+// ---------------------------------------------------------------------------
+
+// Wallet gestionada del atleta: una keypair ed25519 por dueno (cuenta o
+// inscripcion), generada EN EL SERVIDOR y cifrada en reposo (AES-GCM con la
+// clave CNFT_WALLET_KEY del worker). La llave publica ES la direccion del
+// atleta; el secreto solo vive cifrado. managed=false + publicKey del usuario
+// deja abierto el camino "conectar mi Phantom" sin guardar secreto.
+export const athleteWallets = sqliteTable(
+  "athlete_wallets",
+  {
+    ...pkId(),
+    ownerType: text("owner_type", { enum: ["runner", "registration"] }).notNull(),
+    ownerId: text("owner_id").notNull(),
+    network: text("network").notNull(), // devnet | mainnet
+    publicKey: text("public_key").notNull(),
+    secretCipher: text("secret_cipher"), // base64 AES-GCM; null si la wallet es externa
+    secretIv: text("secret_iv"),
+    keyVersion: integer("key_version").notNull().default(1),
+    managed: integer("managed", { mode: "boolean" }).notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex("athlete_wallets_owner_idx").on(t.ownerType, t.ownerId, t.network)],
+);
+
+// Cupo emitido: exactamente 1 por inscripcion (indice unico -> idempotencia).
+export const cnftTickets = sqliteTable(
+  "cnft_tickets",
+  {
+    ...pkId(),
+    registrationId: text("registration_id")
+      .notNull()
+      .references(() => registrations.id, { onDelete: "cascade" }),
+    raceId: text("race_id")
+      .notNull()
+      .references(() => races.id, { onDelete: "cascade" }),
+    walletId: text("wallet_id").references(() => athleteWallets.id, { onDelete: "set null" }),
+    network: text("network").notNull(), // devnet | mainnet | mock
+    status: text("status", { enum: ["pending", "minted", "error", "skipped"] })
+      .notNull()
+      .default("pending"),
+    mock: integer("mock", { mode: "boolean" }).notNull().default(true),
+    assetId: text("asset_id"),
+    ownerAddress: text("owner_address"),
+    signature: text("signature"),
+    treeAddress: text("tree_address"),
+    metadataUri: text("metadata_uri"),
+    metadataJson: text("metadata_json"),
+    provider: text("provider"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    mintedAt: text("minted_at"),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex("cnft_tickets_registration_idx").on(t.registrationId),
+    index("cnft_tickets_race_idx").on(t.raceId, t.status),
+    index("cnft_tickets_asset_idx").on(t.assetId),
+    index("cnft_tickets_owner_idx").on(t.ownerAddress),
+  ],
+);
+
 export type Race = typeof races.$inferSelect;
 export type Runner = typeof runners.$inferSelect;
 export type Registration = typeof registrations.$inferSelect;

@@ -4,3 +4,16 @@ RESEND_API_KEY=
 YAPPY_MERCHANT_ID=
 YAPPY_SECRET_KEY=
 YAPPY_URL_DOMAIN=
+
+# --- Cupos digitales (cNFT comprimido en Solana) ---
+# Vacio = apagado: la inscripcion funciona igual que hoy, sin tocar la cadena.
+# devnet | mainnet   (mainnet exige ademas CNFT_MAINNET_OK=1)
+CNFT_RED=
+CNFT_MAINNET_OK=
+# Merkle tree de Bubblegum (publico, no es secreto)
+CNFT_TREE_ADDRESS=
+CNFT_PROVIDER=bubblegum
+SITE_URL=https://carreras.strydpanama.com
+# Secretos (NO subir al repo; en produccion: wrangler secret put <nombre>):
+# CNFT_WALLET_KEY=<32 bytes hex/base64: cifra la llave del atleta>
+# CNFT_TREASURY_SECRET=<base58 o JSON de la wallet tesoreria con SOL>

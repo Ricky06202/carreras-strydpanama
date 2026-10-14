@@ -18,6 +18,11 @@
     "RESEND_API_KEY": "",
     "YAPPY_MERCHANT_ID": "",
     "YAPPY_SECRET_KEY": "",
-    "YAPPY_URL_DOMAIN": ""
+    "YAPPY_URL_DOMAIN": "",
+    "SITE_URL": "https://carreras.strydpanama.com",
+    "CNFT_RED": "",
+    "CNFT_MAINNET_OK": "",
+    "CNFT_TREE_ADDRESS": "",
+    "CNFT_PROVIDER": "bubblegum"
   }
 }
