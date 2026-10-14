@@ -1,6 +1,10 @@
 // Metadata del cupo digital (estandar Metaplex, el que entienden wallets/exploradores).
 // Solo datos reales: nombre/simbolo derivados de la carrera, fecha, distancia,
 // categoria, dorsal, atleta y el credito "creado por rsanjur.com" con enlaces.
+
+/** Cuenta "casa" de rsanjur (del dueno): aparece como creadora en cada cupo.
+ *  Su llave NO vive en el sistema: es solo la firma publica que identifica la casa. */
+export const CASA_RSANJUR = "HeqLYZRnZqDszE2GQUftdLQ4FimQsT1LGK4CVMYnJn9S";
 export interface TicketMetadataInput {
   network: "devnet" | "mainnet" | "mock";
   registrationId: string;
@@ -106,7 +110,7 @@ export function buildTicketMetadata(input: TicketMetadataInput): TicketMetadata 
     properties: {
       category: "image",
       files: input.imageUrl ? [{ uri: input.imageUrl, type: "image/*" }] : [],
-      creators: input.issuer ? [{ address: input.issuer, share: 100, verified: false }] : [],
+      creators: [{ address: input.issuer ?? CASA_RSANJUR, share: 100, verified: false }],
       non_transferable: input.nonTransferable !== false,
     },
     rsanjur: {
