@@ -16,13 +16,21 @@ const field =
   "h-13 w-full rounded-xl border border-hairline bg-carbon px-4 text-[16px] text-snow placeholder:text-mist/60 outline-none transition focus:border-stryd/70 focus:ring-2 focus:ring-stryd/25";
 const label = "mb-2 block font-mono text-[11px] uppercase tracking-[0.25em] text-mist";
 
-export function AuthForm() {
+export function AuthForm({
+  rsidHref = null,
+  emailInicial = "",
+  altaPorRsId = false,
+}: {
+  rsidHref?: string | null;
+  emailInicial?: string;
+  altaPorRsId?: boolean;
+}) {
   const router = useRouter();
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup">(altaPorRsId ? "signup" : "login");
   const [busy, setBusy] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [f, setF] = useState({ firstName: "", lastName: "", email: "", phone: "", cedula: "", password: "" });
+  const [f, setF] = useState({ firstName: "", lastName: "", email: emailInicial, phone: "", cedula: "", password: "" });
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -52,7 +60,27 @@ export function AuthForm() {
 
   return (
     <Card className="mt-6 p-6">
-      <div className="mb-6 grid grid-cols-2 gap-1 rounded-full border border-hairline bg-void p-1">
+      {rsidHref && (
+        <>
+          <a
+            href={rsidHref}
+            className={`${field} flex items-center justify-center gap-3 font-display font-semibold hover:border-stryd/60`}
+          >
+            <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-stryd text-[13px] font-bold text-black">
+              RS
+            </span>
+            Entrar con RS ID
+          </a>
+          <div className="my-5 flex items-center gap-3 text-xs text-mist">
+            <span className="h-px flex-1 bg-hairline" />
+            o con tu correo
+            <span className="h-px flex-1 bg-hairline" />
+          </div>
+        </>
+      )}
+
+      {!altaPorRsId && (
+        <div className="mb-6 grid grid-cols-2 gap-1 rounded-full border border-hairline bg-void p-1">
         {(["login", "signup"] as const).map((m) => (
           <button
             key={m}
@@ -66,6 +94,7 @@ export function AuthForm() {
           </button>
         ))}
       </div>
+      )}
 
       <form onSubmit={submit} className="flex flex-col gap-5">
         {mode === "signup" && (
@@ -96,7 +125,20 @@ export function AuthForm() {
         )}
         <div>
           <label className={label}>Correo</label>
-          <input className={field} type="email" inputMode="email" value={f.email} onChange={set("email")} placeholder="tu@correo.com" autoComplete="email" required />
+          <input
+            className={`${field} ${altaPorRsId ? "cursor-not-allowed opacity-70" : ""}`}
+            type="email"
+            inputMode="email"
+            value={f.email}
+            onChange={set("email")}
+            placeholder="tu@correo.com"
+            autoComplete="email"
+            required
+            readOnly={altaPorRsId}
+          />
+          {altaPorRsId && (
+            <p className="mt-1.5 text-xs text-mist">Verificado con tu RS ID ✓</p>
+          )}
           {errors.email && <p className="mt-1.5 text-sm text-red-400">{errors.email}</p>}
         </div>
         <div>
