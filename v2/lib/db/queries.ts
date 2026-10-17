@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, like, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
 export type RaceStatus = "upcoming" | "accepting" | "closed" | "active" | "finished";
@@ -224,4 +224,233 @@ export async function getRecentResults(raceId: string, limit = 10) {
     .where(eq(schema.results.raceId, raceId))
     .orderBy(asc(schema.results.overallPosition))
     .limit(limit);
+}
+
+// ---------------------------------------------------------------------------
+// Directorio publico de atletas (/atletas)
+// ---------------------------------------------------------------------------
+
+/**
+ * Campos que el atleta puede ocultar desde `runners.public_fields` (JSON array).
+ * Cedula, email, telefono, fecha de nacimiento y credenciales NO estan en esta
+ * lista y jamas se seleccionan en las consultas publicas.
+ */
+export const ATHLETE_OPTIONAL_FIELDS = ["bio", "instagram", "photoUrl", "personalRecords"] as const;
+type AthleteOptionalField = (typeof ATHLETE_OPTIONAL_FIELDS)[number];
+
+export type LatestRace = { title: string; date: string };
+
+export type PublicAthleteRow = {
+  id: string;
+  fullName: string;
+  photoUrl: string | null;
+  country: string | null;
+  bio: string | null;
+  instagram: string | null;
+  totalRaces: number;
+  latestRace: LatestRace | null;
+};
+
+export type AthleteHistoryEntry = {
+  raceTitle: string;
+  raceSlug: string;
+  date: string;
+  distance: string | null;
+  bibNumber: number | null;
+  finishTimeSec: number | null;
+  checkpointTimeSec: number | null;
+};
+
+export type AthleteProfile = {
+  id: string;
+  fullName: string;
+  photoUrl: string | null;
+  country: string | null;
+  bio: string | null;
+  instagram: string | null;
+  totalRaces: number;
+  history: AthleteHistoryEntry[];
+};
+
+/** public_fields -> set de campos permitidos; null = todos los opcionales son publicos. */
+function parsePublicFields(raw: string | null): Set<AthleteOptionalField> | null {
+  if (!raw) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+  const allowed = new Set<AthleteOptionalField>();
+  for (const value of parsed) {
+    if (typeof value !== "string") continue;
+    const key = value.trim();
+    if ((ATHLETE_OPTIONAL_FIELDS as readonly string[]).includes(key)) allowed.add(key as AthleteOptionalField);
+  }
+  // Lista vacia o solo con campos desconocidos = preferencia invalida -> defaults.
+  return allowed.size > 0 ? allowed : null;
+}
+
+function fieldIsPublic(fields: Set<AthleteOptionalField> | null, key: AthleteOptionalField): boolean {
+  return fields === null || fields.has(key);
+}
+
+const fullNameSql = sql<string>`${schema.runners.firstName} || ' ' || ${schema.runners.lastName}`;
+
+/**
+ * Acentos que se pliegan al buscar: SQLite solo hace LIKE case-insensitive en
+ * ASCII, asi que "perez" no encontraria "Pérez" sin esto.
+ */
+const ACCENT_FOLDS: [string, string][] = [
+  ["á", "a"],
+  ["é", "e"],
+  ["í", "i"],
+  ["ó", "o"],
+  ["ú", "u"],
+  ["ü", "u"],
+  ["ñ", "n"],
+  ["Á", "a"],
+  ["É", "e"],
+  ["Í", "i"],
+  ["Ó", "o"],
+  ["Ú", "u"],
+  ["Ü", "u"],
+  ["Ñ", "n"],
+];
+
+/** lower(replace(...)) sobre una columna, con los acentos del espanol plegados. */
+function foldedText(expr: SQLWrapper): SQL {
+  let out = sql`${expr}`;
+  for (const [from, to] of ACCENT_FOLDS) out = sql`replace(${out}, ${from}, ${to})`;
+  return sql`lower(${out})`;
+}
+
+/** Atletas con perfil publico, ordenados por cantidad de carreras confirmadas. */
+export async function getPublicAthletes(opts: { q?: string; limit?: number } = {}): Promise<PublicAthleteRow[]> {
+  const db = getDb();
+  const limit = Math.min(Math.max(Math.trunc(opts.limit ?? 60), 1), 100);
+  // Los comodines de LIKE se descartan: la busqueda es literal, no un patron SQL.
+  const term = (opts.q ?? "")
+    .replace(/[%_\\]/g, "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  const pattern = `%${term}%`;
+
+  const rows = await db
+    .select({
+      id: schema.runners.id,
+      firstName: schema.runners.firstName,
+      lastName: schema.runners.lastName,
+      photoUrl: schema.runners.photoUrl,
+      country: schema.runners.country,
+      bio: schema.runners.bio,
+      instagram: schema.runners.instagram,
+      publicFields: schema.runners.publicFields,
+      totalRaces: count(schema.registrations.id),
+    })
+    .from(schema.runners)
+    .leftJoin(
+      schema.registrations,
+      and(eq(schema.registrations.runnerId, schema.runners.id), eq(schema.registrations.status, "inscrito")),
+    )
+    .where(
+      term
+        ? and(
+            eq(schema.runners.publicProfile, true),
+            or(
+              like(foldedText(schema.runners.firstName), pattern),
+              like(foldedText(schema.runners.lastName), pattern),
+              like(foldedText(fullNameSql), pattern),
+            ),
+          )
+        : eq(schema.runners.publicProfile, true),
+    )
+    .groupBy(schema.runners.id)
+    .orderBy(desc(count(schema.registrations.id)), asc(schema.runners.firstName), asc(schema.runners.lastName))
+    .limit(limit)
+    .all();
+
+  const ids = rows.map((r) => r.id);
+  const latest = new Map<string, LatestRace>();
+  if (ids.length > 0) {
+    // Carrera mas reciente con inscripcion confirmada (una fila por atleta en JS).
+    const raceRows = await db
+      .select({ runnerId: schema.registrations.runnerId, title: schema.races.title, date: schema.races.date })
+      .from(schema.registrations)
+      .innerJoin(schema.races, eq(schema.registrations.raceId, schema.races.id))
+      .where(and(inArray(schema.registrations.runnerId, ids), eq(schema.registrations.status, "inscrito")))
+      .orderBy(desc(schema.races.date))
+      .all();
+    for (const row of raceRows) {
+      if (!row.runnerId || latest.has(row.runnerId)) continue;
+      latest.set(row.runnerId, { title: row.title, date: row.date });
+    }
+  }
+
+  return rows.map((r) => {
+    const fields = parsePublicFields(r.publicFields);
+    return {
+      id: r.id,
+      fullName: `${r.firstName} ${r.lastName}`.trim(),
+      photoUrl: fieldIsPublic(fields, "photoUrl") ? r.photoUrl : null,
+      country: r.country,
+      bio: fieldIsPublic(fields, "bio") ? r.bio : null,
+      instagram: fieldIsPublic(fields, "instagram") ? r.instagram : null,
+      totalRaces: r.totalRaces,
+      latestRace: latest.get(r.id) ?? null,
+    };
+  });
+}
+
+/** Perfil publico de un atleta con su historial de carreras confirmadas. */
+export async function getAthleteProfile(id: string): Promise<AthleteProfile | null> {
+  if (!id) return null;
+  const db = getDb();
+  const [runner] = await db
+    .select({
+      id: schema.runners.id,
+      firstName: schema.runners.firstName,
+      lastName: schema.runners.lastName,
+      country: schema.runners.country,
+      photoUrl: schema.runners.photoUrl,
+      bio: schema.runners.bio,
+      instagram: schema.runners.instagram,
+      publicFields: schema.runners.publicFields,
+    })
+    .from(schema.runners)
+    .where(and(eq(schema.runners.id, id), eq(schema.runners.publicProfile, true)))
+    .limit(1);
+  if (!runner) return null;
+
+  const history = await db
+    .select({
+      raceTitle: schema.races.title,
+      raceSlug: schema.races.slug,
+      date: schema.races.date,
+      distance: schema.raceDistances.title,
+      bibNumber: schema.registrations.bibNumber,
+      finishTimeSec: schema.registrations.finishTimeSec,
+      checkpointTimeSec: schema.registrations.checkpointTimeSec,
+    })
+    .from(schema.registrations)
+    .innerJoin(schema.races, eq(schema.registrations.raceId, schema.races.id))
+    .leftJoin(schema.raceDistances, eq(schema.registrations.distanceId, schema.raceDistances.id))
+    .where(and(eq(schema.registrations.runnerId, runner.id), eq(schema.registrations.status, "inscrito")))
+    .orderBy(desc(schema.races.date))
+    .all();
+
+  const fields = parsePublicFields(runner.publicFields);
+  return {
+    id: runner.id,
+    fullName: `${runner.firstName} ${runner.lastName}`.trim(),
+    photoUrl: fieldIsPublic(fields, "photoUrl") ? runner.photoUrl : null,
+    country: runner.country,
+    bio: fieldIsPublic(fields, "bio") ? runner.bio : null,
+    instagram: fieldIsPublic(fields, "instagram") ? runner.instagram : null,
+    totalRaces: history.length,
+    history,
+  };
 }

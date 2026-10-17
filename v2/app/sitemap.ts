@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { desc } from "drizzle-orm";
+import { asc, desc, eq } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE}/`, changeFrequency: "weekly", priority: 1 },
     { url: `${BASE}/carreras`, changeFrequency: "daily", priority: 0.9 },
     { url: `${BASE}/resultados`, changeFrequency: "daily", priority: 0.8 },
+    { url: `${BASE}/atletas`, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/terminos`, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/privacidad`, changeFrequency: "yearly", priority: 0.3 },
   ];
@@ -41,5 +42,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     }));
 
-  return [...statics, ...entries, ...resultsPages];
+  // Solo perfiles publicos y como maximo 100: el resto compite por presupuesto de rastreo.
+  const athletes = await db
+    .select({ id: schema.runners.id, updatedAt: schema.runners.updatedAt })
+    .from(schema.runners)
+    .where(eq(schema.runners.publicProfile, true))
+    .orderBy(desc(schema.runners.updatedAt), asc(schema.runners.firstName), asc(schema.runners.lastName))
+    .limit(100)
+    .all();
+
+  const athletePages: SitemapEntry[] = athletes.map((a) => ({
+    url: `${BASE}/atletas/${a.id}`,
+    lastModified: a.updatedAt,
+    changeFrequency: "monthly" as const,
+    priority: 0.5,
+  }));
+
+  return [...statics, ...entries, ...resultsPages, ...athletePages];
 }
