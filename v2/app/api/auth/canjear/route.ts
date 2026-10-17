@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { canjearCodigoRsId, esCorreoPanel, firmarTicketAlta, perfilRsId, rsidListo } from "@/lib/rsid";
+import { canjearCodigoRsId, esCorreoPanelDb, firmarTicketAlta, perfilRsId, rsidListo } from "@/lib/rsid";
+import { startAdminSession } from "@/lib/admin/session";
 import { crearRunnerDesdePerfil, perfilUtilizable } from "@/lib/registro-rsid";
 import { startSession } from "@/lib/auth/session";
 import { clientIp, rateLimited } from "@/lib/ratelimit";
@@ -66,8 +67,14 @@ export async function GET(req: Request) {
       const alta = await crearRunnerDesdePerfil(db, { email, perfil });
       if (alta.ok) {
         await startSession(alta.runnerId, url.protocol === "https:");
-        const dest = esCorreoPanel(email) ? "/admin" : rutaInterna(url.searchParams.get("volver"));
-        return redirect(dest);
+        if (await esCorreoPanelDb(email)) {
+          // Correo de la mesa: entra al panel CON su sesion de admin (antes solo
+          // lo mandabamos a /admin y el guard lo rebotaba al login).
+          const res = redirect("/admin");
+          await startAdminSession(res, url.protocol === "https:");
+          return res;
+        }
+        return redirect(rutaInterna(url.searchParams.get("volver")));
       }
       // Cedula de otra cuenta: prueba de propiedad (cedula + fecha), sin duplicar.
       if (alta.motivo === "vincular") {
@@ -90,8 +97,12 @@ export async function GET(req: Request) {
   await startSession(runner.id, url.protocol === "https:");
 
   // Correos de la mesa (allowlist) entran directo al panel; el resto a su portal.
-  const destino = esCorreoPanel(email) ? "/admin" : rutaInterna(url.searchParams.get("volver"));
-  return redirect(destino);
+  if (await esCorreoPanelDb(email)) {
+    const res = redirect("/admin");
+    await startAdminSession(res, url.protocol === "https:");
+    return res;
+  }
+  return redirect(rutaInterna(url.searchParams.get("volver")));
 }
 
 // Evita que un preflight/crawler queme el codigo: solo GET.

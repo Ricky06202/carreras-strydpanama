@@ -29,7 +29,10 @@ export default defineConfig({
       // Vacios = el boton "Entrar con RS ID" no se muestra. El secreto de app
       // (RS_ID_MOD_SECRET = RS_ID_CANJE_SECRET del worker rs-id) va con wrangler secret put.
       ID_ORIGEN: bindings.text("https://id.rsanjur.com"),
-      RS_ID_PANEL_EMAILS: bindings.text(""),
+      // Allowlist de la mesa: quien entra por RS ID con uno de estos correos ve el
+      // panel. Debe ir en el MISMO orden/valores que settings.admin_emails en D1
+      // (esa fila es la que decide dentro del panel; esta es la que deja pasar).
+      RS_ID_PANEL_EMAILS: bindings.text("eysbel@gmail.com,ricardosanjurg@gmail.com,ricardosanjur@gmail.com,gerencia@ricardosanjur.com"),
       CNFT_RED: bindings.text(""),
       CNFT_MAINNET_OK: bindings.text(""),
       CNFT_TREE_ADDRESS: bindings.text(""),

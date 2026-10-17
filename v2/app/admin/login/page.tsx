@@ -8,7 +8,7 @@ const MSJ: Record<string, string> = {
   oauth: "El acceso con Google no está configurado todavía (faltan credenciales OAuth).",
   google: "Google canceló el acceso o devolvió una respuesta inválida.",
   estado: "Tu intento de acceso expiró. Vuelve a intentarlo.",
-  whitelist: "Esa cuenta de Google no está autorizada en el panel.",
+  whitelist: "Ese correo no está en la lista del panel. Pedile a Ricardo que lo agregue.",
 };
 
 export default async function AdminLoginPage({

@@ -8,6 +8,8 @@
 // manda esa cookie aca: el login se hace por el flujo 'volver' + /api/auth/canjear
 // (codigo de un solo uso), igual que en ricardosanjur.com.
 import { env } from "cloudflare:workers";
+import { eq } from "drizzle-orm";
+import { getDb, schema } from "@/lib/db";
 
 const ID_ORIGEN_DEFECTO = "https://id.rsanjur.com";
 
@@ -18,15 +20,46 @@ export const rsidBase = (): string => {
 
 export const rsidListo = (): boolean => !!((env as any)?.RS_ID_MOD_SECRET);
 
+export const CORREOS_PANEL_DEFECTO =
+  "eysbel@gmail.com,ricardosanjurg@gmail.com,ricardosanjur@gmail.com,gerencia@ricardosanjur.com";
+
 /** Correos autorizados al panel de la mesa (allowlist). */
+/* La casa: Eysbel, Ricky y el papa (dos correos). Si la var no llega, cae a esta
+ * lista y NO a una vieja incompleta: un panel que deja afuera al dueno es peor
+ * que uno con un correo de mas. Ver settings.admin_emails (la otra mitad). */
 export const correosPanel = (): string[] =>
-  String((env as any)?.RS_ID_PANEL_EMAILS || "eysbel@gmail.com,ricardosanjurg@gmail.com")
+  String((env as any)?.RS_ID_PANEL_EMAILS || CORREOS_PANEL_DEFECTO)
     .split(",")
     .map((s) => s.trim().toLowerCase())
     .filter(Boolean);
 
 export const esCorreoPanel = (email: string | null | undefined): boolean =>
   correosPanel().includes(String(email || "").trim().toLowerCase());
+
+/* Es correo de la mesa si lo dice la variable O la fila settings.admin_emails.
+ * Las dos existian por separado (la var dejaba pasar, la fila dejaba entrar por
+ * el callback de Google): con una sola mal puesta, alguien quedaba afuera por
+ * una puerta y adentro por la otra. Ahora alcanza con cualquiera de las dos.
+ * Si D1 falla decide la variable: un timeout no puede tumbar el panel. */
+export async function esCorreoPanelDb(email: string | null | undefined): Promise<boolean> {
+  const e = String(email || "").trim().toLowerCase();
+  if (!e) return false;
+  if (esCorreoPanel(e)) return true;
+  try {
+    const fila = await getDb()
+      .select()
+      .from(schema.settings)
+      .where(eq(schema.settings.key, "admin_emails"))
+      .get();
+    return String(fila?.value || "")
+      .split(",")
+      .map((v) => v.trim().toLowerCase())
+      .filter(Boolean)
+      .includes(e);
+  } catch {
+    return false;
+  }
+}
 
 /** URL a la que mandamos al corredor para que entre con su RS ID y vuelva. */
 export const urlEntrarRsId = (volver: string): string =>
