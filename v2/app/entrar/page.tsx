@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getRunner } from "@/lib/auth/session";
-import { urlEntrarRsId, rsidListo, leerTicketAlta } from "@/lib/rsid";
+import { urlEntrarRsId, rsidListo, leerTicketCompleto, perfilRsId } from "@/lib/rsid";
 import { AltaRsIdForm } from "@/components/account/AltaRsIdForm";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +31,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const ticket = uno(sp.t);
   const volver = uno(sp.volver);
 
-  // El ticket lo firma /api/auth/canjear con el correo que el RS ID ya verifico.
-  const emailTicket = uno(sp.rsid_alta) === "1" ? await leerTicketAlta(ticket) : null;
+  // El ticket lo firma /api/auth/canjear con el correo (y la cuenta) que el RS ID
+  // ya verifico. Con la cuenta pedimos el perfil para NO volver a preguntarle al
+  // corredor lo que ya lleno en el RS ID: solo se muestra para confirmar.
+  const t = uno(sp.rsid_alta) === "1" ? await leerTicketCompleto(ticket) : null;
+  const emailTicket = t ? t.email : null;
+  const perfilTicket = t && t.cuentaId ? await perfilRsId(t.cuentaId) : null;
+  const vincular = uno(sp.rsid_vincular) === "1" || uno(sp.vincular) === "1";
 
   // La URL de vuelta debe ser el origen REAL de la petición (dev/staging/prod):
   // el RS ID solo acepta dominios en su lista blanca.
@@ -57,7 +62,13 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         )}
 
         {emailTicket ? (
-          <AltaRsIdForm ticket={ticket} email={emailTicket} />
+          <AltaRsIdForm
+            ticket={ticket}
+            email={emailTicket}
+            perfil={perfilTicket}
+            vincular={vincular}
+            cedula={uno(sp.cedula)}
+          />
         ) : (
           <div className="mt-6 rounded-2xl border border-hairline bg-carbon p-6">
             {rsidHref ? (

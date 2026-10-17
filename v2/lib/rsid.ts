@@ -57,6 +57,34 @@ export async function canjearCodigoRsId(codigo: string, origen: string) {
   return { email: String(r.data.email), cuentaId: String(r.data.cuenta_id || "") };
 }
 
+/** Perfil ya verificado por el RS ID (nombres, apellidos, cedula, telefono, pais, nacimiento).
+ *  Lo lee el servidor con el secreto de app: el corredor NUNCA teclea estos datos
+ *  otra vez. Si RS ID no responde o el perfil esta incompleto, devuelve null. */
+export async function perfilRsId(cuentaId: string): Promise<{
+  nombre: string; apellido: string; cedula: string; telefono: string; pais: string; nacimiento: string;
+} | null> {
+  if (!rsidListo() || !cuentaId) return null;
+  try {
+    const r = await pedir("/api/perfil/modulo", { method: "POST", body: { cuenta_id: cuentaId } });
+    if (!r.ok || !r.data?.completo || !r.data?.perfil) {
+      if (!r.ok) console.error("[rsid] perfil no disponible:", r.status, JSON.stringify(r.data || {}));
+      return null;
+    }
+    const p = r.data.perfil;
+    return {
+      nombre: String(p.nombre || ""),
+      apellido: String(p.apellido || ""),
+      cedula: String(p.cedula || ""),
+      telefono: String(p.telefono || ""),
+      pais: String(p.pais || ""),
+      nacimiento: String(p.nacimiento || ""),
+    };
+  } catch (e) {
+    console.error("[rsid] error leyendo perfil:", e);
+    return null;
+  }
+}
+
 /** Registra (idempotente) el cupo del corredor en su RS ID y devuelve el LINK. */
 export async function registrarCupoRsId(o: {
   email: string;
@@ -148,18 +176,18 @@ async function hmacKey(): Promise<CryptoKey | null> {
   return crypto.subtle.importKey("raw", buf(new TextEncoder().encode(secret)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
 }
 
-/** Firma un ticket con el correo ya verificado por el RS ID. */
-export async function firmarTicketAlta(email: string): Promise<string | null> {
+/** Firma un ticket con el correo ya verificado por el RS ID (y su cuenta de RS ID). */
+export async function firmarTicketAlta(email: string, cuentaId = ""): Promise<string | null> {
   const key = await hmacKey();
   if (!key) return null;
   const exp = Date.now() + TICKET_TTL_MS;
-  const payload = `${email.trim().toLowerCase()}|${exp}`;
+  const payload = `${email.trim().toLowerCase()}|${exp}|${String(cuentaId || "").trim()}`;
   const firma = new Uint8Array(await crypto.subtle.sign("HMAC", key, buf(new TextEncoder().encode(payload))));
   return `${b64url(new TextEncoder().encode(payload))}.${b64url(firma)}`;
 }
 
-/** Devuelve el correo del ticket si la firma es valida y no expiro. */
-export async function leerTicketAlta(ticket: string | null | undefined): Promise<string | null> {
+/** Devuelve el correo (y la cuenta de RS ID) del ticket si la firma es valida. */
+export async function leerTicketCompleto(ticket: string | null | undefined): Promise<{ email: string; cuentaId: string } | null> {
   const key = await hmacKey();
   const raw = String(ticket || "").trim();
   if (!key || !raw.includes(".")) return null;
@@ -171,10 +199,16 @@ export async function leerTicketAlta(ticket: string | null | undefined): Promise
     let diff = 0;
     for (let i = 0; i < esperada.length; i++) diff |= esperada[i] ^ recibida[i];
     if (diff !== 0) return null;
-    const [email, exp] = new TextDecoder().decode(deB64url(p)).split("|");
+    const [email, exp, cuentaId] = new TextDecoder().decode(deB64url(p)).split("|");
     if (!email || Number(exp) < Date.now()) return null;
-    return email;
+    return { email, cuentaId: cuentaId || "" };
   } catch {
     return null;
   }
+}
+
+/** Compatibilidad: solo el correo del ticket. */
+export async function leerTicketAlta(ticket: string | null | undefined): Promise<string | null> {
+  const t = await leerTicketCompleto(ticket);
+  return t ? t.email : null;
 }

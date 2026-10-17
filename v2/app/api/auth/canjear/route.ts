@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { eq, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { canjearCodigoRsId, esCorreoPanel, firmarTicketAlta, rsidListo } from "@/lib/rsid";
+import { canjearCodigoRsId, esCorreoPanel, firmarTicketAlta, perfilRsId, rsidListo } from "@/lib/rsid";
+import { crearRunnerDesdePerfil, perfilUtilizable } from "@/lib/registro-rsid";
 import { startSession } from "@/lib/auth/session";
 import { clientIp, rateLimited } from "@/lib/ratelimit";
 
@@ -11,11 +12,10 @@ import { clientIp, rateLimited } from "@/lib/ratelimit";
 // /entrar?rsid=<codigo>; el navegador pide este endpoint, que:
 //   1. canjea el codigo de UN SOLO USO contra el RS ID (con el secreto de app),
 //   2. si el correo YA tiene runner -> abre sesion y va a /mi-portal
-//      si NO lo tiene -> manda a /entrar para que complete su cuenta (cedula
-//        obligatoria) y luego crea el runner con el correo ya verificado.
-//
-// Por que no creamos la cuenta aqui: `runners.cedula` es NOT NULL UNIQUE y el
-// RS ID no la entrega. Inventarla seria un dato falso; mejor pedirla una vez.
+//      si NO lo tiene -> lee su PERFIL en el RS ID (nombre, apellido, cedula,
+//        telefono, fecha de nacimiento) y crea la cuenta del corredor sin
+//        pedirle nada. El RS ID no lo deja llegar aca con el perfil incompleto.
+//      Si la cedula ya tiene cuenta con otro correo -> /entrar para vincular.
 //
 // BEST-EFFORT: si el RS ID no responde o el codigo es invalido, no rompe nada:
 // devuelve al login normal con un aviso. El login por correo/contraseña sigue igual.
@@ -59,10 +59,26 @@ export async function GET(req: Request) {
     .where(or(eq(schema.runners.email, email), eq(schema.runners.rsidEmail, email)))
     .get();
 
-  // Cuenta nueva: no podemos crearla sin cedula. La mandamos al formulario con
-  // un ticket firmado que prueba que el RS ID ya verifico ese correo.
+  // Cuenta nueva: el RS ID ya tiene sus datos, asi que se crea sin formulario.
   if (!runner) {
-    const ticket = await firmarTicketAlta(email);
+    const perfil = canje.cuentaId ? await perfilRsId(canje.cuentaId) : null;
+    if (perfilUtilizable(perfil) && perfil) {
+      const alta = await crearRunnerDesdePerfil(db, { email, perfil });
+      if (alta.ok) {
+        await startSession(alta.runnerId, url.protocol === "https:");
+        const dest = esCorreoPanel(email) ? "/admin" : rutaInterna(url.searchParams.get("volver"));
+        return redirect(dest);
+      }
+      // Cedula de otra cuenta: prueba de propiedad (cedula + fecha), sin duplicar.
+      if (alta.motivo === "vincular") {
+        const ticketV = await firmarTicketAlta(email, canje.cuentaId);
+        if (ticketV) {
+          return redirect("/entrar", { rsid_alta: "1", rsid_vincular: "1", t: ticketV, cedula: alta.cedula || "", volver: rutaInterna(url.searchParams.get("volver")) });
+        }
+      }
+    }
+    // Sin perfil utilizable (RS ID caido o perfil viejo): formulario pre-llenado.
+    const ticket = await firmarTicketAlta(email, canje.cuentaId);
     if (!ticket) return redirect("/entrar", { rsid_error: "no_configurado" });
     return redirect("/entrar", {
       rsid_alta: "1",

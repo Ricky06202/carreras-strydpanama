@@ -16,15 +16,29 @@ const field =
   "h-13 w-full rounded-xl border border-hairline bg-carbon px-4 text-[16px] text-snow placeholder:text-mist/60 outline-none transition focus:border-stryd/70 focus:ring-2 focus:ring-stryd/25";
 const label = "mb-2 block font-mono text-[11px] uppercase tracking-[0.25em] text-mist";
 
+type Perfil = { nombre: string; apellido: string; cedula: string; telefono: string; pais: string; nacimiento: string };
+
 // Alta y vinculacion de la cuenta cuando el corredor entra con RS ID.
 // No hay contraseña: la unica puerta es el RS ID.
-export function AltaRsIdForm({ ticket, email }: { ticket: string; email: string }) {
+//
+// Si el RS ID nos dio el perfil (lo normal), NO se le pide teclear nada: se le
+// muestran sus datos para que confirme y se crea la cuenta. El formulario queda
+// solo como salida de emergencia (RS ID caido, datos viejos o cedula ocupada).
+export function AltaRsIdForm({ ticket, email, perfil, vincular, cedula }: { ticket: string; email: string; perfil?: Perfil | null; vincular?: boolean; cedula?: string }) {
   const router = useRouter();
-  const [mode, setMode] = useState<"alta" | "vincular">("alta");
+  const conPerfil = !!(perfil && perfil.nombre && perfil.apellido && perfil.cedula && perfil.nacimiento);
+  const [mode, setMode] = useState<"alta" | "vincular">(vincular ? "vincular" : "alta");
+  const [editar, setEditar] = useState(!conPerfil);
   const [busy, setBusy] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [f, setF] = useState({ firstName: "", lastName: "", cedula: "", phone: "", birthDate: "" });
+  const [f, setF] = useState({
+    firstName: perfil?.nombre || "",
+    lastName: perfil?.apellido || "",
+    cedula: cedula || perfil?.cedula || "",
+    phone: perfil?.telefono ? phoneDigits(perfil.telefono).slice(0, 10) : "",
+    birthDate: perfil?.nacimiento || "",
+  });
 
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
 
@@ -68,7 +82,7 @@ export function AltaRsIdForm({ ticket, email }: { ticket: string; email: string 
         {mode === "alta" ? (
           <>
             Tu correo <span className="font-semibold text-snow">{email}</span> quedó verificado con tu RS ID.
-            Solo completa tus datos para crear la cuenta.
+            Ya tenemos tus datos: confirma que estén bien y listo.
           </>
         ) : (
           <>
@@ -78,7 +92,27 @@ export function AltaRsIdForm({ ticket, email }: { ticket: string; email: string 
         )}
       </p>
 
-      <form onSubmit={submit} className="mt-5 flex flex-col gap-5">
+      {/* Resumen: los datos ya estan en el RS ID. Solo confirma. */}
+      {conPerfil && !editar && (
+        <dl className="mt-5 grid grid-cols-1 gap-2 rounded-xl border border-hairline bg-carbon p-4 text-sm">
+          {[
+            ["Nombre", `${perfil!.nombre} ${perfil!.apellido}`],
+            ["Cédula", perfil!.cedula],
+            ["Teléfono", perfil!.telefono || "—"],
+            ["Nacimiento", perfil!.nacimiento],
+          ].map(([k, v]) => (
+            <div key={k} className="flex items-baseline justify-between gap-4">
+              <dt className="font-mono text-[11px] uppercase tracking-[0.2em] text-mist">{k}</dt>
+              <dd className="text-right font-medium text-snow">{v}</dd>
+            </div>
+          ))}
+          <button type="button" onClick={() => setEditar(true)} className="mt-1 self-start text-xs text-mist underline underline-offset-4">
+            Corregir algún dato
+          </button>
+        </dl>
+      )}
+
+      <form onSubmit={submit} className={`mt-5 flex flex-col gap-5 ${conPerfil && !editar ? "hidden" : ""}`}>
         {mode === "alta" && (
           <>
             <div className="grid grid-cols-2 gap-3">
@@ -134,6 +168,15 @@ export function AltaRsIdForm({ ticket, email }: { ticket: string; email: string 
           </button>
         )}
       </form>
+
+      {conPerfil && !editar && (
+        <>
+          {fatal && <p className="mt-4 rounded-xl border border-red-500/30 bg-red-950/40 p-3 text-sm text-red-300">{fatal}</p>}
+          <Button onClick={() => submit({ preventDefault() {} } as React.FormEvent)} size="lg" className="mt-4 w-full" disabled={busy}>
+            {busy ? "Un momento…" : mode === "vincular" ? "Confirmar y entrar" : "Crear mi cuenta y entrar"}
+          </Button>
+        </>
+      )}
     </Card>
   );
 }
