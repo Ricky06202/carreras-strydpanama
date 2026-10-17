@@ -5,6 +5,9 @@ import { getDb, schema } from "@/lib/db";
 import { clientIp, rateLimited } from "@/lib/ratelimit";
 import { startSession, verifyPassword } from "@/lib/auth/session";
 
+// LEGADO: el portal entra SOLO con RS ID (app/entrar). Se mantiene el endpoint
+// para las cuentas viejas con contraseña mientras dure la transición; ninguna
+// pantalla lo usa. Quitarlo cuando ya no queden cuentas de antes del RS ID.
 const loginSchema = z.object({
   email: z.string().trim().toLowerCase().email(),
   password: z.string().min(1),

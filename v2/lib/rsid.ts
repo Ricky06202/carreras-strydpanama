@@ -121,3 +121,60 @@ export async function entregarCupoRsId(cosaId: string) {
   const r = await pedir("/api/mod/cupo/entregar", { method: "POST", body: { cosa_id: cosaId } });
   return r.ok ? r.data : null;
 }
+
+// ---------------------------------------------------------------------------
+// Ticket de alta/vinculacion
+// ---------------------------------------------------------------------------
+// El canje del RS ID prueba el correo, pero el navegador puede mentir sobre el
+// resto. Cuando el correo del RS ID no corresponde a ninguna cuenta, el canje
+// devuelve al alta con un ticket firmado (HMAC con el secreto de la app) que
+// dice "este correo lo verifico el RS ID a tal hora". El alta y la vinculacion
+// confian en el ticket, nunca en un parametro suelto.
+
+const TICKET_TTL_MS = 20 * 60_000;
+
+const b64url = (bytes: Uint8Array): string =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+
+const deB64url = (s: string): Uint8Array =>
+  Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
+
+/** ArrayBuffer "propio" (no SharedArrayBuffer) para las APIs de WebCrypto. */
+const buf = (b: Uint8Array): ArrayBuffer => b.slice().buffer as ArrayBuffer;
+
+async function hmacKey(): Promise<CryptoKey | null> {
+  const secret = String((env as any)?.RS_ID_MOD_SECRET || "");
+  if (!secret) return null;
+  return crypto.subtle.importKey("raw", buf(new TextEncoder().encode(secret)), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+}
+
+/** Firma un ticket con el correo ya verificado por el RS ID. */
+export async function firmarTicketAlta(email: string): Promise<string | null> {
+  const key = await hmacKey();
+  if (!key) return null;
+  const exp = Date.now() + TICKET_TTL_MS;
+  const payload = `${email.trim().toLowerCase()}|${exp}`;
+  const firma = new Uint8Array(await crypto.subtle.sign("HMAC", key, buf(new TextEncoder().encode(payload))));
+  return `${b64url(new TextEncoder().encode(payload))}.${b64url(firma)}`;
+}
+
+/** Devuelve el correo del ticket si la firma es valida y no expiro. */
+export async function leerTicketAlta(ticket: string | null | undefined): Promise<string | null> {
+  const key = await hmacKey();
+  const raw = String(ticket || "").trim();
+  if (!key || !raw.includes(".")) return null;
+  const [p, f] = raw.split(".");
+  try {
+    const esperada = new Uint8Array(await crypto.subtle.sign("HMAC", key, buf(deB64url(p))));
+    const recibida = deB64url(f);
+    if (esperada.length !== recibida.length) return null;
+    let diff = 0;
+    for (let i = 0; i < esperada.length; i++) diff |= esperada[i] ^ recibida[i];
+    if (diff !== 0) return null;
+    const [email, exp] = new TextDecoder().decode(deB64url(p)).split("|");
+    if (!email || Number(exp) < Date.now()) return null;
+    return email;
+  } catch {
+    return null;
+  }
+}

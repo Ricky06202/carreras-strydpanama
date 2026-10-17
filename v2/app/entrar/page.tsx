@@ -2,32 +2,37 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getRunner } from "@/lib/auth/session";
-import { urlEntrarRsId, rsidListo } from "@/lib/rsid";
-import { AuthForm } from "@/components/account/AuthForm";
+import { urlEntrarRsId, rsidListo, leerTicketAlta } from "@/lib/rsid";
+import { AltaRsIdForm } from "@/components/account/AltaRsIdForm";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Entrar", robots: { index: false, follow: false } };
 
 const MENSAJES: Record<string, string> = {
-  no_configurado: "El inicio con RS ID no está disponible ahora. Entra con tu correo.",
+  no_configurado: "El inicio con RS ID no está disponible ahora. Intenta más tarde.",
   sin_codigo: "El enlace llegó incompleto. Intenta de nuevo desde el RS ID.",
-  canje_fallido: "No pudimos validar tu RS ID. Intenta de nuevo o entra con tu correo.",
+  canje_fallido: "No pudimos validar tu RS ID. Intenta de nuevo desde el RS ID.",
   demasiados_intentos: "Demasiados intentos seguidos. Espera unos minutos.",
 };
 
 type Params = { [k: string]: string | string[] | undefined };
 const uno = (v: string | string[] | undefined): string => (Array.isArray(v) ? v[0] : v) || "";
 
+// Unica entrada al portal: RS ID. No hay correo ni contraseña a proposito —
+// una sola identidad por corredor = una sola cuenta y una sola wallet,
+// asi el cupo digital nunca queda partido entre dos cuentas.
 export default async function LoginPage({ searchParams }: { searchParams: Promise<Params> }) {
   if (await getRunner()) redirect("/mi-portal");
 
   const sp = await searchParams;
   const rsidError = uno(sp.rsid_error);
   const aviso = MENSAJES[rsidError] || null;
-  const altaPorRsId = uno(sp.rsid_alta) === "1";
-  const emailRsId = uno(sp.email).trim().toLowerCase();
+  const ticket = uno(sp.t);
   const volver = uno(sp.volver);
+
+  // El ticket lo firma /api/auth/canjear con el correo que el RS ID ya verifico.
+  const emailTicket = uno(sp.rsid_alta) === "1" ? await leerTicketAlta(ticket) : null;
 
   // La URL de vuelta debe ser el origen REAL de la petición (dev/staging/prod):
   // el RS ID solo acepta dominios en su lista blanca.
@@ -50,14 +55,36 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             {aviso}
           </p>
         )}
-        {altaPorRsId && (
-          <p className="mt-4 rounded-xl border border-stryd/30 bg-carbon p-3 text-sm text-fog">
-            Tu correo <span className="font-semibold text-snow">{emailRsId}</span> quedó verificado
-            con tu RS ID. Solo completa tu cédula y tus datos para terminar de crear la cuenta.
-          </p>
-        )}
 
-        <AuthForm rsidHref={rsidHref} emailInicial={emailRsId} altaPorRsId={altaPorRsId} />
+        {emailTicket ? (
+          <AltaRsIdForm ticket={ticket} email={emailTicket} />
+        ) : (
+          <div className="mt-6 rounded-2xl border border-hairline bg-carbon p-6">
+            {rsidHref ? (
+              <>
+                <a
+                  href={rsidHref}
+                  className="flex h-13 w-full items-center justify-center gap-3 rounded-xl border border-stryd/40 bg-stryd/10 font-display font-semibold text-snow transition hover:border-stryd/70"
+                >
+                  <span aria-hidden className="grid h-6 w-6 place-items-center rounded-full bg-stryd text-[13px] font-bold text-black">
+                    RS
+                  </span>
+                  Entrar con RS ID
+                </a>
+                <p className="mt-4 text-center text-xs text-mist">
+                  Tu cuenta de corredor se abre con tu RS ID. No necesitas correo ni contraseña.
+                </p>
+                <p className="mt-2 text-center text-xs text-mist">
+                  ¿Todavía no tienes RS ID? Se crea en el mismo botón, con tu correo.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm text-fog">
+                El inicio con RS ID no está configurado en este sitio. Escríbenos a la mesa de la carrera.
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -122,6 +122,10 @@ export const runners = sqliteTable(
     publicFields: text("public_fields"),
     passwordHash: text("password_hash"),
     passwordSalt: text("password_salt"),
+    // Correo verificado por el RS ID cuando difiere del correo de la cuenta.
+    // El canje busca por email O por rsid_email: asi el corredor vuelve a entrar
+    // con su RS ID sin crear una segunda cuenta (y una segunda wallet).
+    rsidEmail: text("rsid_email"),
     sessionToken: text("session_token"),
     sessionExpiry: text("session_expiry"),
     ...timestamps,

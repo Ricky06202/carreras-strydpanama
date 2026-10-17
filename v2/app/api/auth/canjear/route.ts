@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
-import { canjearCodigoRsId, esCorreoPanel, rsidListo } from "@/lib/rsid";
+import { canjearCodigoRsId, esCorreoPanel, firmarTicketAlta, rsidListo } from "@/lib/rsid";
 import { startSession } from "@/lib/auth/session";
 import { clientIp, rateLimited } from "@/lib/ratelimit";
 
@@ -51,14 +51,22 @@ export async function GET(req: Request) {
   if (!canje?.email) return redirect("/entrar", { rsid_error: "canje_fallido" });
 
   const email = canje.email.trim().toLowerCase();
-  const runner = await db.select().from(schema.runners).where(eq(schema.runners.email, email)).get();
+  // Se busca por el correo de la cuenta Y por el correo que el corredor uso en
+  // su RS ID: si ya los vinculamos una vez, el siguiente canje lo reconoce.
+  const runner = await db
+    .select()
+    .from(schema.runners)
+    .where(or(eq(schema.runners.email, email), eq(schema.runners.rsidEmail, email)))
+    .get();
 
   // Cuenta nueva: no podemos crearla sin cedula. La mandamos al formulario con
-  // el correo precargado y marcado como verificado por el RS ID.
+  // un ticket firmado que prueba que el RS ID ya verifico ese correo.
   if (!runner) {
+    const ticket = await firmarTicketAlta(email);
+    if (!ticket) return redirect("/entrar", { rsid_error: "no_configurado" });
     return redirect("/entrar", {
       rsid_alta: "1",
-      email,
+      t: ticket,
       volver: rutaInterna(url.searchParams.get("volver")),
     });
   }
