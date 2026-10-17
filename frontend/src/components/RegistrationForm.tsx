@@ -190,10 +190,6 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   
   const [recoveredPayment, setRecoveredPayment] = useState(false);
 
-  // Guardia anti doble-confirmacion del pago embebido (RS Pay). Detras del flag PAGO_RS_PAY:
-  // con el flag apagado nunca se usa.
-  const rsPayDoneRef = useRef(false);
-
   const maxParticipants = raceInfo?.data?.maxParticipants ? Number(raceInfo.data.maxParticipants) : null;
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
@@ -800,162 +796,6 @@ const handleSubmit = async () => {
   };
 
   const getTeamAutocompleteOptions = () => ['Ninguno', 'Agregar manualmente', ...teamOptions];
-
-  // ¿Este evento cobra por RS Pay? (flag apagado por defecto; lo decide el server).
-  const rsPayOn = raceInfo?.data?.pagoRsPay === true;
-
-  // Pago con RS Pay EMBEBIDO: se usa el helper EXISTENTE de RS Pay (rs-pay.js), el mismo
-  // que documentan /marca y /docs. Su modal ya trae el checkout en un iframe compacto,
-  // escucha el postMessage de RS Pay ({origen:'rs-pay', tipo:'pagado'|'expirado'|'cancelado',
-  // orden:{id,estado}}), cierra solo al pagar, atrapa el foco, bloquea el scroll del fondo,
-  // cierra con Esc y ofrece "Abrir en otra pestaña". Aqui solo reaccionamos al resultado.
-  const cargarHelperRsPay = (base: string): Promise<any> => new Promise((resolve) => {
-    const w = window as any;
-    if (w.RSPay && typeof w.RSPay.open === 'function') { resolve(w.RSPay); return; }
-    const previo = document.querySelector('script[data-rs-pay-helper]') as HTMLScriptElement | null;
-    const listo = () => resolve((window as any).RSPay || null);
-    if (previo) {
-      previo.addEventListener('load', listo, { once: true });
-      window.setTimeout(listo, 4000);
-      return;
-    }
-    const s = document.createElement('script');
-    s.src = `${base}/rs-pay.js`;
-    s.async = true;
-    s.setAttribute('data-rs-pay-helper', '1');
-    s.addEventListener('load', listo, { once: true });
-    s.addEventListener('error', () => resolve(null), { once: true });
-    window.setTimeout(listo, 6000);
-    document.head.appendChild(s);
-  });
-
-  const abrirModalRsPay = async (urlPago: string, base: string) => {
-    const rsPay = await cargarHelperRsPay(base);
-    if (!rsPay || typeof rsPay.open !== 'function') {
-      // Escape si el helper no carga (red/bloqueo de terceros): checkout normal aparte.
-      setNotification({ message: 'No se pudo abrir el pago embebido. Abriendo el checkout en otra pestaña...', type: 'error' });
-      window.open(urlPago, '_blank', 'noopener');
-      return;
-    }
-    const confirmar = () => {
-      if (rsPayDoneRef.current) return;
-      rsPayDoneRef.current = true;
-      try { localStorage.removeItem('stryd_pending_yappy'); } catch { /* noop */ }
-      // Mismo comportamiento que hoy al volver del pago: pantalla de confirmacion.
-      setRecoveredPayment(true);
-      setStep(4);
-      setNotification({ message: '¡Pago confirmado! Tu inscripción quedó registrada.', type: 'success' });
-    };
-    // El helper cierra su modal solo; aqui solo reaccionamos al resultado.
-    rsPay.open(urlPago, {
-      onSuccess: () => confirmar(),
-      onCancel: (e: any) => {
-        const estado = (e && (e.estado || (e.orden && e.orden.estado))) || '';
-        // Cierre manual del modal: se deja la orden pendiente y el aviso local para reintentar.
-        if (estado === 'expirado' || estado === 'cancelado') {
-          if (rsPayDoneRef.current) return;
-          rsPayDoneRef.current = true;
-          try { localStorage.removeItem('stryd_pending_yappy'); } catch { /* noop */ }
-          setNotification({ message: estado === 'expirado' ? 'La orden de pago expiró. Intenta de nuevo.' : 'El pago fue cancelado.', type: 'error' });
-        }
-      },
-    });
-  };
-
-  // Pago con RS Pay (pay.rsanjur.com). Solo se usa cuando el flag esta encendido.
-  // Registra la inscripcion como PENDIENTE (igual que Yappy) y crea la orden en RS Pay;
-  // el navegador va al checkout de RS Pay y RS Pay se encarga de Yappy. El callback de
-  // RS Pay confirmara la inscripcion con el mismo handler que usa Yappy.
-  const iniciarPagoRsPay = async () => {
-    if (codeValid && codeValid.valid) { handleSubmit(); return; }
-    setLoading(true);
-    try {
-      const participantData: ParticipantData = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: normalizePanamaPhone(formData.phone) || formData.phone,
-        cedula: formData.cedula,
-        country: formData.country,
-        birthDate: `${formData.birthYear}-${formData.birthMonth}-${formData.birthDay}`,
-        gender: formData.gender,
-        size: raceInfo?.data?.showShirtSize !== false ? formData.size : '',
-        raceId: selectedRace,
-        categoryId: formData.category || null,
-        distanceId: formData.distance || null,
-        paymentMethod: 'Yappy (Pendiente)',
-        termsAccepted: termsAccepted,
-        discountCode: code,
-        registrationType: registrationType,
-        receiptUrl: formData.receiptUrl,
-        studentIdUrl: formData.studentIdUrl,
-        matriculaUrl: formData.matriculaUrl,
-        photoUrl: formData.photoUrl,
-        participantType: formData.participantType,
-        isPadrino: formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual'),
-        donatedTickets: (formData.participantType === 'padrino' || (isPadrino && registrationType === 'individual')) ? donatedTickets : 0
-      };
-      if (registrationType === 'team') {
-        participantData.teamName = teamName === 'Agregar manualmente' ? manualTeamNameGroup : (teamName === 'Ninguno' ? '' : teamName);
-        participantData.teamMembers = teamMembers.map(m => ({
-          ...m,
-          size: raceInfo?.data?.showShirtSize !== false ? m.size : '',
-          birthDate: `${m.birthYear}-${m.birthMonth}-${m.birthDay}`
-        }));
-      } else {
-        participantData.teamName = formData.teamName === 'Agregar manualmente' ? manualTeamNameInd : (formData.teamName === 'Ninguno' ? '' : formData.teamName);
-      }
-
-      // 1. Registrar la inscripcion como pendiente (crea la transaccion con el payload)
-      const resReg = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(participantData)
-      });
-      const dataReg = await resReg.json();
-      if (!resReg.ok) throw new Error(dataReg.message || 'Error guardando el registro');
-
-      setFinalConfirmationCode(dataReg.confirmationCode || '');
-      if (dataReg.assignedBib) setAssignedBib(dataReg.assignedBib);
-
-      const orderId = dataReg.confirmationCode;
-      if (!orderId) throw new Error('No se pudo obtener el codigo de la inscripcion');
-
-      // 2. Precio (mismo calculo que el pago Yappy directo)
-      const isPadrinoOnly = formData.participantType === 'padrino';
-      const selectedDistanceObj = distances.find(d => d.id === formData.distance);
-      const basePrice = isPadrinoOnly ? 0 : (selectedDistanceObj?.price ?? races.find(r => r.id === selectedRace)?.data?.price ?? 0);
-      const platformFeeVal = raceInfo?.data?.platformFee !== undefined && raceInfo?.data?.platformFee !== '' ? Number(raceInfo?.data?.platformFee) : 0.45;
-      const effectiveIsPadrino = isPadrinoOnly || (isPadrino && registrationType === 'individual');
-      const sponsorshipCost = effectiveIsPadrino ? (donatedTickets * 10) : 0;
-      const totalAmount = basePrice + platformFeeVal + sponsorshipCost;
-
-      // 3. Crear la orden en RS Pay y redirigir al checkout
-      const resCheck = await fetch('/api/rs-pay/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId, total: totalAmount })
-      });
-      const pay = await resCheck.json();
-      if (!pay.success || !pay.url_pago) throw new Error(pay.error || 'No se pudo iniciar el pago con RS Pay');
-
-      // Se guarda igual que hoy: si el usuario recarga, el useEffect de recuperacion lo
-      // devuelve a la pantalla de confirmacion (dentro de 15 min).
-      localStorage.setItem('stryd_pending_yappy', JSON.stringify({ code: orderId, timestamp: Date.now(), rsPay: true }));
-      // NO se sale del sitio: se abre el modal del helper EXISTENTE de RS Pay
-      // (rs-pay.js -> window.RSPay.open), el mismo que documentan /marca y /docs.
-      setLoading(false);
-      rsPayDoneRef.current = false;
-      void abrirModalRsPay(
-        pay.url_pago,
-        String(pay.rs_pay || 'https://pay.rsanjur.com').replace(/\/+$/, '')
-      );
-    } catch (e: any) {
-      console.error('[RS Pay] initiation error:', e);
-      setNotification({ message: e?.message || 'Error iniciando el pago. Revisa tu conexion e intenta de nuevo.', type: 'error' });
-      setLoading(false);
-    }
-  };
 
   const yappyBtnRef = useRef<any>(null);
 
@@ -1998,21 +1838,6 @@ const handleSubmit = async () => {
               <Button variant="outlined" onClick={() => setStep(1)} startIcon={<ArrowBackIcon />}>Atrás</Button>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {formData.paymentMethod === 'yappy' ? (
-                  rsPayOn ? (
-                    <Box sx={{ minWidth: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <Button
-                        variant="contained"
-                        onClick={() => { if (codeValid && codeValid.valid) { handleSubmit(); return; } iniciarPagoRsPay(); }}
-                        disabled={loading}
-                        sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
-                      >
-                        {loading ? 'Procesando...' : 'Pagar con Yappy'}
-                      </Button>
-                      <Typography variant="caption" sx={{ mt: 0.5, color: 'text.secondary', fontSize: '10px' }}>
-                        (Pago seguro vía RS Pay)
-                      </Typography>
-                    </Box>
-                  ) : (
                   <Box sx={{ 
                     minWidth: '200px', 
                     minHeight: '44px', 
@@ -2036,7 +1861,6 @@ const handleSubmit = async () => {
                       (Haz clic arriba para pagar con Yappy)
                     </Typography>
                   </Box>
-                  )
                 ) : (
                   <Button 
                     variant="contained" 
@@ -2304,7 +2128,6 @@ const handleSubmit = async () => {
         <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
           <Box>{notification && <Alert severity={notification.type} sx={{ width: '100%' }}>{notification.message}</Alert>}</Box>
         </Snackbar>
-
 
         {croppingImageSrc && (
           <ImageCropper

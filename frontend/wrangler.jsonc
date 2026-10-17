@@ -2,12 +2,6 @@
   "name": "carreras-strydpanama-cms",
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat_v2"],
-  // Interruptor del cobro por RS Pay (pay.rsanjur.com). APAGADO por defecto.
-  // "0" = Yappy directo (comportamiento actual, sin cambios). "1" = cobrar via RS Pay.
-  "vars": {
-    "PAGO_RS_PAY": "0",
-    "RS_PAY_URL": "https://pay.rsanjur.com"
-  },
   "r2_buckets": [
     {
       "binding": "PHOTOS_BUCKET",

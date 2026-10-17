@@ -1,7 +1,6 @@
 import type { APIRoute } from 'astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
-import { rsPayActivo } from '../../lib/rsPay';
 
 export const GET: APIRoute = async ({ request }) => {
   const url = new URL(request.url);
@@ -76,11 +75,7 @@ export const GET: APIRoute = async ({ request }) => {
       }))
       .sort((a: any, b: any) => a.order - b.order);
 
-    // Interruptor RS Pay (apagado por defecto). El frontend solo usa el checkout de
-    // RS Pay cuando este flag viene encendido para esta carrera.
-    const pagoRsPay = rsPayActivo(env, race?.data);
-
-    return new Response(JSON.stringify({ race, categories, distances, participantTypes, registeredRunnersCount, pagoRsPay }), {
+    return new Response(JSON.stringify({ race, categories, distances, participantTypes, registeredRunnersCount }), {
       status: 200,
       headers: { 
         'Content-Type': 'application/json',
