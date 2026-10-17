@@ -20,7 +20,11 @@ export default defineConfig({
       // Cupos digitales (cNFT). Vacios = apagado; los secretos
       // (CNFT_WALLET_KEY, CNFT_TREASURY_SECRET) NUNCA van aqui en claro:
       // en produccion se ponen con "wrangler secret put". Ver docs/cupos-cnft.md.
-      SITE_URL: bindings.text(""),
+      // Origen de las URLs absolutas de imagen (og:image). Apunta al host que
+      // sirve esta rama: si queda vacio, cae al dominio de produccion y los
+      // enlaces de staging se comparten SIN imagen (la imagen no existe alli).
+      // CUTOVER: cambiar a "https://carreras.strydpanama.com" en el deploy de prod.
+      SITE_URL: bindings.text("https://carreras-strydpanama-v2.ricardosanjur.workers.dev"),
       // RS ID (id.rsanjur.com): login SSO cross-domain (?volver= + /api/auth/canjear).
       // Vacios = el boton "Entrar con RS ID" no se muestra. El secreto de app
       // (RS_ID_MOD_SECRET = RS_ID_CANJE_SECRET del worker rs-id) va con wrangler secret put.

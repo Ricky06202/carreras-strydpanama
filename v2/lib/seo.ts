@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { env } from "cloudflare:workers";
 
 /** Dominio canónico de producción (v1 vive aquí; v2 toma el relevo en el cutover). */
 export const SITE_URL = "https://carreras.strydpanama.com";
@@ -10,10 +11,23 @@ export const OG_IMAGE_HEIGHT = 630;
 export const DEFAULT_DESCRIPTION =
   "Carreras, cronometraje y comunidad de corredores en Panamá. Inscríbete en las próximas carreras, consulta podios y resultados oficiales de Stryd Panamá.";
 
+/**
+ * Origen para las URLs absolutas de las imágenes (og:image). En staging se
+ * toma de `SITE_URL` porque la imagen tiene que existir en el host que sirve la
+ * página: si apunta a producción, WhatsApp y Discord muestran el enlace sin
+ * imagen. El canonical sigue fijo en `SITE_URL` de producción.
+ */
+function imageOrigin(): string {
+  const v = String((env as { SITE_URL?: string }).SITE_URL ?? "")
+    .trim()
+    .replace(/\/+$/, "");
+  return /^https:\/\//i.test(v) ? v : SITE_URL;
+}
+
 /** Absolute URL for a path or pass-through for an already-absolute URL. */
 export function absUrl(pathOrUrl: string): string {
   if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-  return new URL(pathOrUrl, SITE_URL).toString();
+  return new URL(pathOrUrl, imageOrigin()).toString();
 }
 
 /**
@@ -31,12 +45,12 @@ export function pageMetadata(opts: {
   const url = absUrl(opts.path);
   const title = opts.title ?? "Carreras Stryd Panamá — inscripciones y cronometraje";
   const description = opts.description ?? DEFAULT_DESCRIPTION;
-  const image = opts.image ?? DEFAULT_OG_IMAGE;
+  const image = absUrl(opts.image ?? DEFAULT_OG_IMAGE);
   const imageAlt = opts.imageAlt ?? `${SITE_NAME} — carreras y cronometraje en Panamá`;
   const images =
     opts.image
       ? [{ url: image, alt: imageAlt }]
-      : [{ url: DEFAULT_OG_IMAGE, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: imageAlt }];
+      : [{ url: image, width: OG_IMAGE_WIDTH, height: OG_IMAGE_HEIGHT, alt: imageAlt }];
 
   return {
     ...(opts.title ? { title: opts.title } : {}),
