@@ -49,6 +49,35 @@ Fila `comercios.id = 'stryd-carreras'` (D1 `rs-pay-db`, cuenta Cloudflare `rsanj
 - `yappy_*` (merchant/token/secret del **merchant de Stryd Panamá**): los mismos que ya
   usa el worker `carreras-strydpanama-cms`. **Pendiente**: cargarlos aquí.
 
+## Bloqueo actual (17/10/2026): faltan las llaves del comercio Yappy
+
+Nadie tiene a mano el `merchantId`/`secretKey` del comercio **Stryd Panamá**. Las del
+worker de producción (`carreras-strydpanama-cms`) están como *secret* de Cloudflare y
+**no se pueden leer**, solo sobrescribir. Consecuencias:
+
+1. RS Pay no puede cobrar (le faltan `yappy_*`).
+2. El **Yappy directo de v2 tampoco** puede cobrar tras el cutover: necesita
+   `YAPPY_MERCHANT_ID` / `YAPPY_SECRET_KEY` / `YAPPY_URL_DOMAIN` como secrets del
+   worker nuevo, y hay que volver a escribirlas.
+
+Ricky las está pidiendo (o regenerando) en el portal de Yappy de Banco General.
+Cuando lleguen:
+
+```bash
+# 1) RS Pay: cargar el comercio (D1 rs-pay-db)
+#    yappy_merchant_id, yappy_token, yappy_url_domain, yappy_secret_key
+# 2) v2: secretos del respaldo directo
+npx wrangler secret put YAPPY_MERCHANT_ID --name carreras-strydpanama-v2
+npx wrangler secret put YAPPY_SECRET_KEY  --name carreras-strydpanama-v2
+#    YAPPY_URL_DOMAIN tambien es obligatorio (va en cloudflare.config.ts)
+# 3) encender RS Pay
+#    PAGO_RS_PAY = "1" en cloudflare.config.ts y redeploy
+```
+
+**Mientras tanto** el flujo que funciona en v2 es: inscripción con pago por
+transferencia/efectivo → el corredor sube el comprobante desde `/mi-portal` → el admin
+lo revisa ("Ver comprobante") y confirma el pago.
+
 ## Probar
 
 ```bash
