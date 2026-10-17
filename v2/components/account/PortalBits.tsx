@@ -26,6 +26,7 @@ export type RegCardData = {
   shirtSize: string | null;
   teamName: string | null;
   raceAccepting: boolean;
+  receiptUrl: string | null;
 };
 
 const field =
@@ -57,11 +58,7 @@ export function RegistrationCard({ data: r }: { data: RegCardData }) {
       </div>
 
       {r.paymentStatus === "pendiente" && r.status === "preinscrito" && (
-        <p className="mt-4 rounded-xl border border-stryd/25 bg-stryd/5 p-3 text-sm text-fog">
-          Tu pago sigue <b className="text-stryd">pendiente</b>. Si ya pagaste, compártenos tu comprobante por{" "}
-          <a href="https://wa.me/50700000000" target="_blank" rel="noopener" className="underline underline-offset-2">WhatsApp</a>{" "}
-          con el código <b className="font-mono">{r.confirmationCode}</b>.
-        </p>
+        <SubirComprobante id={r.id} code={r.confirmationCode} receiptUrl={r.receiptUrl} />
       )}
 
       {(canEdit || r.status === "inscrito") && (
@@ -81,6 +78,77 @@ export function RegistrationCard({ data: r }: { data: RegCardData }) {
 
       <EditDialog open={editing} onClose={() => setEditing(false)} data={r} />
     </Card>
+  );
+}
+
+function SubirComprobante({ id, code, receiptUrl }: { id: string; code: string; receiptUrl: string | null }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function enviar(file: File) {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const res = await fetch(`/api/inscripciones/${id}/comprobante`, { method: "POST", body: fd });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setErr(j.error ?? "No se pudo subir el comprobante");
+        return;
+      }
+      setMsg("Comprobante recibido. Un coordinador lo revisa y confirma tu pago.");
+      router.refresh();
+    } catch {
+      setErr("Falló la conexión. Intenta de nuevo.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 rounded-xl border border-stryd/25 bg-stryd/5 p-3">
+      <p className="text-sm text-fog">
+        Tu pago sigue <b className="text-stryd">pendiente</b>. Código <b className="font-mono">{code}</b>.
+      </p>
+      {receiptUrl ? (
+        <p className="mt-2 text-sm text-fog">
+          Ya recibimos tu comprobante y está <b className="text-stryd">en revisión</b>.{" "}
+          <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+            Ver lo que enviaste
+          </a>
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-mist">
+          Si ya pagaste por transferencia, subí la foto o el PDF del comprobante (hasta 4 MB).
+        </p>
+      )}
+      <div className="mt-3">
+        <label
+          className={`inline-flex h-11 cursor-pointer items-center rounded-xl border border-stryd/50 px-4 font-mono text-xs uppercase tracking-widest text-stryd transition hover:bg-stryd/10 ${
+            busy ? "pointer-events-none opacity-60" : ""
+          }`}
+        >
+          {busy ? "Subiendo…" : receiptUrl ? "Cambiar comprobante" : "Subir comprobante"}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            className="sr-only"
+            disabled={busy}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void enviar(f);
+              e.currentTarget.value = "";
+            }}
+          />
+        </label>
+      </div>
+      {msg && <p className="mt-2 text-sm text-stryd">{msg}</p>}
+      {err && <p className="mt-2 text-sm text-red-400">{err}</p>}
+    </div>
   );
 }
 

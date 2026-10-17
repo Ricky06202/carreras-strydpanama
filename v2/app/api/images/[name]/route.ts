@@ -1,4 +1,6 @@
 import { env } from "cloudflare:workers";
+import { getRunner } from "@/lib/auth/session";
+import { isAdmin } from "@/lib/admin/session";
 
 const CONTENT_TYPES: Record<string, string> = {
   jpg: "image/jpeg",
@@ -8,6 +10,7 @@ const CONTENT_TYPES: Record<string, string> = {
   gif: "image/gif",
   avif: "image/avif",
   svg: "image/svg+xml",
+  pdf: "application/pdf",
 };
 
 export async function GET(
@@ -22,6 +25,12 @@ export async function GET(
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
   const contentType = CONTENT_TYPES[ext];
   if (!contentType) return new Response("unsupported type", { status: 400 });
+
+  // Los comprobantes de pago son privados: solo el corredor con sesión o un admin.
+  if (name.startsWith("comprobante-")) {
+    const [runner, admin] = await Promise.all([getRunner(), isAdmin()]);
+    if (!runner && !admin) return new Response("forbidden", { status: 403 });
+  }
 
   const object = await env.MEDIA.get(name);
   if (!object) return new Response("not found", { status: 404 });

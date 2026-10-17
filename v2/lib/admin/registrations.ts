@@ -19,6 +19,7 @@ export type AdminRegItem = {
   status: string;
   paymentStatus: string;
   amountPaid: number;
+  receiptUrl: string | null;
   discountCode: string | null;
   createdAt: string;
   updatedAt: string;
@@ -107,6 +108,7 @@ export async function adminListRegs(opts: {
     status: schema.registrations.status,
     paymentStatus: schema.registrations.paymentStatus,
     amountPaid: schema.registrations.amountPaid,
+    receiptUrl: dsql<string | null>`(SELECT p.receipt_url FROM payments p WHERE p.registration_id = ${schema.registrations.id} AND p.receipt_url IS NOT NULL ORDER BY p.created_at DESC LIMIT 1)`,
     discountCode: schema.registrations.discountCode,
     createdAt: schema.registrations.createdAt,
     updatedAt: schema.registrations.updatedAt,

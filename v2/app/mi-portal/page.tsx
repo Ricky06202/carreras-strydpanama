@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { desc, eq, or } from "drizzle-orm";
+import { desc, eq, inArray, or } from "drizzle-orm";
 import { getDb, schema } from "@/lib/db";
 import { getRunner } from "@/lib/auth/session";
 import { formatDateEs } from "@/lib/format";
@@ -54,6 +54,19 @@ export default async function PortalPage() {
     .orderBy(desc(schema.registrations.createdAt))
     .all();
 
+  // Comprobantes subidos: se muestran como "en revisión" en la ficha.
+  const receipts = new Map<string, string>();
+  if (rows.length > 0) {
+    const pagos = await db
+      .select({ registrationId: schema.payments.registrationId, receiptUrl: schema.payments.receiptUrl })
+      .from(schema.payments)
+      .where(inArray(schema.payments.registrationId, rows.map((r) => r.id)))
+      .all();
+    for (const p of pagos) {
+      if (p.receiptUrl) receipts.set(p.registrationId, p.receiptUrl);
+    }
+  }
+
   return (
     <section className="bg-void min-h-dvh px-4 pb-20 pt-24">
       <div className="mx-auto w-full max-w-2xl">
@@ -99,6 +112,7 @@ export default async function PortalPage() {
                 shirtSize: r.shirtSize,
                 teamName: r.teamName,
                 raceAccepting: r.raceStatus === "accepting",
+                receiptUrl: receipts.get(r.id) ?? null,
               }}
             />
           ))}

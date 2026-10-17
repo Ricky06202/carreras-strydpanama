@@ -360,6 +360,11 @@ function RegCard({ item, open, busy, draft, setDraft, onToggle, onConfirmPay, on
 
               <div className="mt-4 flex flex-wrap gap-2">
                 <Button size="sm" variant="secondary" disabled={busy} onClick={onSave}>Guardar cambios</Button>
+                {item.receiptUrl && (
+                  <Button asChild size="sm" variant="outline">
+                    <a href={item.receiptUrl} target="_blank" rel="noopener noreferrer">Ver comprobante</a>
+                  </Button>
+                )}
                 {item.status !== "anulado" && item.paymentStatus === "pendiente" && (
                   <Button size="sm" disabled={busy} onClick={onConfirmPay}>{busy ? "…" : "Confirmar pago"}</Button>
                 )}
