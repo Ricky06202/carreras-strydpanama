@@ -30,6 +30,16 @@ export default defineConfig({
       CNFT_MAINNET_OK: bindings.text(""),
       CNFT_TREE_ADDRESS: bindings.text(""),
       CNFT_PROVIDER: bindings.text("bubblegum"),
+      // RS Pay (pay.rsanjur.com): cobro de inscripciones con el merchant Yappy de
+      // carreras. "1" enciende el flujo; con cualquier otro valor el sitio usa el
+      // Yappy directo de siempre. Las llaves del comercio `stryd-carreras`
+      // (RS_PAY_API_KEY, RS_PAY_CALLBACK_SECRET) NUNCA van aqui:
+      // se ponen con "wrangler secret put". Ver docs/rs-pay.md.
+      // APAGADO hasta que el comercio `stryd-carreras` tenga las llaves Yappy
+      // cargadas (yappy_merchant_id/token/url_domain/secret_key). Con "0" el cobro
+      // va por Yappy directo, igual que v1.
+      PAGO_RS_PAY: bindings.text("0"),
+      RS_PAY_URL: bindings.text("https://pay.rsanjur.com"),
     },
   }),
 });

@@ -2,6 +2,8 @@ import { and, eq, ne, sql as dsql } from "drizzle-orm";
 import type { Db } from "@/lib/db";
 import { schema } from "@/lib/db";
 import { createYappyPayment } from "@/lib/yappy";
+import { env } from "cloudflare:workers";
+import { crearOrdenRsPay, rsPayActivo } from "@/lib/rspay";
 import { TERMS_VERSION, termsTextHash } from "@/lib/legal";
 import { isPanamaMobile, registrationSchema, type RegistrationInput } from "./schema";
 import { sendRegistrationEmail } from "@/lib/email";
@@ -123,10 +125,29 @@ export interface CreateResult {
   raceTitle: string;
   runnerName: string;
   category: string | null;
-  pay?: { transactionId: string; token: string; documentName: string; confirmToken?: string };
+  pay?: {
+    transactionId: string;
+    token: string;
+    documentName: string;
+    confirmToken?: string;
+    /** Checkout de RS Pay (modal embebido). Ausente = Yappy directo. */
+    rsPayUrl?: string;
+  };
 }
 
-export async function createRegistration(db: Db, input: RegistrationInput): Promise<CreateResult> {
+/** Origin para el callback de RS Pay: el del request si es https, si no SITE_URL. */
+function rsPayOrigin(origin?: string): string {
+  const o = (origin ?? "").trim().replace(/\/+$/, "");
+  if (/^https:\/\//i.test(o)) return o;
+  const site = String((env as { SITE_URL?: string }).SITE_URL ?? "").trim().replace(/\/+$/, "");
+  return /^https:\/\//i.test(site) ? site : "https://carreras.strydpanama.com";
+}
+
+export async function createRegistration(
+  db: Db,
+  input: RegistrationInput,
+  opts?: { origin?: string },
+): Promise<CreateResult> {
   const race = await db.select().from(schema.races).where(eq(schema.races.slug, input.slug)).get();
   if (!race) throw new RegError(404, "Carrera no encontrada");
   if (race.status !== "accepting") throw new RegError(409, "Esta carrera no está recibiendo inscripciones por ahora");
@@ -225,6 +246,7 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
   }
 
   const isFreeCode = input.method === "code";
+  const usarRsPay = input.method === "yappy" && rsPayActivo();
   const id = crypto.randomUUID();
   const ts = nowIso();
   // Trazabilidad de consentimiento (Ley 81-2019): versión del texto + huella SHA-256.
@@ -279,7 +301,14 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
       amount,
       currency: "USD",
       status: isFreeCode ? "approved" : "pending",
-      provider: input.method === "yappy" ? "yappy" : input.method === "code" ? "code" : "manual",
+      provider:
+        input.method === "yappy"
+          ? usarRsPay
+            ? "rspay"
+            : "yappy"
+          : input.method === "code"
+            ? "code"
+            : "manual",
       orderId: confirmationCode,
       confirmTokenHash: confirmToken ? await sha256Hex(confirmToken) : null,
       // Payload mínimo: sin duplicar PII (cédula/fecha nac. ya viven en registrations).
@@ -296,7 +325,30 @@ export async function createRegistration(db: Db, input: RegistrationInput): Prom
     .run();
 
   let pay: CreateResult["pay"];
-  if (input.method === "yappy") {
+  if (input.method === "yappy" && usarRsPay) {
+    // Cobro por RS Pay (pay.rsanjur.com): la orden se crea server-side con la
+    // api_key del comercio `stryd-carreras`. El `concepto` es el código de
+    // confirmación — el webhook lo usa para reconciliar. El navegador nunca ve
+    // la llave: recibe la url del checkout y la abre con el helper rs-pay.js.
+    try {
+      const orden = await crearOrdenRsPay({
+        concepto: confirmationCode,
+        monto: amount,
+        callbackUrl: `${rsPayOrigin(opts?.origin)}/api/rspay/webhook`,
+      });
+      pay = {
+        transactionId: orden.id,
+        token: orden.token,
+        documentName: "",
+        confirmToken: confirmToken ?? undefined,
+        rsPayUrl: orden.url_pago,
+      };
+    } catch (e) {
+      await db.delete(schema.payments).where(eq(schema.payments.registrationId, id)).run();
+      await db.delete(schema.registrations).where(eq(schema.registrations.id, id)).run();
+      throw new RegError(502, `No se pudo iniciar el pago: ${String(e instanceof Error ? e.message : e).slice(0, 180)}`);
+    }
+  } else if (input.method === "yappy") {
     try {
       const yappy = await createYappyPayment(confirmationCode, amount, input.phone.replace(/\D/g, ""));
       pay = { ...yappy, confirmToken: confirmToken ?? undefined };

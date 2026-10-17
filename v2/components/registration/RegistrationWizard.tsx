@@ -63,11 +63,44 @@ type Result = {
   paymentStatus: string;
   amount: number;
   category: string | null;
-  pay?: { transactionId: string; token: string; documentName: string; confirmToken?: string };
+  pay?: {
+    transactionId: string;
+    token: string;
+    documentName: string;
+    confirmToken?: string;
+    rsPayUrl?: string;
+  };
 };
 
 const YAPPY_SCRIPT = "https://bt-cdn.yappy.cloud/v1/cdn/web-component-btn-yappy.js";
 const PENDING_KEY = "stryd_v2_pending_yappy";
+
+/**
+ * RS Pay: se usa el helper OFICIAL de pay.rsanjur.com (`rs-pay.js`), cargado bajo
+ * demanda solo cuando hay una orden que cobrar. Su modal ya trae el checkout
+ * embebido, foco atrapado, Esc, scroll bloqueado y "abrir en otra pestaña".
+ * Si el helper no carga, se abre el checkout en otra pestaña como escape.
+ */
+function cargarHelperRsPay(base: string): Promise<any | null> {
+  return new Promise((resolve) => {
+    const w = window as any;
+    if (w.RSPay && typeof w.RSPay.open === "function") return resolve(w.RSPay);
+    const previo = document.querySelector("script[data-rs-pay-helper]") as HTMLScriptElement | null;
+    const src = `${base.replace(/\/+$/, "")}/rs-pay.js`;
+    if (previo) {
+      previo.addEventListener("load", () => resolve((window as any).RSPay ?? null), { once: true });
+      previo.addEventListener("error", () => resolve(null), { once: true });
+      return;
+    }
+    const s = document.createElement("script");
+    s.src = src;
+    s.async = true;
+    s.dataset.rsPayHelper = "1";
+    s.onload = () => resolve((window as any).RSPay ?? null);
+    s.onerror = () => resolve(null);
+    document.head.appendChild(s);
+  });
+}
 
 const fieldCls =
   "h-13 w-full rounded-xl border border-hairline bg-carbon px-4 text-[16px] text-snow placeholder:text-mist/60 outline-none transition focus:border-stryd/70 focus:ring-2 focus:ring-stryd/25";
@@ -375,6 +408,41 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
     }
   }
 
+  // Cobro por RS Pay: modal embebido con el helper oficial. El pago lo confirma
+  // el webhook (HMAC) del lado del servidor; aquí solo se muestra el resultado.
+  async function pagarConRsPay(r: Result) {
+    const url = r.pay?.rsPayUrl;
+    if (!url) return;
+    let base = "https://pay.rsanjur.com";
+    try {
+      base = new URL(url).origin;
+    } catch {
+      /* usa el default */
+    }
+    localStorage.setItem(
+      PENDING_KEY,
+      JSON.stringify({ registrationId: r.registrationId, orderId: r.confirmationCode, at: Date.now() }),
+    );
+    const helper = await cargarHelperRsPay(base);
+    if (!helper || typeof helper.open !== "function") {
+      // Escape: sin helper, el checkout se abre en otra pestaña.
+      window.open(url, "_blank", "noopener,noreferrer");
+      go(4);
+      return;
+    }
+    try {
+      helper.open(url, {
+        // El pago lo confirma el webhook server-side; el paso 4 ya sondea solo.
+        onSuccess: () => {},
+        onCancel: () => {},
+      });
+      go(4);
+    } catch {
+      window.open(url, "_blank", "noopener,noreferrer");
+      go(4);
+    }
+  }
+
   async function submitManual() {
     const r = await createRegistration();
     if (r) go(4);
@@ -384,6 +452,11 @@ export function RegistrationWizard({ race }: { race: WizardRace }) {
   async function payWithYappy() {
     const r = await createRegistration();
     if (!r) return;
+    // RS Pay encendido: el server devolvió el checkout (Yappy va por dentro).
+    if (r.pay?.rsPayUrl) {
+      await pagarConRsPay(r);
+      return;
+    }
     const bp = yappyRef.current;
     if (!r.pay || !bp || typeof bp.eventPayment !== "function") {
       setFatal("No se pudo abrir Yappy. Tu preinscripción quedó guardada — puedes pagar por transferencia o efectivo.");

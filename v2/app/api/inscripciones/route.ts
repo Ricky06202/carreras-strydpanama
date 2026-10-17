@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await createRegistration(getDb(), parsed.data);
+    const result = await createRegistration(getDb(), parsed.data, { origin: new URL(req.url).origin });
     return NextResponse.json(result, { status: 201 });
   } catch (e) {
     if (e instanceof RegError) {
