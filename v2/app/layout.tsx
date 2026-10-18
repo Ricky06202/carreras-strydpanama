@@ -75,6 +75,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <main id="contenido">{children}</main>
         <Footer />
         <JsonLd data={[ORGANIZATION_LD, WEBSITE_LD]} />
+        {/* "Tu perfil": el chip lo dibuja el modulo (sesion.js), igual en todos los
+            sitios de rsanjur. Sin sesion no dibuja nada. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              'window.RSID_MENU={cosas:[{t:"Mi portal",u:"/mi-portal",i:"pedido"},{t:"Mi cupo",u:"/mi-cupo",i:"perfil"}]};',
+          }}
+        />
+        <script src="https://pay.rsanjur.com/sesion.js" defer />
       </body>
     </html>
   );
