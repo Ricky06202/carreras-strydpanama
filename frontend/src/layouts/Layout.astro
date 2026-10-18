@@ -62,8 +62,6 @@ const currentPath = Astro.url.pathname;
           </button>
         </nav>
 
-        <!-- "Tu perfil": lo dibuja el modulo (sesion.js), igual en todos los sitios. -->
-        <span data-rsid-perfil-host></span>
 
         <!-- Mobile: theme toggle + hamburger -->
         <div class="flex items-center gap-2 md:hidden">
@@ -240,5 +238,9 @@ const currentPath = Astro.url.pathname;
       window.RSID_MENU = { cosas: [{ t: "Mis inscripciones", u: "/mis-inscripciones", i: "pedido" }] };
     </script>
     <script is:inline src="https://pay.rsanjur.com/sesion.js" defer></script>
+  <!-- "Tu perfil": el componente (sesion.js) va al final del contenido, como una
+       seccion mas del sitio (no flotando sobre la pagina). -->
+  <div class="rsid-bloque"><span data-rsid-perfil-host></span></div>
+
   </body>
 </html>
