@@ -106,6 +106,9 @@ const currentPath = Astro.url.pathname;
       <slot />
     </main>
 
+    <!-- "Tu perfil": al final del contenido, como una seccion mas. -->
+    <div class="rsid-bloque"><span data-rsid-perfil-host></span></div>
+
     <footer class="bg-gray-800 dark:bg-slate-900 text-white py-8 md:py-12 mt-auto border-t border-gray-700 dark:border-slate-800">
       <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
         <div>
@@ -238,9 +241,5 @@ const currentPath = Astro.url.pathname;
       window.RSID_MENU = { cosas: [{ t: "Mis inscripciones", u: "/mis-inscripciones", i: "pedido" }] };
     </script>
     <script is:inline src="https://pay.rsanjur.com/sesion.js" defer></script>
-  <!-- "Tu perfil": el componente (sesion.js) va al final del contenido, como una
-       seccion mas del sitio (no flotando sobre la pagina). -->
-  <div class="rsid-bloque"><span data-rsid-perfil-host></span></div>
-
   </body>
 </html>
