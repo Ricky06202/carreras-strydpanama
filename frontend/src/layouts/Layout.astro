@@ -63,6 +63,9 @@ const currentPath = Astro.url.pathname;
         </nav>
 
 
+        <!-- "Tu perfil": un boton mas de la barra (lo pinta sesion.js). -->
+        <span data-rsid-perfil-host></span>
+
         <!-- Mobile: theme toggle + hamburger -->
         <div class="flex items-center gap-2 md:hidden">
           <button id="theme-toggle-mobile" class="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-gray-500 dark:text-gray-400" aria-label="Toggle Dark Mode">
@@ -105,9 +108,6 @@ const currentPath = Astro.url.pathname;
     <main class="flex-1">
       <slot />
     </main>
-
-    <!-- "Tu perfil": al final del contenido, como una seccion mas. -->
-    <div class="rsid-bloque"><span data-rsid-perfil-host></span></div>
 
     <footer class="bg-gray-800 dark:bg-slate-900 text-white py-8 md:py-12 mt-auto border-t border-gray-700 dark:border-slate-800">
       <div class="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-6 md:mb-8">
