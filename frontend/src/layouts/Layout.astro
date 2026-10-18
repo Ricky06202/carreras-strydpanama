@@ -238,7 +238,8 @@ const currentPath = Astro.url.pathname;
       }
     </script>
     <script is:inline>
-      window.RSID_MENU = { cosas: [{ t: "Mis inscripciones", u: "/mis-inscripciones", i: "pedido" }] };
+      window.RSID_MENU = {
+      entrar: "/entrar", cosas: [{ t: "Mis inscripciones", u: "/mis-inscripciones", i: "pedido" }] };
     </script>
     <script is:inline src="https://pay.rsanjur.com/sesion.js" defer></script>
   </body>
