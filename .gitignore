@@ -30,3 +30,5 @@ pnpm-debug.log*
 cookies.txt
 test-put.js
 *.log
+
+.codegraph/

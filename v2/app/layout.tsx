@@ -30,6 +30,19 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  manifest: "/manifest.webmanifest",
+  icons: {
+    icon: [
+      { url: "/pwa-192.png", type: "image/png", sizes: "192x192" },
+      { url: "/pwa-512.png", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", type: "image/png", sizes: "180x180" }],
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "STRYD Panamá",
+  },
   title: {
     default: "Carreras Stryd Panamá — inscripciones y cronometraje",
     template: "%s · Stryd Panamá",
@@ -84,6 +97,15 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           }}
         />
         <script src="https://pay.rsanjur.com/sesion.js" defer />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if ("serviceWorker" in navigator) {
+              navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+                console.warn("Service worker registration failed.", error);
+              });
+            }`,
+          }}
+        />
       </body>
     </html>
   );
