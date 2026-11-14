@@ -35,6 +35,6 @@ export async function GET(req: Request) {
 
   const res = NextResponse.redirect(new URL("/admin", url));
   clearState(res);
-  await startAdminSession(res, secure);
+  await startAdminSession(res, secure, email);
   return res;
 }

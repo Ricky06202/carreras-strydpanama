@@ -64,6 +64,7 @@ export default async function AdminDashboard() {
             <QuickLink href="/admin/timing" label="Cronometrar la carrera" hint="meta, podio y CSV" />
             <QuickLink href="/admin/tombole" label="Sortear la tómbola" hint="premios entre confirmados" />
             <QuickLink href="/admin/carreras" label="Crear / editar carrera" hint="modalidades y categorías" />
+            <QuickLink href="/admin/integraciones" label="Agregar ChatGPT" hint="integraciones de IA" />
           </div>
         </Card>
       </div>

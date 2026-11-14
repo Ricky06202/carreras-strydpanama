@@ -229,6 +229,7 @@ export const registrations = sqliteTable(
 // Sesiones admin revocables: token aleatorio por login, guardado como hash.
 export const adminSessions = sqliteTable("admin_sessions", {
   tokenHash: text("token_hash").primaryKey(),
+  email: text("email"),
   createdAt: text("created_at").notNull().default(sql`(datetime('now'))`),
   expiresAt: text("expires_at").notNull(),
 });

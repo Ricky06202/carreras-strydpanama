@@ -22,12 +22,12 @@ function randomHex(bytes: number): string {
 // path "/" para cubrir también /api/admin/* (antes path="/admin" rompía el guard).
 // OJO vinext: mutar cookies() dentro de un route handler NO emite Set-Cookie;
 // las cookies de sesión SIEMPRE se adjuntan a la respuesta (res.cookies).
-export async function startAdminSession(res: NextResponse, secure: boolean): Promise<void> {
+export async function startAdminSession(res: NextResponse, secure: boolean, email: string): Promise<void> {
   const token = randomHex(32);
   const tokenHash = await sha256Hex(token);
   await getDb()
     .insert(schema.adminSessions)
-    .values({ tokenHash, expiresAt: new Date(Date.now() + HOURS * 3600_000).toISOString() })
+    .values({ tokenHash, email, expiresAt: new Date(Date.now() + HOURS * 3600_000).toISOString() })
     .run();
   res.cookies.set(COOKIE, token, {
     httpOnly: true,
@@ -69,4 +69,19 @@ export async function isAdmin(): Promise<boolean> {
     return false;
   }
   return true;
+}
+
+
+/** Solo nuevas sesiones vinculadas al correo verificado de Google permiten conceder MCP. */
+export async function getAdminEmail(): Promise<string | null> {
+  const token = (await cookies()).get(COOKIE)?.value;
+  if (!token) return null;
+  try {
+    const hash = await sha256Hex(token);
+    const row = await getDb().select({
+      email:schema.adminSessions.email, expiresAt:schema.adminSessions.expiresAt
+    }).from(schema.adminSessions).where(eq(schema.adminSessions.tokenHash, hash)).get();
+    if (!row?.email || new Date(row.expiresAt).getTime() < Date.now()) return null;
+    return row.email;
+  } catch { return null; }
 }
