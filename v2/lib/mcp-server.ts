@@ -70,13 +70,16 @@ function httpsUri(uri: string): boolean {
 function metadataUrl(req: Request): string {
   return site(req) + "/.well-known/oauth-protected-resource";
 }
-function bearerChallenge(req: Request, scope: string): Response {
-  return error("invalid_token", "Autoriza primero tu cuenta en la aplicación.", 401);
-}
-function unauth(req: Request, scope: string): Response {
-  return output({ error: "invalid_token", error_description: "Conecta tu cuenta mediante OAuth." }, 401, {
-    "www-authenticate": 'Bearer resource_metadata="' + metadataUrl(req) + '", scope="' + scope + '"'
-  });
+function unauth(req: Request, scope: string, id: unknown): Response {
+  const challenge = 'Bearer resource_metadata="' + metadataUrl(req) + '", error="insufficient_scope", error_description="Conecta tu cuenta en el panel de la aplicación", scope="' + scope + '"';
+  return output({
+    jsonrpc:"2.0", id,
+    result:{
+      isError:true,
+      content:[{type:"text",text:"Debes autorizar este complemento desde tu cuenta administrativa."}],
+      _meta:{"mcp/www_authenticate":[challenge]}
+    }
+  }, 200, {"www-authenticate":challenge});
 }
 
 export function oauthMetadata(req: Request, context: McpContext, kind: "resource" | "authorization"): Response {
@@ -117,7 +120,7 @@ function readParams(req: Request): Promise<URLSearchParams> {
     return new URLSearchParams(text);
   });
 }
-function consentFields(p: URLSearchParams, ctx: McpContext) {
+function consentFields(p: URLSearchParams, ctx: McpContext, expectedResource: string) {
   const clientId = clean(p.get("client_id"), 100);
   const redirectUri = clean(p.get("redirect_uri"), 1500);
   const challenge = clean(p.get("code_challenge"), 200);
@@ -126,7 +129,7 @@ function consentFields(p: URLSearchParams, ctx: McpContext) {
   const scope = clean(p.get("scope"), 200) || ctx.scope;
   if (!clientId || !httpsUri(redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
       p.get("code_challenge_method") !== "S256" || p.get("response_type") !== "code" ||
-      scope !== ctx.scope || (resource && resource !== new URL(p.get("authorization_origin") || "https://invalid.example").origin + "/mcp" && false)) {
+      scope !== ctx.scope || resource !== expectedResource) {
     return null;
   }
   return { clientId, redirectUri, challenge, state, scope };
@@ -167,7 +170,7 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
     }
     if (path === "authorize" && (req.method === "GET" || req.method === "POST")) {
       const p = req.method === "GET" ? new URL(req.url).searchParams : await readParams(req);
-      const fields = consentFields(p, ctx);
+      const fields = consentFields(p, ctx, origin + "/mcp");
       if (!fields) return error("invalid_request", "Parámetros OAuth o PKCE inválidos.");
       const client = await clientFor(db, fields.clientId);
       let uris: string[] = [];
@@ -202,8 +205,8 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
       if (!cookieValue || !same(cookieValue, clean(p.get("csrf"), 128))) return error("access_denied", "Confirmación caducada.", 403);
       if (p.get("decision") !== "allow") return redirected(fields.redirectUri, { error:"access_denied", state:fields.state });
       const code = randomSecret();
-      await db.prepare("INSERT INTO mcp_codes (code_hash, client_id, redirect_uri, code_challenge, account_id, scope, expires_at) VALUES (?,?,?,?,?,?,?)")
-        .bind(await digest(code), fields.clientId, fields.redirectUri, fields.challenge, ctx.accountId, fields.scope, Date.now() + 300000).run();
+      await db.prepare("INSERT INTO mcp_codes (code_hash, client_id, redirect_uri, code_challenge, account_id, scope, resource, expires_at) VALUES (?,?,?,?,?,?,?,?)")
+        .bind(await digest(code), fields.clientId, fields.redirectUri, fields.challenge, ctx.accountId, fields.scope, origin + "/mcp", Date.now() + 300000).run();
       return redirected(fields.redirectUri, { code, state:fields.state });
     }
     if (path === "token" && req.method === "POST") {
@@ -221,7 +224,7 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
         const hash = await digest(code);
         const row = await db.prepare("SELECT * FROM mcp_codes WHERE code_hash=? AND client_id=?").bind(hash, clientId).first();
         if (!row || row.expires_at <= Date.now() || row.redirect_uri !== redirectUri ||
-            !same(await digest(verifier, true), row.code_challenge)) return error("invalid_grant", "Código expirado o inválido.");
+            !same(await digest(verifier, true), row.code_challenge) || row.resource !== origin + "/mcp" || p.get("resource") !== row.resource) return error("invalid_grant", "Código expirado o inválido.");
         const used = await db.prepare("DELETE FROM mcp_codes WHERE code_hash=? AND client_id=? AND expires_at>?")
           .bind(hash, clientId, Date.now()).run();
         if (Number(used?.meta?.changes ?? 0) !== 1) return error("invalid_grant", "Código ya utilizado.");
@@ -231,7 +234,7 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
         const refresh = clean(p.get("refresh_token"), 200);
         const row = await db.prepare("SELECT * FROM mcp_tokens WHERE refresh_hash=? AND client_id=?")
           .bind(await digest(refresh), clientId).first();
-        if (!row || row.refresh_expires <= Date.now()) return error("invalid_grant", "Renovación no válida.");
+        if (!row || row.refresh_expires <= Date.now() || row.resource !== origin + "/mcp" || (p.get("resource") && p.get("resource") !== row.resource)) return error("invalid_grant", "Renovación no válida.");
         const used = await db.prepare("DELETE FROM mcp_tokens WHERE refresh_hash=? AND client_id=?")
           .bind(await digest(refresh), clientId).run();
         if (Number(used?.meta?.changes ?? 0) !== 1) return error("invalid_grant", "Renovación ya utilizada.");
@@ -242,8 +245,8 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
       const access = randomSecret();
       const refresh = randomSecret();
       const now = Date.now();
-      await db.prepare("INSERT INTO mcp_tokens (token_hash, refresh_hash, client_id, account_id, scope, access_expires, refresh_expires) VALUES (?,?,?,?,?,?,?)")
-        .bind(await digest(access), await digest(refresh), clientId, accountId, scope,
+      await db.prepare("INSERT INTO mcp_tokens (token_hash, refresh_hash, client_id, account_id, scope, resource, access_expires, refresh_expires) VALUES (?,?,?,?,?,?,?,?)")
+        .bind(await digest(access), await digest(refresh), clientId, accountId, scope, origin + "/mcp",
           now + TOKEN_SECONDS * 1000, now + REFRESH_SECONDS * 1000).run();
       return output({ access_token:access, refresh_token:refresh, token_type:"Bearer", expires_in:TOKEN_SECONDS, scope });
     }
@@ -294,17 +297,18 @@ export async function handleMcp(req: Request, ctx: McpContext): Promise<Response
   if (msg.method === "tools/list") return rpc(msg.id, { tools: ctx.tools.map(tool => ({
     name:tool.name, description:tool.description, inputSchema:tool.inputSchema,
     annotations:{ readOnlyHint:true, destructiveHint:false, idempotentHint:true },
-    securitySchemes:[{type:"oauth2", scopes:[ctx.scope]}]
+    securitySchemes:[{type:"oauth2", scopes:[ctx.scope]}],
+    _meta:{securitySchemes:[{type:"oauth2", scopes:[ctx.scope]}]}
   })) });
   if (msg.method !== "tools/call") return rpcError(msg.id, -32601, "Método desconocido");
   const match = /^Bearer ([a-f0-9]{64})$/i.exec(req.headers.get("authorization") || "");
-  if (!match || !ctx.db) return unauth(req, ctx.scope);
+  if (!match || !ctx.db) return unauth(req, ctx.scope, msg.id);
   let token: any;
   try {
     token = await ctx.db.prepare("SELECT * FROM mcp_tokens WHERE token_hash=?").bind(await digest(match[1])).first();
-  } catch { return unauth(req, ctx.scope); }
-  if (!token || token.access_expires <= Date.now() || token.scope !== ctx.scope) return unauth(req, ctx.scope);
-  if (ctx.checkAccount && !(await ctx.checkAccount(token.account_id))) return unauth(req, ctx.scope);
+  } catch { return unauth(req, ctx.scope, msg.id); }
+  if (!token || token.access_expires <= Date.now() || token.scope !== ctx.scope || token.resource !== site(req) + "/mcp") return unauth(req, ctx.scope, msg.id);
+  if (ctx.checkAccount && !(await ctx.checkAccount(token.account_id))) return unauth(req, ctx.scope, msg.id);
   const tool = ctx.tools.find(x => x.name === msg.params?.name);
   if (!tool) return rpcError(msg.id, -32602, "Herramienta desconocida");
   const args = msg.params?.arguments || {};
