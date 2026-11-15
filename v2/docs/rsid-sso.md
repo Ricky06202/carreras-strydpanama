@@ -1,7 +1,7 @@
 # RS ID en carreras v2 — cableado del SSO
 
-Estado: **código listo y commiteado en `v2`** (no desplegado). Falta poner los
-secretos y probar en staging.
+Estado: **desplegado en producción** en `https://connect.carreras.strydpanama.com`.
+El acceso administrativo se completa con RS ID y la allowlist de Carrera.
 
 ## Qué se hizo
 
@@ -69,24 +69,22 @@ Vars (por entorno, `var` o `bindings.text`):
 Sin `RS_ID_MOD_SECRET`, el botón **no aparece** (`rsidListo()` es false) y el
 canje responde `no_configurado`. Cero riesgo de dejar algo a medias.
 
-## Probar en staging
+## Probar en producción o staging
 
 El origen de vuelta se arma desde el host real de la petición, así que el RS ID
 acepta `*.workers.dev` (está en su lista blanca), `localhost` y
 `*.strydpanama.com`.
 
-1. Poner el secreto en staging:
-   `wrangler secret put RS_ID_MOD_SECRET` (mismo valor que en rs-id).
-2. Desplegar `v2` a `v2.ricardosanjur.workers.dev`.
-3. Abrir `/entrar`, verificar que aparece **"Entrar con RS ID"**.
-4. Tocar el botón → debe llevar a `id.rsanjur.com/id?volver=…`.
-5. Entrar con un correo que **ya tenga cuenta** en carreras → debe caer en
+1. Abrir `https://connect.carreras.strydpanama.com/entrar` y verificar que aparece
+   **"Entrar con RS ID"**.
+2. Tocar el botón → debe llevar a `id.rsanjur.com/id?volver=…`.
+3. Entrar con un correo que **ya tenga cuenta** en carreras → debe caer en
    `/mi-portal` con sesión.
-6. Repetir con un correo **sin** cuenta → debe caer en `/entrar?rsid_alta=1&t=…`
+4. Repetir con un correo **sin** cuenta → debe caer en `/entrar?rsid_alta=1&t=…`
    con el alta (sin contraseña) y el correo ya verificado.
-6b. Si esa persona ya tiene cuenta con **otro** correo → el alta responde 409 y
+5. Si esa persona ya tiene cuenta con **otro** correo → el alta responde 409 y
    aparece la vinculación (cédula + fecha de nacimiento).
-7. Probar el correo de la allowlist (mesa) → debe caer en `/admin`.
+6. Probar el correo de la allowlist (mesa) → debe caer en `/admin`.
 
 ## Pendientes (fuera de este cableado)
 
