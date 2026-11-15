@@ -24,7 +24,8 @@ export default defineConfig({
       // sirve esta rama: si queda vacio, cae al dominio de produccion y los
       // enlaces de staging se comparten SIN imagen (la imagen no existe alli).
       // CUTOVER: cambiar a "https://carreras.strydpanama.com" en el deploy de prod.
-      SITE_URL: bindings.text("https://carreras-strydpanama-v2.ricardosanjur.workers.dev"),
+      SITE_URL: bindings.text("https://carreras.strydpanama.com"),
+      COMIBOX_API_URL: bindings.text("https://comiboxchiriqui.com"),
       // RS ID (id.rsanjur.com): login SSO cross-domain (?volver= + /api/auth/canjear).
       // Vacios = el boton "Entrar con RS ID" no se muestra. El secreto de app
       // (RS_ID_MOD_SECRET = RS_ID_CANJE_SECRET del worker rs-id) va con wrangler secret put.
