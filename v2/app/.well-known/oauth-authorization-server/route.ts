@@ -1,4 +1,8 @@
-import { oauthMetadata } from "@/lib/mcp-server";
 import { contextoMcpCarreras } from "@/lib/mcp-carreras";
+import { oauthMetadata } from "@/lib/mcp-server";
+
 export const dynamic = "force-dynamic";
-export const GET = (req: Request) => oauthMetadata(req, contextoMcpCarreras(), "authorization");
+
+export function GET(request: Request) {
+  return oauthMetadata(request, contextoMcpCarreras(), "authorization");
+}

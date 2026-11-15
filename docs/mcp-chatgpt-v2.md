@@ -1,6 +1,14 @@
 # RS Connect para ChatGPT
 
-Estado: implementación local; no desplegada ni habilitada en producción.
+Estado: el servidor MCP de Carrera y la API firmada de Comibox están desplegados en producción.
+
+## Conexión
+
+- Servidor MCP: `https://carreras.strydpanama.com/mcp`.
+- Descubrimiento OAuth: `https://carreras.strydpanama.com/.well-known/oauth-authorization-server`.
+- Metadatos del recurso: `https://carreras.strydpanama.com/.well-known/oauth-protected-resource`.
+- OAuth 2.1 usa Dynamic Client Registration, Authorization Code, PKCE S256 y consentimiento desde una sesión administrativa.
+- Para usarlo, agrega el servidor MCP como conector personalizado en ChatGPT y autoriza la cuenta administrativa. La publicación en el directorio de ChatGPT es independiente y no se hace desde el panel de Carrera.
 
 ## Arquitectura y permisos
 
@@ -13,13 +21,15 @@ Estado: implementación local; no desplegada ni habilitada en producción.
 - Ningún módulo permite borrar. Informes no generan PDFs. El backend recibe JSON estructurado; los archivos fuente no se almacenan ni envían desde el backend.
 - No hay llamadas al API de OpenAI desde estos servicios. ChatGPT actúa como cliente MCP.
 
-## Preparación antes de producción
+## Configuración de producción
 
-1. Revisar el diff y respaldar D1.
-2. Aplicar las migraciones pendientes de `v2/drizzle`, incluida `0009_mcp_oauth.sql` y la nueva `0010_rs_connect_imports.sql`.
-3. Configurar en ambos Workers los secretos dedicados `COMIBOX_RS_CONNECT_API_KEY` y `COMIBOX_RS_CONNECT_HMAC_SECRET` con los mismos valores. Configurar `COMIBOX_API_URL` como variable HTTPS en Carrera. `COMIBOX_ASSISTANT_API_KEY` sigue reservado a los clientes legacy de Comibox.
-4. Rotar las credenciales que siguen expuestas en el repositorio público antes de activar esta integración.
-5. Validar build, pruebas OAuth/PKCE/CSRF/revocación, firmas y permisos firmados de Comibox, vista previa/aprobación/idempotencia de importaciones, pagos pagados y reintentos.
-6. Desplegar ambos Workers en coordinación y probar con administradores de lectura y escritura. Publicar y configurar el conector de ChatGPT por separado.
+- Las migraciones de Carrera, incluida `0010_rs_connect_imports.sql`, están aplicadas a D1.
+- `COMIBOX_RS_CONNECT_API_KEY` y `COMIBOX_RS_CONNECT_HMAC_SECRET` están configuradas en ambos Workers con los mismos valores. La URL de Comibox y el origen canónico de Carrera se declaran en `v2/cloudflare.config.ts`.
+- `COMIBOX_ASSISTANT_API_KEY` permanece reservado a los clientes legacy de Comibox.
+- El pipeline de producción ejecuta `bun test`, `bun run build` y el despliegue antes de poner la versión al 100% del tráfico.
 
-El panel de integraciones no instala unilateralmente un complemento. Hasta que se publique y configure el conector, el botón abre el directorio de ChatGPT.
+## Pendientes operativos
+
+- La persona administradora debe agregar el MCP en ChatGPT y completar el consentimiento OAuth; desplegar el servidor no instala el conector en una cuenta de ChatGPT.
+- Rotar las credenciales que aparecieron históricamente en el repositorio público antes de conceder permisos de escritura. Borrar el texto del repositorio no invalida una credencial que ya se haya expuesto.
+- El panel de integraciones no instala unilateralmente un complemento; si no está disponible el conector personalizado en la cuenta de ChatGPT, el botón abre el directorio.
