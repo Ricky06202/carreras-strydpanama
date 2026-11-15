@@ -142,7 +142,7 @@ Pasos para desplegar:
 
 ### Backend SonicJS
 - **Admin Panel**: `https://carreras-strydpanama-cms-api.your-subdomain.workers.dev/admin`
-- **Credenciales Admin**: `admin@strydpanama.com` / `StrydPanama2026!`
+- **Credenciales Admin**: No guardar contraseñas en el repositorio; gestionarlas como secretos fuera del código.
 - **API Pública**: `/api/collections/{collection}/content`
 - **Coleciones**: races, categories, distances, participants, registration_codes, transactions, running_teams
 
