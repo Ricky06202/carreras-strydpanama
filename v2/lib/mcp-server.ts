@@ -5,14 +5,16 @@
 export type McpTool = {
   name: string;
   description: string;
-  inputSchema: { type: "object"; properties: Record<string, unknown>; additionalProperties: false };
-  run: (db: any, args: Record<string, unknown>) => Promise<unknown>;
+  scopes: string[];
+  idempotentHint?: boolean;
+  inputSchema: { type: "object"; properties: Record<string, unknown>; additionalProperties: false; required?: string[] };
+  run: (db: any, args: Record<string, unknown>, accountId: string) => Promise<unknown>;
 };
 
 export type McpContext = {
   db: any;
   appName: string;
-  scope: string;
+  scopes: string[];
   accountId: string | null;
   tools: McpTool[];
   checkAccount?: (accountId: string) => Promise<boolean>;
@@ -88,7 +90,7 @@ export function oauthMetadata(req: Request, context: McpContext, kind: "resource
     resource: origin + "/mcp",
     resource_name: context.appName,
     authorization_servers: [origin],
-    scopes_supported: [context.scope],
+    scopes_supported: context.scopes,
     bearer_methods_supported: ["header"]
   });
   return output({
@@ -100,7 +102,7 @@ export function oauthMetadata(req: Request, context: McpContext, kind: "resource
     grant_types_supported: ["authorization_code", "refresh_token"],
     token_endpoint_auth_methods_supported: ["none"],
     code_challenge_methods_supported: ["S256"],
-    scopes_supported: [context.scope],
+    scopes_supported: context.scopes,
     client_id_metadata_document_supported: false
   });
 }
@@ -126,13 +128,19 @@ function consentFields(p: URLSearchParams, ctx: McpContext, expectedResource: st
   const challenge = clean(p.get("code_challenge"), 200);
   const state = clean(p.get("state"), 1500);
   const resource = clean(p.get("resource"), 1500);
-  const scope = clean(p.get("scope"), 200) || ctx.scope;
+  const requestedScopes = (clean(p.get("scope"), 200) || ctx.scopes[0] || "").trim().split(/\s+/).filter(Boolean);
+  const supported = new Set(ctx.scopes);
+  const scope = [...new Set(requestedScopes)].sort().join(" ");
   if (!clientId || !httpsUri(redirectUri) || !/^[A-Za-z0-9_-]{43}$/.test(challenge) ||
       p.get("code_challenge_method") !== "S256" || p.get("response_type") !== "code" ||
-      scope !== ctx.scope || resource !== expectedResource) {
+      !scope || requestedScopes.length !== scope.split(" ").length || requestedScopes.some((value) => !supported.has(value)) || resource !== expectedResource) {
     return null;
   }
   return { clientId, redirectUri, challenge, state, scope };
+}
+
+function scopeList(scope: unknown): string[] {
+  return typeof scope === "string" ? scope.trim().split(/\s+/).filter(Boolean) : [];
 }
 
 export async function handleOAuth(req: Request, ctx: McpContext, path: string): Promise<Response> {
@@ -183,15 +191,22 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
       }
       if (req.method === "GET") {
         const csrf = randomSecret();
+        const labels: Record<string, string> = {
+          "carreras:read": "Consultar carreras e inscripciones",
+          "carreras:write": "Previsualizar e importar inscripciones (requiere aprobación explícita)",
+          "comibox:read": "Consultar boxeadores e informes de Comibox",
+          "comibox:write": "Crear boxeadores en Comibox"
+        };
+        const permisos = fields.scope.split(" ").map((value) => "<li>" + safe(labels[value] ?? value) + "</li>").join("");
         const body = '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
           '<meta name="referrer" content="no-referrer"><title>Autorizar ' + safe(ctx.appName) + '</title>' +
           '<body style="font:16px system-ui;max-width:560px;margin:10vh auto;padding:24px;background:#10151e;color:#fff">' +
-          '<h1>Conectar ' + safe(ctx.appName) + '</h1><p><strong>' + safe(client.client_name) + '</strong> solicita acceso de solo lectura a tu panel.</p>' +
-          '<p>No podrá crear, editar ni borrar registros. Puedes revocar el acceso desde Integraciones.</p>' +
+          '<h1>Conectar ' + safe(ctx.appName) + '</h1><p><strong>' + safe(client.client_name) + '</strong> solicita estos permisos:</p><ul>' + permisos + '</ul>' +
+          '<p>Las herramientas no pueden borrar registros. Puedes revocar el acceso desde Integraciones.</p>' +
           '<form method="post" action="/oauth/authorize">' +
           Array.from(p.entries()).map(([k,v]) => '<input type="hidden" name="' + safe(k) + '" value="' + safe(v) + '">').join("") +
           '<input type="hidden" name="csrf" value="' + csrf + '">' +
-          '<button name="decision" value="allow" style="padding:14px;background:#16a34a;color:white;border:0;border-radius:8px">Autorizar consulta</button>' +
+          '<button name="decision" value="allow" style="padding:14px;background:#16a34a;color:white;border:0;border-radius:8px">Autorizar acceso</button>' +
           '<button name="decision" value="deny" style="padding:14px;margin-left:10px">Cancelar</button></form></body></html>';
         return new Response(body, { headers: {
           "content-type":"text/html; charset=utf-8", "cache-control":"no-store", "x-frame-options":"DENY",
@@ -215,7 +230,7 @@ export async function handleOAuth(req: Request, ctx: McpContext, path: string): 
       const type = p.get("grant_type");
       if (!clientId || !(await clientFor(db, clientId))) return error("invalid_client", "Cliente no registrado.", 401);
       let accountId = "";
-      let scope = ctx.scope;
+      let scope = ctx.scopes[0] || "";
       if (type === "authorization_code") {
         const code = clean(p.get("code"), 200);
         const verifier = clean(p.get("code_verifier"), 200);
@@ -291,30 +306,32 @@ export async function handleMcp(req: Request, ctx: McpContext): Promise<Response
   if (msg.method === "initialize") return rpc(msg.id, {
     protocolVersion:"2025-06-18", capabilities:{ tools:{listChanged:false} },
     serverInfo:{ name: ctx.appName, version:"1.0.0" },
-    instructions:"Herramientas administrativas solo de lectura. Nunca inventes datos."
+    instructions:"Respeta los permisos mostrados por herramienta. Nunca inventes datos ni confirmes una importación sin aprobación explícita de la persona usuaria."
   });
   if (msg.method === "ping") return rpc(msg.id, {});
   if (msg.method === "tools/list") return rpc(msg.id, { tools: ctx.tools.map(tool => ({
     name:tool.name, description:tool.description, inputSchema:tool.inputSchema,
-    annotations:{ readOnlyHint:true, destructiveHint:false, idempotentHint:true },
-    securitySchemes:[{type:"oauth2", scopes:[ctx.scope]}],
-    _meta:{securitySchemes:[{type:"oauth2", scopes:[ctx.scope]}]}
+    annotations:{ readOnlyHint:!tool.scopes.some((scope) => scope.endsWith(":write")), destructiveHint:false, idempotentHint:tool.idempotentHint ?? true },
+    securitySchemes:[{type:"oauth2", scopes:tool.scopes}],
+    _meta:{securitySchemes:[{type:"oauth2", scopes:tool.scopes}]}
   })) });
   if (msg.method !== "tools/call") return rpcError(msg.id, -32601, "Método desconocido");
   const match = /^Bearer ([a-f0-9]{64})$/i.exec(req.headers.get("authorization") || "");
-  if (!match || !ctx.db) return unauth(req, ctx.scope, msg.id);
+  if (!match || !ctx.db) return unauth(req, ctx.scopes.join(" "), msg.id);
   let token: any;
   try {
     token = await ctx.db.prepare("SELECT * FROM mcp_tokens WHERE token_hash=?").bind(await digest(match[1])).first();
-  } catch { return unauth(req, ctx.scope, msg.id); }
-  if (!token || token.access_expires <= Date.now() || token.scope !== ctx.scope || token.resource !== site(req) + "/mcp") return unauth(req, ctx.scope, msg.id);
-  if (ctx.checkAccount && !(await ctx.checkAccount(token.account_id))) return unauth(req, ctx.scope, msg.id);
+  } catch { return unauth(req, ctx.scopes.join(" "), msg.id); }
+  const granted = scopeList(token?.scope);
+  if (!token || token.access_expires <= Date.now() || !granted.length || granted.some((value) => !ctx.scopes.includes(value)) || token.resource !== site(req) + "/mcp") return unauth(req, ctx.scopes.join(" "), msg.id);
+  if (ctx.checkAccount && !(await ctx.checkAccount(token.account_id))) return unauth(req, ctx.scopes.join(" "), msg.id);
   const tool = ctx.tools.find(x => x.name === msg.params?.name);
   if (!tool) return rpcError(msg.id, -32602, "Herramienta desconocida");
+  if (!tool.scopes.every((scope) => granted.includes(scope))) return rpcError(msg.id, -32003, "El token no tiene permiso para esta herramienta.");
   const args = msg.params?.arguments || {};
   if (typeof args !== "object" || Array.isArray(args)) return rpcError(msg.id, -32602, "Argumentos inválidos");
   try {
-    const data = await tool.run(ctx.db, args);
+    const data = await tool.run(ctx.db, args, token.account_id);
     return rpc(msg.id, {
       content:[{type:"text",text:JSON.stringify(data)}],
       structuredContent: data

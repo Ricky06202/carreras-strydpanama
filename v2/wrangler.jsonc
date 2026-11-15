@@ -1,6 +1,7 @@
 {
   "name": "carreras-strydpanama-v2",
   "compatibility_date": "2026-10-07",
+  "keep_vars": true,
   "d1_databases": [
     {
       "binding": "DB",
@@ -20,6 +21,7 @@
     "YAPPY_SECRET_KEY": "",
     "YAPPY_URL_DOMAIN": "",
     "SITE_URL": "https://carreras.strydpanama.com",
+    "COMIBOX_API_URL": "https://comiboxchiriqui.com",
     "CNFT_RED": "",
     "CNFT_MAINNET_OK": "",
     "CNFT_TREE_ADDRESS": "",

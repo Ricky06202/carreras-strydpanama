@@ -259,10 +259,26 @@ export const payments = sqliteTable(
     // Token de un solo uso entregado al comprador al crear la orden Yappy:
     // /api/inscripciones/confirm exige poseerlo, así el orderId solo no puede marcar "pagado".
     confirmTokenHash: text("confirm_token_hash"),
+    // Clave opaca por fila para reintentar importaciones MCP sin duplicar personas.
+    mcpImportKey: text("mcp_import_key"),
     payload: text("payload"),
     ...timestamps,
   },
-  (t) => [index("payments_registration_idx").on(t.registrationId)],
+  (t) => [index("payments_registration_idx").on(t.registrationId), uniqueIndex("payments_mcp_import_key_idx").on(t.mcpImportKey)],
+);
+
+// Solo almacena hashes/metadatos de aprobación; nunca el formulario ni sus datos.
+export const mcpRegistrationImports = sqliteTable(
+  "mcp_registration_imports",
+  {
+    approvalHash: text("approval_hash").primaryKey(),
+    accountId: text("account_id").notNull(),
+    raceId: text("race_id").notNull().references(() => races.id, { onDelete: "cascade" }),
+    payloadHash: text("payload_hash").notNull(),
+    expiresAt: integer("expires_at").notNull(),
+    committedAt: text("committed_at"),
+  },
+  (t) => [index("mcp_registration_imports_expiry_idx").on(t.expiresAt)],
 );
 
 export const timingEvents = sqliteTable(

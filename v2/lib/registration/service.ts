@@ -8,6 +8,7 @@ import { TERMS_VERSION, termsTextHash } from "@/lib/legal";
 import { isPanamaMobile, registrationSchema, type RegistrationInput } from "./schema";
 import { sendRegistrationEmail } from "@/lib/email";
 import { issueTicketForRegistration } from "@/lib/cnft/issue";
+import { cedulaKey } from "@/lib/cedula";
 
 export { registrationSchema, isPanamaMobile };
 export type { RegistrationInput };
@@ -24,6 +25,51 @@ export class RegError extends Error {
 }
 
 const nowIso = () => new Date().toISOString();
+
+type RegistrationCandidate = {
+  race: typeof schema.races.$inferSelect;
+  distance: typeof schema.raceDistances.$inferSelect;
+  category: typeof schema.raceCategories.$inferSelect | null;
+  age: number;
+};
+
+/** Valida las reglas comunes sin crear inscripción, pago, cobro ni correo. */
+export async function validateRegistrationCandidate(
+  db: Db,
+  input: RegistrationInput,
+  opts?: { seenCedulas?: Set<string>; reservedSlots?: number },
+): Promise<RegistrationCandidate> {
+  const race = await db.select().from(schema.races).where(eq(schema.races.slug, input.slug)).get();
+  if (!race) throw new RegError(404, "Carrera no encontrada");
+  if (race.status !== "accepting") throw new RegError(409, "Esta carrera no está recibiendo inscripciones por ahora");
+  const distance = await db.select().from(schema.raceDistances)
+    .where(and(eq(schema.raceDistances.id, input.distanceId), eq(schema.raceDistances.raceId, race.id))).get();
+  if (!distance) throw new RegError(400, "Modalidad inválida", { distanceId: "Selecciona una modalidad válida" });
+  const age = ageFrom(input.birthDate);
+  const categories = await db.select().from(schema.raceCategories).where(eq(schema.raceCategories.raceId, race.id)).all();
+  const category = matchCategory(categories, age, input.gender);
+  if (categories.length > 0 && !category) {
+    throw new RegError(422, "Tu edad o género no corresponde a ninguna categoría de esta carrera", {
+      birthDate: "Revisa la fecha de nacimiento",
+    });
+  }
+
+  const key = cedulaKey(input.cedula);
+  if (opts?.seenCedulas?.has(key)) {
+    throw new RegError(409, "Hay otra fila del lote con esta cédula", { cedula: "Cédula duplicada dentro de la importación" });
+  }
+  const existing = await db.select({ cedula: schema.registrations.cedula }).from(schema.registrations)
+    .where(and(eq(schema.registrations.raceId, race.id), ne(schema.registrations.status, "anulado"))).all();
+  if (existing.some((row) => cedulaKey(row.cedula ?? "") === key)) {
+    throw new RegError(409, "Ya hay una inscripción con esta cédula en la carrera", { cedula: "Cédula ya inscrita" });
+  }
+  if (race.maxParticipants != null) {
+    const row = await db.select({ n: dsql<number>`count(*)` }).from(schema.registrations)
+      .where(and(eq(schema.registrations.raceId, race.id), ne(schema.registrations.status, "anulado"))).get();
+    if ((row?.n ?? 0) + (opts?.reservedSlots ?? 0) >= race.maxParticipants) throw new RegError(409, "Cupos llenos");
+  }
+  return { race, distance, category, age };
+}
 
 // Cupo digital (cNFT): disparo BEST-EFFORT. Con el flag apagado no hace nada; si
 // falla, guarda el error en la fila del cupo y se reintenta desde el panel.
@@ -146,8 +192,26 @@ function rsPayOrigin(origin?: string): string {
 export async function createRegistration(
   db: Db,
   input: RegistrationInput,
-  opts?: { origin?: string },
+  opts?: { origin?: string; suppressEmail?: boolean; importKey?: string; consentAt?: string },
 ): Promise<CreateResult> {
+  if (opts?.importKey) {
+    const existingPayment = await db.select().from(schema.payments).where(eq(schema.payments.mcpImportKey, opts.importKey)).get();
+    if (existingPayment) {
+      const existingReg = await db.select().from(schema.registrations).where(eq(schema.registrations.id, existingPayment.registrationId)).get();
+      const existingRace = existingReg ? await db.select().from(schema.races).where(eq(schema.races.id, existingReg.raceId)).get() : null;
+      if (!existingReg || !existingRace) throw new RegError(409, "La inscripción importada ya no está disponible");
+      return {
+        registrationId: existingReg.id,
+        confirmationCode: existingReg.confirmationCode,
+        status: existingReg.status,
+        paymentStatus: existingReg.paymentStatus,
+        amount: existingPayment.amount,
+        raceTitle: existingRace.title,
+        runnerName: existingReg.title,
+        category: null,
+      };
+    }
+  }
   const race = await db.select().from(schema.races).where(eq(schema.races.slug, input.slug)).get();
   if (!race) throw new RegError(404, "Carrera no encontrada");
   if (race.status !== "accepting") throw new RegError(409, "Esta carrera no está recibiendo inscripciones por ahora");
@@ -249,6 +313,7 @@ export async function createRegistration(
   const usarRsPay = input.method === "yappy" && rsPayActivo();
   const id = crypto.randomUUID();
   const ts = nowIso();
+  const consentAt = opts?.consentAt ?? ts;
   // Trazabilidad de consentimiento (Ley 81-2019): versión del texto + huella SHA-256.
   const consentHash = await termsTextHash();
   // Token de posesión para confirmar el pago desde el cliente: solo quien recibió la
@@ -260,7 +325,7 @@ export async function createRegistration(
           .join("")
       : null;
 
-  await db
+  const registrationInsert = db
     .insert(schema.registrations)
     .values({
       id,
@@ -285,15 +350,14 @@ export async function createRegistration(
       discountCode: codeRow?.code ?? null,
       termsVersion: TERMS_VERSION,
       termsTextHash: consentHash,
-      termsAcceptedAt: ts,
-      privacyAcceptedAt: ts,
-      guardianDeclaredAt: ts,
+      termsAcceptedAt: consentAt,
+      privacyAcceptedAt: consentAt,
+      guardianDeclaredAt: consentAt,
       createdAt: ts,
       updatedAt: ts,
-    })
-    .run();
+    });
 
-  await db
+  const paymentInsert = db
     .insert(schema.payments)
     .values({
       id: crypto.randomUUID(),
@@ -310,6 +374,7 @@ export async function createRegistration(
             ? "code"
             : "manual",
       orderId: confirmationCode,
+      mcpImportKey: opts?.importKey ?? null,
       confirmTokenHash: confirmToken ? await sha256Hex(confirmToken) : null,
       // Payload mínimo: sin duplicar PII (cédula/fecha nac. ya viven en registrations).
       payload: JSON.stringify({
@@ -321,8 +386,12 @@ export async function createRegistration(
       }),
       createdAt: ts,
       updatedAt: ts,
-    })
-    .run();
+    });
+  if (opts?.importKey) await db.batch([registrationInsert, paymentInsert]);
+  else {
+    await registrationInsert.run();
+    await paymentInsert.run();
+  }
 
   let pay: CreateResult["pay"];
   if (input.method === "yappy" && usarRsPay) {
@@ -359,7 +428,7 @@ export async function createRegistration(
     }
   }
 
-  void sendRegistrationEmail({
+  if (!opts?.suppressEmail) void sendRegistrationEmail({
     email: input.email,
     firstName: input.firstName,
     lastName: input.lastName,
@@ -408,7 +477,7 @@ export interface ConfirmResult {
 export async function confirmRegistrationPayment(
   db: Db,
   orderIdRaw: string,
-  opts?: { token?: string; viaIpn?: boolean; trusted?: boolean },
+  opts?: { token?: string; viaIpn?: boolean; trusted?: boolean; method?: "yappy" | "transferencia" | "efectivo" },
 ): Promise<ConfirmResult> {
   const orderId = orderIdRaw.trim().toUpperCase();
   let payment = await db
@@ -471,6 +540,13 @@ export async function confirmRegistrationPayment(
     reg.distanceId ? db.select({ title: schema.raceDistances.title }).from(schema.raceDistances).where(eq(schema.raceDistances.id, reg.distanceId)).get() : null,
     reg.categoryId ? db.select({ title: schema.raceCategories.title }).from(schema.raceCategories).where(eq(schema.raceCategories.id, reg.categoryId)).get() : null,
   ]);
+  let paymentMethod = opts?.method ?? "yappy";
+  if (!opts?.method && payment.payload) {
+    try {
+      const payload = JSON.parse(payment.payload) as { method?: string };
+      if (payload.method === "transferencia" || payload.method === "efectivo") paymentMethod = payload.method;
+    } catch {}
+  }
   void sendRegistrationEmail({
     email: reg.email,
     firstName: reg.firstName,
@@ -480,7 +556,7 @@ export async function confirmRegistrationPayment(
     distanceTitle: dist?.title ?? null,
     categoryTitle: cat?.title ?? null,
     confirmationCode: reg.confirmationCode,
-    method: "yappy",
+    method: paymentMethod,
     amount: payment.amount,
     confirmed: true,
     bibNumber: bib,
