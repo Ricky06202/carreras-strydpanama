@@ -34,7 +34,7 @@ export default async function Integraciones() {
         <li>Una importación muestra primero los datos validados y requiere tu aprobación explícita. Solo se envían campos estructurados; el archivo original no se guarda.</li>
         <li>Los cambios no pueden borrar registros. Las inscripciones pagadas se confirman por el flujo existente, que asigna dorsal y envía el correo habitual.</li>
       </ul>
-      <p className="mt-3 break-all font-mono text-xs text-mist">Servidor MCP: https://carreras.strydpanama.com/mcp</p>
+      <p className="mt-3 break-all font-mono text-xs text-mist">Servidor MCP: https://connect.carreras.strydpanama.com/mcp</p>
       <p className="mt-2 text-xs text-mist">La autorización no garantiza que ChatGPT tenga instalado el complemento.</p>
       {!email && <p className="mt-3 text-sm text-amber-300">Vuelve a iniciar sesión en el panel para asociar la conexión a tu correo.</p>}
       {email && active > 0 && <form action="/api/admin/integraciones/revocar" method="post" className="mt-5">

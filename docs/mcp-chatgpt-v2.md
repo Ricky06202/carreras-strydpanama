@@ -4,9 +4,10 @@ Estado: el servidor MCP de Carrera y la API firmada de Comibox están desplegado
 
 ## Conexión
 
-- Servidor MCP: `https://carreras.strydpanama.com/mcp`.
-- Descubrimiento OAuth: `https://carreras.strydpanama.com/.well-known/oauth-authorization-server`.
-- Metadatos del recurso: `https://carreras.strydpanama.com/.well-known/oauth-protected-resource`.
+- Servidor MCP: `https://connect.carreras.strydpanama.com/mcp`.
+- Panel de integración: `https://connect.carreras.strydpanama.com/admin/integraciones`.
+- Descubrimiento OAuth: `https://connect.carreras.strydpanama.com/.well-known/oauth-authorization-server`.
+- Metadatos del recurso: `https://connect.carreras.strydpanama.com/.well-known/oauth-protected-resource`.
 - OAuth 2.1 usa Dynamic Client Registration, Authorization Code, PKCE S256 y consentimiento desde una sesión administrativa.
 - Para usarlo, agrega el servidor MCP como conector personalizado en ChatGPT y autoriza la cuenta administrativa. La publicación en el directorio de ChatGPT es independiente y no se hace desde el panel de Carrera.
 
