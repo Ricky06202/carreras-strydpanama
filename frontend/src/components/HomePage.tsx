@@ -16,6 +16,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import PlaceIcon from '@mui/icons-material/Place';
+import { isWaitlistEnabled } from '../lib/raceSettings';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD - NO CAMBIAR - v2
 
@@ -37,6 +38,7 @@ interface Race {
     location?: string;
     price?: number;
     imageUrl?: string;
+    waitlistEnabled?: boolean;
   };
 }
 
@@ -351,7 +353,7 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                           >
                             PRÓXIMAMENTE
                           </Button>
-                        ) : race.data?.status === 'closed' ? (
+                        ) : race.data?.status === 'closed' && isWaitlistEnabled(race.data) ? (
                           <Button
                             component="a"
                             href={`/register?race=${race.id}`}
@@ -365,6 +367,21 @@ export default function HomePage({ initialRaces = [] }: HomePageProps) {
                             }}
                           >
                             LISTA DE ESPERA
+                          </Button>
+                        ) : race.data?.status === 'closed' ? (
+                          <Button
+                            component="a"
+                            href={`/race/${race.id}`}
+                            variant="outlined"
+                            sx={{
+                              flex: 1,
+                              textDecoration: 'none',
+                              borderColor: '#888888',
+                              color: '#888888',
+                              fontWeight: 'bold',
+                            }}
+                          >
+                            CERRADA
                           </Button>
                         ) : (
                           <Button

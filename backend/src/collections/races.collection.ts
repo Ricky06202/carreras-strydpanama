@@ -63,6 +63,26 @@ export default {
         type: 'number',
         title: 'Máximo de Participantes',
       },
+      waitlistEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Lista de Espera al cerrar o llenar cupos',
+      },
+      paymentYappyEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Pago con Yappy',
+      },
+      paymentTransferEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Pago por Transferencia',
+      },
+      paymentPreinscriptionEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Preinscripción sin Pago',
+      },
+      paymentCouponEnabled: {
+        type: 'boolean',
+        title: 'Habilitar Cupones y Boletos Físicos',
+      },
       status: {
         type: 'select',
         title: 'Estado',

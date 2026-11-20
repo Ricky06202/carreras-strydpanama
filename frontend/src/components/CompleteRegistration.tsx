@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { normalizePanamaPhone, isYappyMobilePhone } from '../lib/phone';
+import type { PaymentMethodKey } from '../lib/raceSettings';
 
 const ACCENT = '#FF6B00';
 
@@ -40,7 +41,7 @@ interface Props {
     confirmationCode: string;
     createdAt?: number;
   };
-  race: { id: string; title: string; date?: string; platformFee?: number; price?: number; legacyPrice?: number; legacyCutoff?: number };
+  race: { id: string; title: string; date?: string; platformFee?: number; price?: number; legacyPrice?: number; legacyCutoff?: number; enabledPaymentMethods: PaymentMethodKey[] };
   distance: { name?: string; price?: number };
   category: { name?: string };
 }
@@ -59,6 +60,7 @@ export default function CompleteRegistration({ participant, race, distance, cate
   const [assignedBib, setAssignedBib] = useState<number | null>(null);
   const [payPhone, setPayPhone] = useState(participant?.phone || '');
   const yappyBtnRef = useRef<any>(null);
+  const enabledPaymentMethods = race.enabledPaymentMethods || [];
 
   const isLegacy = !!(race?.legacyPrice && race?.legacyCutoff && participant.createdAt && participant.createdAt < race.legacyCutoff);
   const basePrice = isLegacy ? Number(race.legacyPrice) : (distance?.price ?? race?.price ?? 0);
@@ -349,11 +351,17 @@ export default function CompleteRegistration({ participant, race, distance, cate
             label="Método de Pago *"
             onChange={(e) => { setPaymentMethod(e.target.value); setError(''); }}
           >
-            <MenuItem value="yappy">Yappy</MenuItem>
-            <MenuItem value="transfer">Transferencia Bancaria</MenuItem>
-            <MenuItem value="cupon">🎟️ Cupón Promocional / Gratuito</MenuItem>
+            {enabledPaymentMethods.includes('yappy') && <MenuItem value="yappy">Yappy</MenuItem>}
+            {enabledPaymentMethods.includes('transfer') && <MenuItem value="transfer">Transferencia Bancaria</MenuItem>}
+            {enabledPaymentMethods.includes('cupon') && <MenuItem value="cupon">🎟️ Cupón Promocional / Gratuito</MenuItem>}
           </Select>
         </FormControl>
+
+        {!enabledPaymentMethods.some(method => method === 'yappy' || method === 'transfer' || method === 'cupon') && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            Esta carrera no tiene métodos de pago habilitados. Contacta a la organización para completar tu inscripción.
+          </Alert>
+        )}
 
         {paymentMethod === 'transfer' && (
           <Box sx={{ bgcolor: 'rgba(255,107,0,0.08)', border: `1.5px solid ${ACCENT}`, p: 2.5, borderRadius: 2, mb: 2 }}>
@@ -443,9 +451,11 @@ export default function CompleteRegistration({ participant, race, distance, cate
 
         {paymentMethod === 'yappy' && (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
-              ¿Tienes un cupón gratuito? Cambia el método de pago a "Cupón Promocional".
-            </Typography>
+            {enabledPaymentMethods.includes('cupon') && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                ¿Tienes un cupón gratuito? Cambia el método de pago a "Cupón Promocional".
+              </Typography>
+            )}
             <TextField
               fullWidth size="small" sx={{ mb: 2 }}
               label="Celular para el cobro Yappy *"
