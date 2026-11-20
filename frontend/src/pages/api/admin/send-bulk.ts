@@ -2,15 +2,36 @@ import type { APIRoute } from 'astro';
 import { getAuthToken } from '../../../lib/api';
 import { env } from 'cloudflare:workers';
 
-// Envío de correos masivos con Resend, respetando el cupo diario (100/día) y
-// usando lotes de 25 SIN bcc (el bcc duplica el consumo del cupo).
-// Escribe cada lote en la colección email_log (bitácora + contador diario).
+// La bitácora registra el progreso de cada campaña y el consumo del cupo diario.
 
 const FROM = 'Carreras STRYD <carreras@strydpanama.com>';
 const SITE = 'https://carreras.strydpanama.com';
 const DAILY_QUOTA = 100;
 const LOG_COLLECTION_ID = 'col-email_log-97d1ec29';
-const MAX_BATCH = 100;
+const CMS_PAGE_SIZE = 1000;
+
+type LogData = {
+  date?: string;
+  subject?: string;
+  audience?: string;
+  race?: string;
+  campaignId?: string;
+  messageKey?: string;
+  targetIds?: string[];
+  sentIds?: string[];
+  sent?: number;
+  failed?: number;
+  details?: string;
+  status?: string;
+};
+
+type LogEntry = { title: string; status: string; data: LogData };
+
+async function digest(parts: unknown[]): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(parts));
+  const hash = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hash), byte => byte.toString(16).padStart(2, '0')).join('');
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -62,9 +83,8 @@ export const POST: APIRoute = async ({ request }) => {
     const raceId = body.raceId ? String(body.raceId) : '';
     const participantIds: string[] = Array.isArray(body.participantIds) ? body.participantIds.map(String) : [];
     const preview = body.preview === true;
-    const offset = Math.max(0, Number(body.offset) || 0);
-    const batchSize = MAX_BATCH;
-    const campaignId = body.campaignId ? String(body.campaignId) : `camp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const requestedId = String(body.campaignId || '');
+    const newCampaign = body.newCampaign === true;
 
     // --- Envio de PRUEBA: no consume cupo ni escribe bitacora ---
     if (body.test === true) {
@@ -97,28 +117,49 @@ export const POST: APIRoute = async ({ request }) => {
     if (!key) return new Response(JSON.stringify({ error: 'Falta el secreto RESEND_API_KEY en el worker' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
 
     const token = await getAuthToken(env);
+    if (!token) {
+      return Response.json({ error: 'No se pudo autenticar con la bitácora de correos.' }, { status: 503 });
+    }
     const baseUrl = String(env.SONICJS_API_URL || '').replace(/\/$/, '');
     const authHeaders = {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token}`,
     };
 
-    // --- Resolver destinatarios desde la colección participants ---
-    const [partRes, racesRes, logRes] = await Promise.all([
-      fetch(`${baseUrl}/api/collections/participants/content?limit=5000&_t=${Date.now()}`, { headers: authHeaders }).then(r => r.json()).catch(() => ({})),
-      fetch(`${baseUrl}/api/collections/races/content?limit=200&_t=${Date.now()}`, { headers: authHeaders }).then(r => r.json()).catch(() => ({})),
-      fetch(`${baseUrl}/api/collections/email_log/content?limit=5000&_t=${Date.now()}`, { headers: authHeaders }).then(r => r.json()).catch(() => ({})),
-    ]);
+    const snapshotTime = Date.now();
+    const readCollection = async <T,>(collection: string): Promise<T[]> => {
+      const rows: T[] = [];
+      do {
+        const query = new URLSearchParams({
+          limit: String(CMS_PAGE_SIZE),
+          offset: String(rows.length),
+          sort: JSON.stringify([{ field: 'created_at', order: 'desc' }, { field: 'id', order: 'asc' }]),
+          // SonicJS usa el filtro (no _t) como parte de su clave de caché interna.
+          where: JSON.stringify({ and: [{ field: 'created_at', operator: 'less_than_equal', value: snapshotTime }] }),
+          _t: String(snapshotTime),
+        });
+        const response = await fetch(`${baseUrl}/api/collections/${collection}/content?${query}`, { headers: authHeaders });
+        if (!response.ok) throw new Error(`No se pudo consultar ${collection}. Intenta de nuevo.`);
+        const result = await response.json();
+        if (!Array.isArray(result.data)) throw new Error(`Respuesta inválida de ${collection}.`);
+        rows.push(...result.data);
+        if (result.data.length < CMS_PAGE_SIZE) return rows;
+      } while (true);
+    };
 
-    const racesById: Record<string, any> = {};
-    (racesRes?.data || []).forEach((r: any) => { racesById[r.id] = r.data || {}; });
+    const [participants, races, logRows] = await Promise.all([
+      readCollection<any>('participants'),
+      raceId ? readCollection<any>('races') : Promise.resolve([]),
+      readCollection<LogEntry>('email_log'),
+    ]);
+    const logs = logRows.filter(row => row.status === 'published');
 
     const today = todayPanama();
-    const todaySent = (logRes?.data || [])
-      .filter((c: any) => String(c?.data?.date || '').slice(0, 10) === today)
-      .reduce((s: number, c: any) => s + (Number(c?.data?.sent) || 0), 0);
+    const todaySent = logs
+      .filter(row => String(row.data.date || '').slice(0, 10) === today)
+      .reduce((sum, row) => sum + (Number(row.data.sent) || 0), 0);
     const cupoRestante = Math.max(0, DAILY_QUOTA - todaySent);
 
     const selectedSet = new Set(participantIds);
@@ -126,7 +167,7 @@ export const POST: APIRoute = async ({ request }) => {
     let skippedBadEmail = 0;
 
     const recipients: { id: string; email: string; name: string; first: string }[] = [];
-    (partRes?.data || []).forEach((c: any) => {
+    participants.forEach((c: any) => {
       if (c?.status === 'deleted') return;
       const d = c.data || {};
       const pRace = d.race || d.raceId || '';
@@ -146,153 +187,136 @@ export const POST: APIRoute = async ({ request }) => {
 
     recipients.sort((a, b) => a.id.localeCompare(b.id));
 
-    const raceTitle = raceId ? (racesById[raceId]?.title || raceId) : '';
+    const raceTitle = raceId ? (races.find(row => row.id === raceId)?.data?.title || raceId) : '';
+    const subject = String(body.subject || '').trim();
+    const rawBody = String(body.body || '');
+    if (!preview && (!subject || !rawBody.trim())) {
+      return Response.json({ error: 'El asunto y el cuerpo del correo son obligatorios.' }, { status: 400 });
+    }
+
+    const messageKey = await digest([audience, raceId, subject, rawBody, [...selectedSet].sort()]);
+    const scopeLogs = logs.filter(({ data }) => data.campaignId && (
+      data.messageKey ? data.messageKey === messageKey :
+        audience !== 'individual' && data.subject === subject && data.audience === audience && (data.race || '') === raceId
+    ));
+    // Los lotes antiguos solo registraban rangos si el público superaba el cupo.
+    const resumableIds = new Set(scopeLogs.filter(({ title, data }) =>
+      data.messageKey || data.status === 'pausado' || / · \d+–\d+$/.test(title || ''),
+    ).map(row => row.data.campaignId));
+    const matchingLogs = scopeLogs.filter(row => resumableIds.has(row.data.campaignId));
+    const requestedLogs = requestedId ? matchingLogs.filter(row => row.data.campaignId === requestedId) : [];
+    const latestId = matchingLogs[0]?.data.campaignId;
+    const campaignId = requestedLogs.length ? requestedId : ((!newCampaign && latestId) ||
+      `camp-${await digest([messageKey, latestId || ''])}`);
+    const campaignLogs = matchingLogs.filter(row => row.data.campaignId === campaignId);
+    if (requestedId && requestedId !== campaignId) {
+      return Response.json({ error: 'La campaña cambió. Vuelve a calcular los destinatarios.' }, { status: 409 });
+    }
+
+    const savedTargets = campaignLogs.find(row => Array.isArray(row.data.targetIds))?.data.targetIds;
+    const targetIds = new Set(savedTargets ?? recipients.map(r => r.id));
+    const sentIds = new Set<string>();
+    const legacyEmails = new Set<string>();
+    for (const { data } of campaignLogs) {
+      if (Array.isArray(data.sentIds)) {
+        data.sentIds.forEach(id => sentIds.add(id));
+      } else if (Number(data.sent) > 0) {
+        const emails = [...String(data.details || '').matchAll(/<([^<>]+)>/g)].map(match => match[1]);
+        if (Number(data.failed) > 0 || emails.length !== Number(data.sent) || emails.some(email => !EMAIL_RE.test(email))) {
+          return Response.json({ error: 'La bitácora anterior no permite identificar todos los envíos confirmados de esta campaña.' }, { status: 409 });
+        }
+        emails.forEach(email => legacyEmails.add(email.toLowerCase()));
+      }
+    }
+    const pending = recipients.filter(r => targetIds.has(r.id) && !sentIds.has(r.id) && !legacyEmails.has(r.email.toLowerCase()));
+    const quota = { todaySent, cupoRestante, quota: DAILY_QUOTA };
+    const campaign = { campaignId, resuming: campaignLogs.length > 0, raceTitle, skippedNoEmail, skippedBadEmail };
 
     if (preview) {
-      return new Response(JSON.stringify({
-        success: true,
-        preview: true,
-        audience,
-        raceTitle,
-        total: recipients.length,
-        skippedNoEmail,
-        skippedBadEmail,
-        todaySent,
-        cupoRestante,
-        quota: DAILY_QUOTA,
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return Response.json({ success: true, preview: true, audience, total: pending.length, ...campaign, ...quota });
     }
 
-    // --- Validar contenido ---
-    const subject = String(body.subject || '').trim();
-    let rawBody = String(body.body || '');
-    if (!subject) return new Response(JSON.stringify({ error: 'El asunto es obligatorio' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-    if (!rawBody.trim()) return new Response(JSON.stringify({ error: 'El cuerpo del correo está vacío' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
-
-    // --- Ventana a enviar: respeta cupo diario y lote de 25 ---
-    const allowed = Math.min(batchSize, cupoRestante, Math.max(0, recipients.length - offset));
-    const remainingAfter = Math.max(0, recipients.length - offset - allowed);
-    const quotaBlocked = cupoRestante <= 0 || allowed < Math.min(batchSize, Math.max(0, recipients.length - offset));
-
-    if (allowed <= 0) {
-      return new Response(JSON.stringify({
-        success: true, sent: 0, failed: 0, recipients: 0, remaining: remainingAfter,
-        skippedNoEmail, skippedBadEmail, todaySent, cupoRestante, quota: DAILY_QUOTA,
-        pausado: remainingAfter > 0, campaignId, raceTitle,
-      }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const slice = pending.slice(0, cupoRestante);
+    const noSendResult = {
+      success: true, sent: 0, failed: 0, recipients: 0, remaining: pending.length,
+      pausado: pending.length > 0, ...campaign, ...quota,
+    };
+    if (slice.length === 0) return Response.json(noSendResult);
+    if (body.expectedTotal !== undefined && body.expectedTotal !== pending.length) {
+      return Response.json({ error: 'Los destinatarios cambiaron. Vuelve a calcularlos antes de enviar.' }, { status: 409 });
     }
 
-    const slice = recipients.slice(offset, offset + allowed);
-
-    const applyName = (tpl: string, r: { first: string; name: string }) =>
-      tpl.replace(/\{nombre\}/gi, r.first || r.name);
-
-    const msgs = slice.map((r) => ({
+    const msgs = slice.map(r => ({
       from: FROM,
       to: r.email,
-      subject: applyName(subject, r),
-      html: renderHtml(applyName(rawBody, r)),
+      subject: subject.replace(/\{nombre\}/gi, () => r.first),
+      html: renderHtml(rawBody.replace(/\{nombre\}/gi, () => r.first)),
     }));
-
-    const details: { email: string; name: string; ok: boolean; error?: string }[] = [];
-    let sent = 0;
-    let failed = 0;
-
-    const sendOne = async (msg: any): Promise<string | null> => {
-      try {
-        const res = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-          body: JSON.stringify(msg),
-        });
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) return j?.message || `HTTP ${res.status}`;
-        return null;
-      } catch (e: any) {
-        return e?.message || 'Error de red';
+    // La misma campaña y el mismo conjunto pendiente reutilizan la clave al reintentar el lote.
+    const batchKey = await digest([campaignId, slice.map(r => r.id), campaignLogs.length]);
+    const resend = await fetch('https://api.resend.com/emails/batch', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${key}`,
+        'Idempotency-Key': batchKey,
+        'x-batch-validation': 'permissive',
+      },
+      body: JSON.stringify(msgs),
+    });
+    const result = await resend.json().catch(() => ({}));
+    if (!resend.ok) {
+      if (result.name === 'daily_quota_exceeded') {
+        return Response.json({ ...noSendResult, cupoRestante: 0 });
       }
-    };
-
-    let batchErr: string | null = null;
-    try {
-      const res = await fetch('https://api.resend.com/emails/batch', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-        body: JSON.stringify(msgs), // sin bcc
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) batchErr = j?.message || `HTTP ${res.status}`;
-    } catch (e: any) {
-      batchErr = e?.message || 'Error de red';
+      return Response.json({ error: result.message || `Resend respondió HTTP ${resend.status}.` }, { status: 502 });
     }
 
-    if (!batchErr) {
-      sent = slice.length;
-      slice.forEach((r) => details.push({ email: r.email, name: r.name, ok: true }));
-    } else {
-      // Reintento uno a uno si el lote completo fue rechazado.
-      for (let i = 0; i < msgs.length; i++) {
-        const err = await sendOne(msgs[i]);
-        if (err) { failed++; details.push({ email: slice[i].email, name: slice[i].name, ok: false, error: err }); }
-        else { sent++; details.push({ email: slice[i].email, name: slice[i].name, ok: true }); }
-      }
+    const errors: { index: number; message?: string }[] = Array.isArray(result.errors) ? result.errors : [];
+    const failedIndexes = new Set(errors.map(error => error.index));
+    const delivered = slice.filter((_, index) => !failedIndexes.has(index));
+    if (!Array.isArray(result.data) || result.data.length !== delivered.length) {
+      return Response.json({ error: 'Resend devolvió un resultado inesperado. Reintenta la misma campaña.' }, { status: 502 });
     }
 
-    const errorSample = details.find(d => !d.ok)?.error || '';
-    const paused = quotaBlocked && remainingAfter > 0;
-    const status = paused ? 'pausado' : (failed > 0 && sent === 0 ? 'error' : 'completado');
+    const sent = delivered.length;
+    const failed = slice.length - sent;
+    const remaining = pending.length - sent;
+    const newCupo = cupoRestante - sent;
+    const pausado = newCupo === 0 && remaining > 0;
+    const status = pausado ? 'pausado' : (failed > 0 ? 'error' : 'completado');
 
-    // --- Bitácora: un registro por lote (campaignId agrupa la campaña) ---
-    try {
-      const detailsStr = details.map(d => (d.name ? `${d.name} <${d.email}>` : d.email)).join(', ');
-      const logTitle = recipients.length > MAX_BATCH
-        ? `${subject} — ${today} · ${offset + 1}–${offset + slice.length}`
-        : `${subject} — ${today}`;
-      await fetch(`${baseUrl}/api/content`, {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          collectionId: LOG_COLLECTION_ID,
-          collection_id: LOG_COLLECTION_ID,
-          title: logTitle,
-          status: 'published',
-          data: {
-            date: today,
-            subject,
-            audience,
-            race: raceId,
-            raceTitle,
-            campaignId,
-            recipients: slice.length,
-            sent,
-            failed,
-            skippedNoEmail: offset === 0 ? skippedNoEmail : 0,
-            details: detailsStr,
-            status,
-          },
-        }),
-      });
-    } catch { /* la bitácora no debe romper el envío */ }
+    const logResponse = await fetch(`${baseUrl}/api/content`, {
+      method: 'POST',
+      headers: authHeaders,
+      body: JSON.stringify({
+        collectionId: LOG_COLLECTION_ID,
+        collection_id: LOG_COLLECTION_ID,
+        title: `${subject} — ${today}`,
+        slug: `lote-${batchKey}`,
+        status: 'published',
+        data: {
+          date: today, subject, audience, race: raceId, raceTitle, campaignId, messageKey,
+          ...(!savedTargets && { targetIds: [...targetIds] }),
+          sentIds: delivered.map(r => r.id),
+          recipients: slice.length, sent, failed,
+          skippedNoEmail: campaignLogs.length === 0 ? skippedNoEmail : 0,
+          details: delivered.map(r => `${r.name} <${r.email}>`).join(', '),
+          status,
+        },
+      }),
+    });
+    // Un lote simultáneo puede haber guardado ya este resultado con el mismo identificador.
+    if (!logResponse.ok && logResponse.status !== 409) {
+      return Response.json({ error: 'Resend procesó el lote, pero falló la bitácora. Reintenta esta misma campaña cuanto antes.' }, { status: 500 });
+    }
 
-    const newCupo = Math.max(0, cupoRestante - sent);
-
-    return new Response(JSON.stringify({
-      success: sent > 0,
-      sent,
-      failed,
-      recipients: slice.length,
-      remaining: remainingAfter,
-      skippedNoEmail,
-      skippedBadEmail,
-      todaySent: todaySent + sent,
-      cupoRestante: newCupo,
-      quota: DAILY_QUOTA,
-      pausado: paused,
-      campaignId,
-      raceTitle,
-      errorSample,
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    return Response.json({
+      success: sent > 0, sent, failed, recipients: slice.length, remaining, pausado,
+      ...campaign, ...quota, todaySent: todaySent + sent, cupoRestante: newCupo,
+      errorSample: errors[0]?.message || '',
+    });
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message || 'Error al enviar los correos' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return Response.json({ error: error.message || 'Error al enviar los correos' }, { status: 500 });
   }
 };

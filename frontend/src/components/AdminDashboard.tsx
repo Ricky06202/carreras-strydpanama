@@ -776,7 +776,6 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const [emailPreview, setEmailPreview] = useState<any>(null);
   const [emailPreviewLoading, setEmailPreviewLoading] = useState(false);
   const [emailSending, setEmailSending] = useState(false);
-  const [emailProgress, setEmailProgress] = useState(0);
   const [emailConfirmCount, setEmailConfirmCount] = useState('');
   const [emailLogQuery, setEmailLogQuery] = useState('');
   const [emailLogRace, setEmailLogRace] = useState('');
@@ -832,16 +831,19 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
     templateId: emailTemplateId || undefined,
   });
 
-  const runEmailPreview = async () => {
+  const runEmailPreview = async (newCampaign = false) => {
     setEmailMsg(null);
     if (emailAudience === 'inscritos' && !emailRaceId) { setEmailPreview(null); setEmailMsg({ text: 'Elige una carrera para los inscritos.', ok: false }); return; }
     if (emailAudience === 'individual' && emailSelectedIds.length === 0) { setEmailPreview(null); setEmailMsg({ text: 'Selecciona al menos una persona.', ok: false }); return; }
     setEmailPreviewLoading(true);
+    setEmailPreview(null);
+    setEmailConfirmCount('');
+    const payload = emailPayloadBase();
     try {
-      const res = await fetch('/api/admin/send-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...emailPayloadBase(), preview: true }) });
+      const res = await fetch('/api/admin/send-bulk', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...payload, preview: true, newCampaign }) });
       const data = await res.json();
       if (!res.ok || data.error) { setEmailPreview(null); setEmailMsg({ text: data.error || 'No se pudo calcular los destinatarios.', ok: false }); return; }
-      setEmailPreview(data);
+      setEmailPreview({ ...data, payload, newCampaign });
       setEmailTodaySent(Number(data.todaySent) || 0);
       setEmailQuota(Number(data.quota) || 100);
     } catch (e: any) {
@@ -914,47 +916,42 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
   const sendEmails = async () => {
     setEmailMsg(null);
     if (!emailPreview) { await runEmailPreview(); return; }
-    if (emailPreview.total === 0) { setEmailMsg({ text: 'No hay destinatarios con correo para este envío.', ok: false }); return; }
-    if (!emailSubject.trim() || !emailBody.trim()) { setEmailMsg({ text: 'Asunto y cuerpo son obligatorios.', ok: false }); return; }
-    if (emailAudience === 'todos' && emailConfirmCount.trim() !== String(emailPreview.total)) {
-      setEmailMsg({ text: `Para enviar a TODOS debes escribir la cantidad exacta de destinatarios (${emailPreview.total}).`, ok: false });
+    if (emailPreview.total === 0) return;
+    const { payload, campaignId, total, newCampaign } = emailPreview;
+    if (JSON.stringify(payload) !== JSON.stringify(emailPayloadBase())) {
+      await runEmailPreview();
       return;
     }
-    if (emailPreview.cupoRestante <= 0) { setEmailMsg({ text: 'El cupo diario de Resend (100) ya está agotado. Reintenta mañana.', ok: false }); return; }
-
-    const campaignId = (typeof crypto !== 'undefined' && (crypto as any).randomUUID) ? (crypto as any).randomUUID() : `camp-${Date.now()}`;
-    const total = emailPreview.total;
-    let offset = 0;
-    let sent = 0; let failed = 0; let paused = false; let lastCupo = emailPreview.cupoRestante;
-    const skippedNoEmail = emailPreview.skippedNoEmail || 0;
+    if (!payload.subject.trim() || !payload.body.trim()) { setEmailMsg({ text: 'Asunto y cuerpo son obligatorios.', ok: false }); return; }
+    if (payload.audience === 'todos' && emailConfirmCount.trim() !== String(total)) {
+      setEmailMsg({ text: `Para enviar a TODOS debes escribir la cantidad exacta de destinatarios (${total}).`, ok: false });
+      return;
+    }
 
     setEmailSending(true);
-    setEmailProgress(0);
     try {
-      while (offset < total) {
-        const res = await fetch('/api/admin/send-bulk', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ...emailPayloadBase(), offset, batchSize: 25, campaignId }),
-        });
-        const d = await res.json();
-        if (!res.ok || d.error) { setEmailMsg({ text: d.error || 'Error al enviar el lote.', ok: false }); break; }
-        sent += Number(d.sent) || 0;
-        failed += Number(d.failed) || 0;
-        lastCupo = Number(d.cupoRestante) ?? lastCupo;
-        const processed = Number(d.recipients) || 0;
-        offset += processed;
-        setEmailProgress(Math.min(100, Math.round((offset / total) * 100)));
-        if (d.pausado && d.remaining > 0) { paused = true; break; }
-        if (d.remaining === 0) break;
-        if (processed === 0) break;
-      }
-      setEmailMsg({
-        text: `Enviados: ${sent} · Omitidos sin correo: ${skippedNoEmail} · Fallidos: ${failed}` + (paused ? ` · PAUSADO por cupo (quedan ${total - offset} en espera, cupo restante ${lastCupo})` : ''),
-        ok: !paused && failed === 0,
+      const res = await fetch('/api/admin/send-bulk', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...payload, campaignId, newCampaign, expectedTotal: total }),
       });
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        setEmailMsg({ text: data.error || 'Error al enviar el lote.', ok: false });
+        if (res.status === 409) setEmailPreview(null);
+        return;
+      }
+
       setEmailPreview(null);
       setEmailConfirmCount('');
       await loadEmailData();
+      const remainingText = data.remaining > 0
+        ? ` · Quedan ${data.remaining} pendientes. ${data.pausado ? 'Cuando se renueve el cupo, vuelve a calcular y pulsa Continuar envío.' : 'Vuelve a calcular para intentar el envío pendiente.'}`
+        : '';
+      setEmailMsg({
+        text: `Enviados: ${data.sent} · Omitidos sin correo: ${data.skippedNoEmail} · Fallidos: ${data.failed}${remainingText}` +
+          (data.errorSample ? ` · ${data.errorSample}` : ''),
+        ok: data.remaining === 0 && data.failed === 0,
+      });
     } catch (e: any) {
       setEmailMsg({ text: String(e?.message || e), ok: false });
     } finally {
@@ -3739,7 +3736,11 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                           const id = String(e.target.value);
                           setEmailTemplateId(id);
                           const t = emailTemplates.find((x: any) => String(x.id) === id);
-                          if (t) { setEmailSubject(t.subject || ''); setEmailBody(t.body || ''); }
+                          if (t) {
+                            setEmailSubject(t.subject || '');
+                            setEmailBody(t.body || '');
+                            setEmailPreview(null);
+                          }
                         }}
                       >
                         <MenuItem value=""><em>— Ninguna (asunto propio) —</em></MenuItem>
@@ -3800,18 +3801,24 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                   <Button variant="outlined" onClick={saveEmailTemplate} disabled={emailSavingTemplate}>{emailSavingTemplate ? 'Guardando…' : 'Guardar como plantilla'}</Button>
                   <Button variant="outlined" color="secondary" onClick={updateEmailTemplate} disabled={emailSavingTemplate || !emailTemplateId}>Guardar cambios en plantilla</Button>
-                  <Button variant="outlined" onClick={runEmailPreview} disabled={emailPreviewLoading}>{emailPreviewLoading ? 'Calculando…' : 'Calcular destinatarios'}</Button>
+                  <Button variant="outlined" onClick={() => runEmailPreview()} disabled={emailPreviewLoading || emailSending}>{emailPreviewLoading ? 'Calculando…' : 'Calcular destinatarios'}</Button>
                 </Box>
 
                 {emailPreview && (
                   <Alert severity={emailPreview.total === 0 ? 'warning' : 'info'} sx={{ mt: 2 }}>
-                    <b>Destinatarios con correo:</b> {emailPreview.total} · Omitidos sin correo: {emailPreview.skippedNoEmail}
+                    <b>{emailPreview.resuming ? 'Destinatarios pendientes' : 'Destinatarios con correo'}:</b> {emailPreview.total} · Omitidos sin correo: {emailPreview.skippedNoEmail}
                     {emailPreview.skippedBadEmail ? ` · Correo inválido: ${emailPreview.skippedBadEmail}` : ''}
                     {emailPreview.raceTitle ? ` · Carrera: ${emailPreview.raceTitle}` : ''} · Cupo restante hoy: {emailPreview.cupoRestante}/{emailPreview.quota}
+                    {emailPreview.resuming && emailPreview.total === 0 && (
+                      <Box sx={{ mt: 1 }}>
+                        Esta campaña ya no tiene destinatarios pendientes.
+                        <Button size="small" onClick={() => runEmailPreview(true)}>Preparar envío nuevo</Button>
+                      </Box>
+                    )}
                   </Alert>
                 )}
 
-                {emailAudience === 'todos' && emailPreview && (
+                {emailAudience === 'todos' && emailPreview?.total > 0 && (
                   <Alert severity="error" sx={{ mt: 2 }}>
                     <Typography variant="body2" sx={{ mb: 1 }}>
                       Enviar a <b>TODOS</b> es una acción global ({emailPreview.total} correos) y no se puede deshacer.
@@ -3822,15 +3829,12 @@ function AdminDashboardContent({ initialRaces = [] }: { initialRaces: Race[] }) 
                 )}
 
                 {emailSending && (
-                  <Box sx={{ mt: 2 }}>
-                    <LinearProgress variant="determinate" value={emailProgress} />
-                    <Typography variant="caption" color="text.secondary">{emailProgress}%</Typography>
-                  </Box>
+                  <LinearProgress sx={{ mt: 2 }} />
                 )}
 
                 <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
-                  <Button variant="contained" startIcon={<EmailIcon />} onClick={sendEmails} disabled={emailSending || !confirmOk || (emailPreview ? emailPreview.total === 0 : false)}>
-                    {emailSending ? 'Enviando…' : 'Enviar correos'}
+                  <Button variant="contained" startIcon={<EmailIcon />} onClick={sendEmails} disabled={emailSending || emailPreviewLoading || !confirmOk || emailPreview?.total === 0}>
+                    {emailSending ? 'Enviando…' : (emailPreview?.resuming ? 'Continuar envío' : 'Enviar correos')}
                   </Button>
                   <TextField size="small" label="Enviar prueba a (correo)" value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} sx={{ minWidth: 240 }} />
                   <Button variant="outlined" onClick={sendTestEmail} disabled={emailTesting || !emailTestTo.trim()}>
