@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import CompleteRegistration from '../components/CompleteRegistration';
 import { apiFetch } from '../lib/api';
 import { env } from 'cloudflare:workers';
+import { getEnabledPaymentMethods } from '../lib/raceSettings';
 
 const code = (Astro.url.searchParams.get('code') || '').trim();
 const cedula = (Astro.url.searchParams.get('cedula') || '').trim();
@@ -41,6 +42,7 @@ if (!code && !cedula) {
       let racePrice = 0;
       let legacyPrice = 0;
       let legacyCutoff = 0;
+      let enabledPaymentMethods = getEnabledPaymentMethods({});
       if (raceId) {
         try {
           const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
@@ -51,6 +53,7 @@ if (!code && !cedula) {
           racePrice = rd.price ? Number(rd.price) : 0;
           legacyPrice = rd.legacyPrice ? Number(rd.legacyPrice) : 0;
           legacyCutoff = rd.legacyCutoff ? Number(rd.legacyCutoff) : 0;
+          enabledPaymentMethods = getEnabledPaymentMethods(rd);
         } catch (e) {
           console.error('Error fetching race for preinscripcion:', e);
         }
@@ -95,7 +98,7 @@ if (!code && !cedula) {
           confirmationCode: pd.confirmationCode || code || '',
           createdAt: match.created_at || 0,
         },
-        race: { id: raceId, title: raceName, date: raceDate, platformFee, price: racePrice, legacyPrice, legacyCutoff },
+        race: { id: raceId, title: raceName, date: raceDate, platformFee, price: racePrice, legacyPrice, legacyCutoff, enabledPaymentMethods },
         distance: { name: distanceName, price: distancePrice },
         category: { name: categoryName },
       };

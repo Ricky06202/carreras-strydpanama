@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { api } from '../../lib/api';
 import { env } from 'cloudflare:workers';
 import RaceTimer from '../../components/RaceTimer';
+import { isWaitlistEnabled } from '../../lib/raceSettings';
 
 const raceId = Astro.params.id;
 let race = null;
@@ -56,6 +57,7 @@ function hasRaceDayArrived(dateStr?: string) {
 }
 
 const raceData = race?.data || {};
+const waitlistEnabled = isWaitlistEnabled(raceData);
 ---
 
 <Layout title={`${raceData.title || race.title || 'Carrera'} - Stryd Panama`}>
@@ -95,7 +97,7 @@ const raceData = race?.data || {};
                 <a href={`/register?race=${raceId}`} class="cta-top shrink-0">
                   🏃 INSCRIBIRSE AHORA
                 </a>
-              ) : raceData.status === 'closed' ? (
+              ) : raceData.status === 'closed' && waitlistEnabled ? (
                 <a href={`/register?race=${raceId}`} class="cta-top shrink-0">
                   📋 LISTA DE ESPERA
                 </a>
@@ -189,7 +191,7 @@ const raceData = race?.data || {};
               <div class="block w-full text-center px-8 py-4 bg-gray-300 dark:bg-slate-700 text-gray-500 dark:text-gray-400 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
                 Inscripciones Próximamente
               </div>
-            ) : raceData.status === 'closed' ? (
+            ) : raceData.status === 'closed' && waitlistEnabled ? (
               <div class="space-y-3">
                 <a href={`/register?race=${raceId}`} class="block w-full text-center px-8 py-4 bg-accent text-white text-lg font-bold rounded-2xl hover:opacity-90 transition-colors">
                   Inscribirse a Lista de Espera
@@ -198,9 +200,9 @@ const raceData = race?.data || {};
                   Las inscripciones regulares están cerradas. Regístrate en la lista de espera para ser contactado si se habilitan más cupos.
                 </p>
               </div>
-            ) : (raceData.status === 'active' || raceData.status === 'finished') ? (
+            ) : (raceData.status === 'closed' || raceData.status === 'active' || raceData.status === 'finished') ? (
               <div class="block w-full text-center px-8 py-4 bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-gray-400 text-lg font-bold rounded-2xl cursor-not-allowed select-none">
-                Inscripciones Cerradas (Evento {raceData.status === 'active' ? 'en Vivo' : 'Finalizado'})
+                Inscripciones Cerradas{raceData.status === 'active' ? ' (Evento en Vivo)' : raceData.status === 'finished' ? ' (Evento Finalizado)' : ''}
               </div>
             ) : null}
           </div>
@@ -226,19 +228,19 @@ const raceData = race?.data || {};
     </div>
   </div>
   <!-- Barra sticky mobile (visible en móvil cuando inscripciones abiertas o evento finalizado para resultados) -->
-  {(raceData.status === 'accepting' || raceData.status === 'closed' || (hasRaceDayArrived(raceData.date) && raceData.status !== 'active')) && (
+  {(raceData.status === 'accepting' || (raceData.status === 'closed' && waitlistEnabled) || (hasRaceDayArrived(raceData.date) && raceData.status !== 'active')) && (
     <div class="sticky-cta">
       <div class="sticky-cta-info">
         <span class="sticky-cta-name">{raceData.title || race.title}</span>
         <span class="sticky-cta-price">
-          {hasRaceDayArrived(raceData.date) && raceData.status !== 'active' ? 'Resultados' : (raceData.status === 'closed' ? 'Lista de Espera' : `$${raceData.price || 0}`)}
+          {hasRaceDayArrived(raceData.date) && raceData.status !== 'active' ? 'Resultados' : (raceData.status === 'closed' && waitlistEnabled ? 'Lista de Espera' : `$${raceData.price || 0}`)}
         </span>
       </div>
       <a 
         href={hasRaceDayArrived(raceData.date) && raceData.status !== 'active' ? `/resultados?raceId=${raceId}` : `/register?race=${raceId}`} 
         class="sticky-cta-btn"
       >
-        {hasRaceDayArrived(raceData.date) && raceData.status !== 'active' ? 'RESULTADOS' : (raceData.status === 'closed' ? 'LISTA DE ESPERA' : 'INSCRIBIRSE')}
+        {hasRaceDayArrived(raceData.date) && raceData.status !== 'active' ? 'RESULTADOS' : (raceData.status === 'closed' && waitlistEnabled ? 'LISTA DE ESPERA' : 'INSCRIBIRSE')}
       </a>
     </div>
   )}

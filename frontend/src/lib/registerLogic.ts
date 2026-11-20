@@ -1,6 +1,7 @@
 import { api, apiFetch } from './api';
 import { sendRegistrationEmail } from './mailer';
 import { normalizePanamaPhone } from './phone';
+import { assertPaymentMethodEnabled, isWaitlistEnabled } from './raceSettings';
 
 export const processRegistration = async (env: any, body: any, ctx?: any) => {
   try {
@@ -59,6 +60,17 @@ export const processRegistration = async (env: any, body: any, ctx?: any) => {
     const raceFields = raceRes.data?.data || {};
     const startingBib = raceFields.startingBib ? Number(raceFields.startingBib) : 1;
     const raceName = raceFields.title || raceRes.data?.title || 'Carrera';
+
+    const isWaitingList = body.participantType === 'waiting_list';
+    if (isWaitingList && !isWaitlistEnabled(raceFields)) {
+      throw new Error('La lista de espera está deshabilitada para esta carrera.');
+    }
+    if (!isWaitingList && body.paymentMethod) {
+      assertPaymentMethodEnabled(raceFields, body.paymentMethod);
+    }
+    if (body.discountCode) {
+      assertPaymentMethodEnabled(raceFields, 'cupon');
+    }
     
     // 2. Obtener el siguiente BIB disponible (una sola lectura con límite alto, luego asignación secuencial local)
     const participantsRes = await apiFetch(`/api/collections/participants/content?limit=5000`, env, { method: 'GET' });
@@ -85,7 +97,6 @@ export const processRegistration = async (env: any, body: any, ctx?: any) => {
     }
 
     // Validar límite de inscritos
-    const isWaitingList = body.participantType === 'waiting_list';
     // Preinscripción: quien reserva cupo sin pagar no consume dorsal hasta que complete su método de pago
     const isPreinscription = body.participantType === 'preinscripcion' ||
       body.isPreinscription === true ||

@@ -1,11 +1,15 @@
 import type { APIRoute } from 'astro';
 import { apiFetch } from '../../lib/api';
 import { env } from 'cloudflare:workers';
+import { assertPaymentMethodEnabled } from '../../lib/raceSettings';
 
 export const POST: APIRoute = async ({ request }) => {
   try {
     const body = await request.json();
     const { code, raceId } = body;
+
+    const raceRes = await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' });
+    assertPaymentMethodEnabled(raceRes?.data?.data || {}, 'cupon');
     
     // Buscamos todos los codigos y filtramos en la app
     const result = await apiFetch(`/api/collections/registration_codes/content?limit=500`, env, { method: 'GET' });

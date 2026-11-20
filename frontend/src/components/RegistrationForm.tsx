@@ -21,6 +21,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 import ImageCropper from './ImageCropper';
 import { normalizePanamaPhone, isValidPanamaPhone, isYappyMobilePhone } from '../lib/phone';
+import { getEnabledPaymentMethods, isWaitlistEnabled, type PaymentMethodKey } from '../lib/raceSettings';
 
 const ACCENT = '#FF6B00'; // Naranja STRYD
 const R2_BASE = 'https://pub-ddaf4243012a44c5a61699bc0719121f.r2.dev';
@@ -89,6 +90,13 @@ interface Race {
     teamEnabled?: boolean;
     padrinoEnabled?: boolean;
     status?: string;
+    maxParticipants?: number;
+    platformFee?: number | string;
+    waitlistEnabled?: boolean;
+    paymentYappyEnabled?: boolean;
+    paymentTransferEnabled?: boolean;
+    paymentPreinscriptionEnabled?: boolean;
+    paymentCouponEnabled?: boolean;
   };
 }
 
@@ -109,7 +117,7 @@ interface Distance {
 
 const steps = ['Carrera', 'Datos', 'Método de Pago', 'Documentos', 'Confirmación'];
 const sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-const paymentMethods = [
+const paymentMethods: Array<{ value: PaymentMethodKey; label: string }> = [
   { value: 'yappy', label: 'Yappy' },
   { value: 'transfer', label: 'Transferencia Bancaria' },
   { value: 'preinscripcion', label: 'Preinscribirme (sin pago ahora)' },
@@ -194,6 +202,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isRaceFull = maxParticipants !== null && registeredRunnersCount >= maxParticipants;
   const isRaceUpcoming = raceInfo?.data?.status === 'upcoming';
   const padrinoEnabled = raceInfo?.data?.padrinoEnabled === true;
+  const waitlistEnabled = isWaitlistEnabled(raceInfo?.data);
+  const enabledPaymentMethods = getEnabledPaymentMethods(raceInfo?.data);
 
   const [configuredParticipantTypes, setConfiguredParticipantTypes] = useState<ParticipantType[]>([]);
   const hasConfiguredParticipantTypes = configuredParticipantTypes.length > 0;
@@ -211,6 +221,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
   const isFinishedOrDayArrived = raceInfo?.data?.status === 'finished' || hasRaceDayArrived(raceInfo?.data?.date);
   const isRaceClosed = raceInfo?.data?.status === 'closed' && !isFinishedOrDayArrived;
   const isRaceFinished = isFinishedOrDayArrived;
+  const isWaitlistRegistration = (isRaceFull || isRaceClosed) && waitlistEnabled;
+  const isRegistrationBlocked = (isRaceFull || isRaceClosed) && !waitlistEnabled;
 
   useEffect(() => {
      // Recuperar sesión de Yappy en navegadores móviles (Safari/Chrome) 
@@ -481,7 +493,8 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
         
         const max = d.race?.data?.maxParticipants ? Number(d.race.data.maxParticipants) : null;
         const isClosed = d.race?.data?.status === 'closed';
-        if ((max !== null && count >= max) || isClosed) {
+        const waitlistAvailable = isWaitlistEnabled(d.race?.data);
+        if (((max !== null && count >= max) || isClosed) && waitlistAvailable) {
           setRegistrationType('individual');
           setFormData(prev => ({ ...prev, participantType: 'waiting_list' }));
         } else {
@@ -497,6 +510,16 @@ export default function RegistrationForm({ raceId, initialRaces = [], sonicjsApi
               : prev.participantType,
           }));
           if (d.race?.data?.padrinoEnabled !== true) setIsPadrino(false);
+        }
+        const methods = getEnabledPaymentMethods(d.race?.data);
+        setFormData(prev => ({
+          ...prev,
+          paymentMethod: methods.includes(prev.paymentMethod as PaymentMethodKey) ? prev.paymentMethod : '',
+        }));
+        if (!methods.includes('cupon')) {
+          setCode('');
+          setCodeValid(null);
+          setCodeValidData(null);
         }
       })
       .catch(err => console.error('Error loading race info:', err))
@@ -741,7 +764,7 @@ const handleSubmit = async () => {
         raceId: selectedRace,
         categoryId: formData.category || null,
         distanceId: formData.distance || null,
-        paymentMethod: (isRaceFull || isRaceClosed) 
+        paymentMethod: isWaitlistRegistration
           ? 'Lista de Espera' 
           : (isPreinscribing ? 'Preinscripción' : ((codeValid && codeValid.valid) ? (codeValidData?.isFreeCode ? 'Cupon Gratuito' : 'Boleto Físico (100% Dscto)') : formData.paymentMethod)),
         termsAccepted: termsAccepted,
@@ -981,8 +1004,10 @@ const handleSubmit = async () => {
         {step === 0 && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {isRaceFull && !isRaceUpcoming && !isRaceClosed && !isRaceFinished && (
-              <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
-                ⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Puedes inscribirte en la Lista de Espera para ser contactado si se habilitan más cupos.
+              <Alert severity={waitlistEnabled ? 'warning' : 'error'} sx={{ fontWeight: 'bold' }}>
+                {waitlistEnabled
+                  ? '⚠️ Esta carrera ha alcanzado su límite de cupos para corredores. Puedes inscribirte en la Lista de Espera para ser contactado si se habilitan más cupos.'
+                  : '⚠️ Esta carrera ha alcanzado su límite de cupos y no está recibiendo inscripciones en lista de espera.'}
               </Alert>
             )}
 
@@ -993,8 +1018,10 @@ const handleSubmit = async () => {
             )}
 
             {isRaceClosed && (
-              <Alert severity="warning" sx={{ fontWeight: 'bold' }}>
-                🚫 Las inscripciones para esta carrera están cerradas. Puedes unirte a la Lista de Espera para ser contactado si se habilitan más cupos.
+              <Alert severity={waitlistEnabled ? 'warning' : 'error'} sx={{ fontWeight: 'bold' }}>
+                {waitlistEnabled
+                  ? '🚫 Las inscripciones para esta carrera están cerradas. Puedes unirte a la Lista de Espera para ser contactado si se habilitan más cupos.'
+                  : '🚫 Las inscripciones para esta carrera están cerradas y la lista de espera está deshabilitada.'}
               </Alert>
             )}
 
@@ -1023,7 +1050,7 @@ const handleSubmit = async () => {
             </FormControl>
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
-              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace || isRaceUpcoming || isRaceFinished} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
+              <Button variant="contained" onClick={() => setStep(1)} disabled={!selectedRace || isRaceUpcoming || isRaceFinished || isRegistrationBlocked} endIcon={<NavigateNextIcon />} sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}>
                 Continuar
               </Button>
             </Box>
@@ -1081,7 +1108,7 @@ const handleSubmit = async () => {
                   </Alert>
                 )}
 
-                {(isRaceFull || isRaceClosed) ? (
+                {isWaitlistRegistration ? (
                   <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(255, 107, 0, 0.08)', borderRadius: 2, gridColumn: '1 / -1', border: '1.5px solid #FF6B00' }}>
                     <Typography variant="subtitle2" sx={{ mb: 1.5, fontWeight: 'bold', color: '#FF6B00', textTransform: 'uppercase', letterSpacing: 0.5 }}>Tipo de Participante</Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -1689,7 +1716,7 @@ const handleSubmit = async () => {
                   const distOk = distances.length === 0 || !!formData.distance;
                   const termsOk = !raceInfo?.data?.termsAndConditions || termsAccepted;
                   if (!valid || !distOk || !termsOk) return;
-                  if (isRaceFull || isRaceClosed) {
+                  if (isWaitlistRegistration) {
                     handleSubmit();
                   } else {
                     setStep(2);
@@ -1699,7 +1726,7 @@ const handleSubmit = async () => {
                 endIcon={<NavigateNextIcon />}
                 sx={{ bgcolor: ACCENT, '&:hover': { bgcolor: '#E55A00' } }}
               >
-                {(isRaceFull || isRaceClosed) ? 'Unirse a Lista de Espera' : 'Continuar'}
+                {isWaitlistRegistration ? 'Unirse a Lista de Espera' : 'Continuar'}
               </Button>
             </Box>
           </Box>
@@ -1710,6 +1737,7 @@ const handleSubmit = async () => {
             <Typography variant="h6" sx={{ mb: 2 }}>Selecciona tu método de pago</Typography>
 
             {/* Código de cupón / boleto físico (movido desde el paso de Carrera) */}
+            {enabledPaymentMethods.includes('cupon') && (
             <Box>
               <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, alignItems: { sm: 'center' } }}>
                 <TextField fullWidth label="Código de Cupón / Boleto Físico (opcional)" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej: STRYD2024" disabled={loading} />
@@ -1720,6 +1748,7 @@ const handleSubmit = async () => {
               {codeValid && <Typography color={codeValid.valid ? 'success.main' : 'error.main'} variant="body2" sx={{ mt: 0.5 }}>{codeValid.message}</Typography>}
               {!codeValid && <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>¿Tienes un cupón o boleto físico de un vendedor? Escríbelo y pulsa Validar para aplicar el descuento.</Typography>}
             </Box>
+            )}
             
             {(codeValid && codeValid.valid) ? (
               <Box sx={{ bgcolor: 'rgba(46,125,50,0.10)', border: '1.5px solid #2e7d32', p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -1732,11 +1761,23 @@ const handleSubmit = async () => {
                 <InputLabel>Método de Pago *</InputLabel>
                 <Select value={formData.paymentMethod} label="Método de Pago *" onChange={(e) => setFormData({...formData, paymentMethod: e.target.value})}>
                   {paymentMethods
+                    .filter(pm => enabledPaymentMethods.includes(pm.value))
                     .filter(pm => !(registrationType === 'team' && pm.value === 'preinscripcion'))
                     .map((pm) => <MenuItem key={pm.value} value={pm.value}>{pm.label}</MenuItem>)}
                 </Select>
               </FormControl>
             )}
+
+            {!(codeValid && codeValid.valid) &&
+              !enabledPaymentMethods.includes('cupon') &&
+              !paymentMethods.some(pm =>
+                enabledPaymentMethods.includes(pm.value) &&
+                !(registrationType === 'team' && pm.value === 'preinscripcion')
+              ) && (
+                <Alert severity="error">
+                  Esta carrera no tiene métodos de pago habilitados. Contacta a la organización.
+                </Alert>
+              )}
 
             {!(codeValid && codeValid.valid) && formData.paymentMethod === 'transfer' ? (
               <Box sx={{ bgcolor: 'rgba(255,107,0,0.08)', border: `1.5px solid ${ACCENT}`, p: 2.5, borderRadius: 2, mt: 2 }}>
@@ -1953,7 +1994,7 @@ const handleSubmit = async () => {
             <Box sx={{ textAlign: 'center', mb: 4 }}>
               <CheckCircleIcon sx={{ fontSize: 80, color: 'success.main', mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: 'bold', mb: 2 }}>
-                {recoveredPayment ? 'Estado de tu Registro' : ((isRaceFull || isRaceClosed) ? '¡Registro en Lista de Espera Completado!' : (formData.paymentMethod === 'preinscripcion' ? '¡Preinscripción Completada!' : '¡Registro Completado!'))} 
+                {recoveredPayment ? 'Estado de tu Registro' : (isWaitlistRegistration ? '¡Registro en Lista de Espera Completado!' : (formData.paymentMethod === 'preinscripcion' ? '¡Preinscripción Completada!' : '¡Registro Completado!'))}
               </Typography>
 
               {recoveredPayment && (
@@ -1975,7 +2016,7 @@ const handleSubmit = async () => {
                 Tu código de confirmación principal es:
               </Typography>
               
-              {(isRaceFull || isRaceClosed) ? (
+              {isWaitlistRegistration ? (
                 <Alert severity="info" sx={{ mb: 3, textAlign: 'left' }}>
                   Has quedado registrado en la <b>Lista de Espera</b>. Te contactaremos por correo electrónico o celular si decidimos habilitar cupos para la carrera. ¡Muchas gracias por tu interés!
                 </Alert>
@@ -2016,7 +2057,7 @@ const handleSubmit = async () => {
                   </Grid>
                   <Grid size={{ xs: 6 }}>
                     <Typography variant="caption" color="text.secondary">Categoría</Typography>
-                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{(isRaceFull || isRaceClosed) ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || 'General')}</Typography>
+                    <Typography variant="body2" fontWeight="bold" color={ACCENT}>{isWaitlistRegistration ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || 'General')}</Typography>
                   </Grid>
                   <Grid size={{ xs: 12 }}>
                     <Typography variant="caption" color="text.secondary">Código de Seguimiento</Typography>
@@ -2057,11 +2098,11 @@ const handleSubmit = async () => {
                     {distances.find(d => d.id === formData.distance)?.name || '-'}
                   </Typography>
                 </Box>
-                {(formData.category || isRaceFull || isRaceClosed) && (
+                {(formData.category || isWaitlistRegistration) && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                     <Typography variant="body2" color="text.secondary">Categoría:</Typography>
                     <Typography variant="body1" fontWeight="bold">
-                      {(isRaceFull || isRaceClosed) ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || '-')}
+                      {isWaitlistRegistration ? 'Lista de Espera' : (categories.find(c => c.id === formData.category)?.name || '-')}
                     </Typography>
                   </Box>
                 )}
@@ -2078,7 +2119,7 @@ const handleSubmit = async () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px dashed #ccc', pb: 1 }}>
                   <Typography variant="body2" color="text.secondary">Método de Pago:</Typography>
                   <Typography variant="body1" fontWeight="bold" sx={{ color: ACCENT }}>
-                    {(isRaceFull || isRaceClosed)
+                    {isWaitlistRegistration
                       ? 'Sin costo (Lista de Espera)'
                       : ((codeValid && codeValid.valid)
                         ? (codeValidData?.isFreeCode ? 'Cupón Gratuito (B/. 0.00)' : 'Boleto Físico (Cupón)')

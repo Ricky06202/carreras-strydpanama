@@ -3,6 +3,7 @@ import { env } from 'cloudflare:workers';
 import { apiFetch } from '../../lib/api';
 import { upgradePreinscrito, beginYappyUpgrade } from '../../lib/registerLogic';
 import { normalizePanamaPhone } from '../../lib/phone';
+import { assertPaymentMethodEnabled } from '../../lib/raceSettings';
 
 /**
  * Permite a un corredor preinscrito actualizar su método de pago y convertirse
@@ -26,6 +27,10 @@ export const POST: APIRoute = async ({ request }) => {
     if (!participant) throw new Error('Preinscripción no encontrada');
 
     const pd = participant.data || {};
+    const raceId = pd.race || pd.raceId;
+    const raceRes = raceId ? await apiFetch(`/api/content/${raceId}`, env, { method: 'GET' }) : null;
+    const raceFields = raceRes?.data?.data || {};
+    assertPaymentMethodEnabled(raceFields, paymentMethod);
 
     // Autorización: la persona debe coincidir con la preinscripción
     // (normalizada: "4-717-1802" = "47171802")
